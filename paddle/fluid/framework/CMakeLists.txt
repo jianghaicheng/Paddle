@@ -25,6 +25,11 @@ add_subdirectory(ir)
 add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
+
+if (WITH_IPU)
+  add_subdirectory(ipu)
+endif()
+
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 proto_library(heter_service_proto SRCS heter_service.proto)

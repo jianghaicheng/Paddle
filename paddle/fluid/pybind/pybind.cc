@@ -2305,6 +2305,11 @@ All parameter, weight, gradient are variables in Paddle.
                      int val) { self.Set<const int>(name, new int(val)); })
       .def("set",
            [](ir::Pass &self, const std::string &name,
+              std::vector<std::string> set) {
+             self.Set(name, new std::vector<std::string>(set));
+           })
+      .def("set",
+           [](ir::Pass &self, const std::string &name,
               std::unordered_set<std::string> set) {
              self.Set(name, new std::unordered_set<std::string>(set));
            })

@@ -206,7 +206,7 @@ elseif(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
     SET(PROTOBUF_TAG         v3.8.0)
 else()
     SET(PROTOBUF_REPOSITORY  ${GIT_URL}/protocolbuffers/protobuf.git)
-    SET(PROTOBUF_TAG         9f75c5aa851cd877fb0d93ccc31b8567a6706546)
+    SET(PROTOBUF_TAG         v3.6.1)
 endif()
 
     cache_third_party(${TARGET_NAME}
@@ -245,7 +245,7 @@ ENDFUNCTION()
 if(WITH_ASCEND OR WITH_ASCEND_CL)
     SET(PROTOBUF_VERSION 3.8.0)
 else()
-    SET(PROTOBUF_VERSION 3.1.0)
+    SET(PROTOBUF_VERSION v3.6.1)
 endif()
 
 IF(NOT PROTOBUF_FOUND)
