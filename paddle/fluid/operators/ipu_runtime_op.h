@@ -33,7 +33,7 @@ class IpuRuntimeKernel : public framework::OpKernel<T> {
     VLOG(4) << "IpuRuntime Kernel, begin to run graph";
     auto inputs = ctx.MultiInput<framework::Tensor>("FeedList");
     auto outputs = ctx.MultiOutput<framework::Tensor>("FetchList");
-    ipu_backend->Run(inputs, outpus);
+    ipu_backend->Run(inputs, outputs);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Please compile WITH_IPU option to enable ipu_runtime op"));

@@ -39,7 +39,7 @@ endif()
 if(WIN32)
   # windows header option for all targets.
   add_definitions(-D_XKEYCHECK_H)
-  # Use symbols instead of absolute path, reduce the cmake link command length. 
+  # Use symbols instead of absolute path, reduce the cmake link command length.
   SET(CMAKE_C_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
   SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
   SET(CMAKE_C_USE_RESPONSE_FILE_FOR_OBJECTS 1)
@@ -89,6 +89,11 @@ endif()
 if(WITH_XPU)
     message(STATUS "Compile with XPU!")
     add_definitions(-DPADDLE_WITH_XPU)
+endif()
+
+if(WITH_IPU)
+    message(STATUS "Compile with IPU!")
+    add_definitions(-DPADDLE_WITH_IPU)
 endif()
 
 if(WITH_GPU)

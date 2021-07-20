@@ -46,7 +46,7 @@ Graph* Pass::Apply(Graph* graph) const {
                       platform::errors::InvalidArgument(
                           "Required atrribute %s for graph is not set.", attr));
   }
-#ifdef WITH_IPU
+#ifdef PADDLE_WITH_IPU
   ApplyImpl(graph);
 #else
   ApplyImpl(graph);
