@@ -56,5 +56,4 @@ if(NOT popart_FOUND)
 endif()
 
 add_definitions(-DONNX_NAMESPACE=onnx)
-
 add_custom_target(extern_poplar DEPENDS poplar popart-only)

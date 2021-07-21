@@ -233,6 +233,7 @@ from .framework.random import set_cuda_rng_state  # noqa: F401
 from .framework import ParamAttr  # noqa: F401
 from .framework import create_parameter  # noqa: F401
 from .framework import CPUPlace  # noqa: F401
+from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
 from .framework import NPUPlace  # noqa: F401
 from .framework import CUDAPinnedPlace  # noqa: F401
@@ -267,6 +268,7 @@ from .fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
 from .fluid.dygraph.base import disable_dygraph as enable_static  # noqa: F401
 from .fluid.framework import in_dygraph_mode as in_dynamic_mode  # noqa: F401
 from .fluid.layers import crop_tensor as crop  # noqa: F401
+from .fluid.layers import gctest as gctest  # noqa: F401
 
 # high-level api
 from .hapi import Model  # noqa: F401
@@ -282,6 +284,7 @@ from .tensor.random import check_shape  # noqa: F401
 disable_static()
 
 __all__ = [     #noqa
+           'gctest',
            'dtype',
            'uint8',
            'int8',

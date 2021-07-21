@@ -16,6 +16,10 @@ if (WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
 endif()
 
+if (WITH_IPU)
+  set(PYBIND_DEPS ${PYBIND_DEPS} ipu_info)
+endif()
+
 if (WITH_NCCL OR WITH_RCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)

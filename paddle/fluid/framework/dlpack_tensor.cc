@@ -77,6 +77,11 @@ struct DLContextVisitor : public boost::static_visitor<::DLContext> {
     return ctx;
   }
 
+  inline ::DLContext operator()(const platform::IPUPlace &place) const {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("platform::IPUPlace is not supported"));
+  }
+
   inline ::DLContext operator()(const platform::XPUPlace &place) const {
     PADDLE_THROW(
         platform::errors::Unimplemented("platform::XPUPlace is not supported"));

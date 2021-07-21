@@ -116,6 +116,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/xpu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/ipu_info.h"
+#endif
+
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
 #endif
@@ -770,6 +774,8 @@ PYBIND11_MODULE(core_noavx, m) {
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::NPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+      .def("set", SetTensorFromPyArray<paddle::platform::IPUPlace>,
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
            R"DOC(
@@ -777,7 +783,7 @@ PYBIND11_MODULE(core_noavx, m) {
         
         Args:
           lod (numpy.ndarray): The data to set.
-          place (CPUPlace|CUDAPlace|XPUPlace|CUDAPinnedPlace|NPUPlace): The place where the
+          place (CPUPlace|CUDAPlace|XPUPlace|IPU|CUDAPinnedPlace|NPUPlace): The place where the
           LoDTensor is to be set.
           zero_copy (bool, optional): Whether to share memory with the input numpy array.
           This parameter only works with CPUPlace. Default: False.
@@ -1809,6 +1815,66 @@ All parameter, weight, gradient are variables in Paddle.
            &IsSamePlace<platform::NPUPlace, platform::CUDAPinnedPlace>)
       .def("__str__", string::to_string<const platform::NPUPlace &>);
 
+// IPUPlace
+  py::class_<platform::IPUPlace>(m, "IPUPlace", R"DOC(
+    IPUPlace is a descriptor of a device.
+    It represents a IPU device on which a tensor will be allocated and a model will run.
+
+    Examples:
+        .. code-block:: python
+          import paddle
+          ipu_place = paddle.IPUPlace(0)
+
+        )DOC")
+      .def("__init__",
+           [](platform::IPUPlace &self, int dev_id) {
+#ifdef PADDLE_WITH_IPU
+             if (UNLIKELY(dev_id < 0)) {
+               LOG(ERROR) << string::Sprintf(
+                   "Invalid IPUPlace(%d), device id must be 0 or "
+                   "positive integer",
+                   dev_id);
+               std::exit(-1);
+             }
+             if (UNLIKELY(dev_id >= platform::GetIPUDeviceCount())) {
+               if (platform::GetIPUDeviceCount() == 0) {
+                 LOG(ERROR) << "Cannot use IPU because there is no IPU "
+                               "detected on your "
+                               "machine.";
+                 std::exit(-1);
+               } else {
+                 LOG(ERROR) << string::Sprintf(
+                     "Invalid IPUPlace(%d), must inside [0, %d), because IPU "
+                     "number on your machine is %d",
+                     dev_id, platform::GetIPUDeviceCount(),
+                     platform::GetIPUDeviceCount());
+                 std::exit(-1);
+               }
+             }
+             new (&self) platform::IPUPlace(dev_id);
+#else
+             LOG(ERROR) << string::Sprintf(
+                 "Cannot use IPU because you didn't install IPU version "
+                 "PaddlePaddle.\n"
+                 "If you want to use IPU, please try to install IPU version "
+                 "PaddlePaddle by: pip install paddlepaddle-ipu\n"
+                 "If you only have CPU, please change IPUPlace(%d) to be "
+                 "CPUPlace().\n",
+                 dev_id);
+             std::exit(-1);
+#endif
+           })
+      .def("_type", &PlaceIndex<platform::IPUPlace>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::Place>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::CUDAPlace>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::CPUPlace>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::XPUPlace>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::NPUPlace>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::IPUPlace>)
+      .def("_equals",
+           &IsSamePlace<platform::IPUPlace, platform::CUDAPinnedPlace>)
+      .def("__str__", string::to_string<const platform::IPUPlace &>);
+
   py::class_<platform::Place>(m, "Place")
       .def(py::init<>())
       .def("_type", &PlaceIndex<platform::Place>)
@@ -1817,6 +1883,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::Place, platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::XPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::NPUPlace>)
+      .def("_equals", &IsSamePlace<platform::Place, platform::IPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPinnedPlace>)
       .def("is_gpu_place",
            [](platform::Place &self) { return platform::is_gpu_place(self); })
@@ -1826,6 +1893,8 @@ All parameter, weight, gradient are variables in Paddle.
            [](platform::Place &self) { return platform::is_xpu_place(self); })
       .def("is_npu_place",
            [](platform::Place &self) { return platform::is_npu_place(self); })
+      .def("is_ipu_place",
+           [](platform::Place &self) { return platform::is_ipu_place(self); })
       .def("is_cuda_pinned_place",
            [](platform::Place &self) {
              return platform::is_cuda_pinned_place(self);
@@ -1841,6 +1910,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def("npu_device_id",
            [](platform::Place &self) {
              return BOOST_GET_CONST(platform::NPUPlace, self).device;
+           })
+      .def("ipu_device_id",
+           [](platform::Place &self) {
+             return BOOST_GET_CONST(platform::IPUPlace, self).device;
            })
       .def("set_place", [](platform::Place &self,
                            const platform::Place &other) { self = other; })
@@ -1864,6 +1937,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_place",
            [](platform::Place &self, const platform::NPUPlace &npu_place) {
              self = npu_place;
+           })
+      .def("set_place",
+           [](platform::Place &self, const platform::IPUPlace &ipu_place) {
+             self = ipu_place;
            })
       .def("__repr__", string::to_string<const platform::Place &>)
       .def("__str__", string::to_string<const platform::Place &>);
@@ -1995,6 +2072,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
+  m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);

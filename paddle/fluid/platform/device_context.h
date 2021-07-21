@@ -62,6 +62,10 @@ limitations under the License. */
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
+#ifdef PADDLE_WITH_IPU
+#include <popart/devicemanager.hpp>
+#endif
+
 namespace Eigen {
 struct DefaultDevice;
 struct GpuDevice;
@@ -97,12 +101,14 @@ enum DeviceType {
   CUDA = 1,
   XPU = 2,
   NPU = 3,
+  IPU = 4,
 };
 
 constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kNPU = DeviceType::NPU;
+constexpr DeviceType kIPU = DeviceType::IPU;
 
 class DeviceContext {
  public:
@@ -133,6 +139,29 @@ template <>
 struct DefaultDeviceContextType<platform::CPUPlace> {
   using TYPE = CPUDeviceContext;
 };
+
+// Graphcore IPU
+#ifdef PADDLE_WITH_IPU
+class IPUDeviceContext : public DeviceContext {
+public:
+  IPUDeviceContext();
+  explicit IPUDeviceContext(IPUPlace place);
+  virtual ~IPUDeviceContext();
+  Eigen::DefaultDevice* eigen_device() const{ return nullptr; }
+  Place GetPlace() const override;
+    /*! \brief  Wait for all operations completion in the stream. */
+  void Wait() const override;
+
+private:
+  IPUPlace place_;
+  std::shared_ptr<popart::DeviceInfo> gc_devices_;
+};
+template <>
+struct DefaultDeviceContextType<platform::IPUPlace> {
+  using TYPE = IPUDeviceContext;
+};
+
+#endif
 
 #ifdef PADDLE_WITH_XPU
 class XPUDeviceContext : public DeviceContext {

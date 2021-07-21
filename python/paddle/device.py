@@ -58,6 +58,21 @@ def is_compiled_with_npu():
     return core.is_compiled_with_npu()
 
 
+def is_compiled_with_ipu():
+    """
+    Whether paddle was built with WITH_IPU=ON to support Graphcore IPU.
+
+    Returns (bool): `True` if IPU is supported, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            support_npu = paddle.is_compiled_with_ipu()
+    """
+    return core.is_compiled_with_ipu()
+
+
 def is_compiled_with_xpu():
     """
     Whether paddle was built with WITH_XPU=ON to support Baidu Kunlun

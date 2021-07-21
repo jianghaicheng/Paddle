@@ -83,7 +83,7 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   if (it == device_contexts_.end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Place %s is not supported. Please check that your paddle compiles "
-        "with WITH_GPU, WITH_XPU or WITH_ASCEND_CL option or check that "
+        "with WITH_GPU, WITH_XPU, IPU or WITH_ASCEND_CL option or check that "
         "your train process set the correct device id if you use Executor.",
         place));
   }
@@ -146,6 +146,14 @@ DeviceContextPool::DeviceContextPool(
           platform::errors::Unimplemented("XPUPlace is not supported. Please "
                                           "re-compile with WITH_XPU option."));
 #endif
+    } else if (platform::is_ipu_place(p)) {
+#ifdef PADDLE_WITH_IPU
+      EmplaceDeviceContext<IPUDeviceContext, IPUPlace>(&device_contexts_, p);
+#else
+      PADDLE_THROW(
+          platform::errors::Unimplemented("IPUPlace is not supported. Please "
+                                          "re-compile with WITH_IPU option."));
+#endif
     } else if (platform::is_npu_place(p)) {
 #ifdef PADDLE_WITH_ASCEND_CL
       EmplaceDeviceContext<NPUDeviceContext, NPUPlace>(&device_contexts_, p);
@@ -172,6 +180,32 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 
 Place CPUDeviceContext::GetPlace() const { return place_; }
 
+#ifdef PADDLE_WITH_IPU
+IPUDeviceContext::IPUDeviceContext() {
+  std::map<std::string, std::string> deviceOpts{{"numIPUs", "1"}};
+  gc_devices_  =
+  popart::DeviceManager::createDeviceManager().createIpuModelDevice(
+          deviceOpts);
+}
+
+// TODO(Cheng) get current device
+IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {
+  //......
+  // std::map<std::string, std::string> deviceOpts{{"numIPUs", "1"}};
+  // gc_devices_  =
+  // popart::DeviceManager::createDeviceManager().createIpuModelDevice(
+  //         deviceOpts);
+}
+
+Place IPUDeviceContext::GetPlace() const { return place_; }
+// TODO(Cheng) need to imp
+void IPUDeviceContext::Wait() const {
+    /*! \brief  Wait for all operations completion in the stream. */
+}
+
+IPUDeviceContext::~IPUDeviceContext(){}
+
+#endif
 #ifdef PADDLE_WITH_XPU
 XPUDeviceContext::XPUDeviceContext() { context_ = xpu::create_context(); }
 
