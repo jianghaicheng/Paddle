@@ -305,10 +305,6 @@ else()
      endif()
 endif()
 
-if(WITH_IPU)
-  add_definitions(-DWITH_IPU)
-endif()
-
 include(third_party)  # download, build, install third_party, Contains about 20+ dependencies
 
 include(flags)              # set paddle compile flags
