@@ -149,6 +149,7 @@ set(COMMON_FLAGS
 if(WITH_IPU)
     set(COMMON_FLAGS ${COMMON_FLAGS} 
         -Wno-sign-compare # Warnings in Popart
+        -Wno-non-virtual-dtor # Warnings in Popart
     )
 endif()
 
