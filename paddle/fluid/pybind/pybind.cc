@@ -176,6 +176,14 @@ bool IsCompiledWithNPU() {
 #endif
 }
 
+bool IsCompiledWithIPU() {
+#ifndef PADDLE_WITH_IPU
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithMKLDNN() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
@@ -1989,6 +1997,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
+  m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("op_supported_infos", OpSupportedInfos);
