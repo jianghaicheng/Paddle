@@ -34,6 +34,7 @@ class IpuRuntimeKernel : public framework::OpKernel<T> {
     auto inputs = ctx.MultiInput<framework::Tensor>("FeedList");
     auto outputs = ctx.MultiOutput<framework::Tensor>("FetchList");
     for (auto* out : outputs){
+      out->Resize(framework::make_ddim({1}));
       out->mutable_data<float>(ctx.GetPlace());
     }
     ipu_backend->Run(inputs, outputs);

@@ -169,22 +169,29 @@ void IpuBackend::Run(const std::vector<const Tensor *> &inputs,
                      std::vector<Tensor *> &outputs) {
   // Prepare input tensor
   std::map<popart::TensorId, popart::IArray&> popart_inputs;
+  std::map<popart::TensorId, popart::NDArrayWrapper<float>> input_wrappers;
+
   for (size_t i = 0; i < inputs.size(); i++) {
     auto tensor_id = inputs_[i];
     const Tensor* tensor = inputs[i];
     std::vector<int64_t> tensor_shape = builder_->getTensorShape(tensor_id);
     popart::NDArrayWrapper<float> data(const_cast<float*>(tensor->data<float>()), tensor_shape);
-    popart_inputs.emplace(tensor_id, data);
+    VLOG(1) << "Preparing Input data for tensor " << tensor_id;
+    input_wrappers.emplace(tensor_id, std::move(data));
+    popart_inputs.emplace(tensor_id, input_wrappers.at(tensor_id));
   }
 
   // Prepare output tensor
   std::map<popart::TensorId, popart::IArray&> popart_anchors;
+  std::map<popart::TensorId, popart::NDArrayWrapper<float>> anchor_wrappers;
   for(size_t i = 0; i < outputs.size(); i++) {
     auto tensor_id = outputs_[i];
     Tensor* tensor = outputs[i];
     std::vector<int64_t> tensor_shape = builder_->getTensorShape(tensor_id);
-    popart::NDArrayWrapper<float> out_data(const_cast<float*>(tensor->data<float>()), tensor_shape);
-    popart_anchors.emplace(tensor_id, out_data);
+    popart::NDArrayWrapper<float> data(const_cast<float*>(tensor->data<float>()), tensor_shape);
+    VLOG(1) << "Preparing Output data for tensor " << tensor_id;
+    anchor_wrappers.emplace(tensor_id, std::move(data));
+    popart_anchors.emplace(tensor_id, anchor_wrappers.at(tensor_id));
   }
 
   popart::StepIO stepio(popart_inputs, popart_anchors);
