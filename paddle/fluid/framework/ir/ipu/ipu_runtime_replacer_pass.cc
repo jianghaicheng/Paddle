@@ -60,14 +60,29 @@ void IpuRuntimeReplacerPass::ApplyImpl(ir::Graph* graph) const {
   std::vector<std::string> fetch_list;
   fetch_list = Get<std::vector<std::string>>("fetch_list");
 
-  framework::OpDesc new_op_desc;
-  new_op_desc.SetType("ipu_runtime");
-  new_op_desc.SetInput("FeedList", feed_list);
-  new_op_desc.SetOutput("FetchList", fetch_list);
-  new_op_desc.Flush();
+  framework::OpDesc ipu_rt_op_desc;
+  ipu_rt_op_desc.SetType("ipu_runtime");
+  ipu_rt_op_desc.SetInput("FeedList", feed_list);
+  ipu_rt_op_desc.SetOutput("FetchList", fetch_list);
+  ipu_rt_op_desc.Flush();
 
   // Create a new node for the ipu_runtime_op.
-  graph->CreateOpNode(&new_op_desc);
+  auto *ipu_rt_node = graph->CreateOpNode(&ipu_rt_op_desc);
+
+  for (auto* node : graph->Nodes()) {
+    if (node->IsVar()) {
+      for (auto feed : feed_list) {
+        if (node->Name() == feed) {
+          IR_NODE_LINK_TO(node, ipu_rt_node);
+        }
+      }
+      for (auto fetch : fetch_list) {
+        if (node->Name() == fetch) {
+          IR_NODE_LINK_TO(ipu_rt_node, node);
+        }
+      }
+    }
+  }
 
   // Remove unneeded nodes.
   std::unordered_set<const Node*> marked_nodes;
