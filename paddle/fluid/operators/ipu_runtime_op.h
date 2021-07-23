@@ -15,6 +15,7 @@
 #pragma once
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/framework/ipu/ipu_backend.h"
@@ -27,14 +28,17 @@ namespace operators {
 template <typename T>
 class IpuRuntimeKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
 #ifdef PADDLE_WITH_IPU
     auto ipu_backend = paddle::framework::IpuBackend::GetInstance();
     VLOG(4) << "IpuRuntime Kernel, begin to run graph";
     auto inputs = ctx.MultiInput<framework::Tensor>("FeedList");
     auto outputs = ctx.MultiOutput<framework::Tensor>("FetchList");
-    for (auto* out : outputs){
-      out->Resize(framework::make_ddim({1}));
+    auto output_names = ctx.OutputNames("FetchList");
+    for (size_t i = 0; i < outputs.size(); ++i) {
+      auto* out = outputs[i];
+      auto oshape = ipu_backend->GetTensorShape(output_names[i]);
+      out->Resize(framework::make_ddim(oshape));
       out->mutable_data<float>(ctx.GetPlace());
     }
     ipu_backend->Run(inputs, outputs);

@@ -66,6 +66,10 @@ class IpuBackend {
     optimizer_.attrs[attr] = value;
   }
 
+  std::vector<int64_t> GetTensorShape(const std::string& var_name) {
+    return builder_->getTensorShape(tensors_[var_name]);
+  }
+
   static std::shared_ptr<IpuBackend> GetInstance() {
     if (NULL == instance_) {
       instance_.reset(new IpuBackend());

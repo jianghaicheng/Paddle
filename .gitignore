@@ -33,4 +33,10 @@ cmake-build-*
 paddle/fluid/operators/distributed/send_recv.proto
 model_test
 
+python/paddle/distributed/fleet/proto/
+python/paddle/fluid/core*.so
+
 scripts
+sdk/
+demos/
+*.onnx
