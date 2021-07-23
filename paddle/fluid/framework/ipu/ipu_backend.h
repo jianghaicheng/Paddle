@@ -38,16 +38,33 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+struct Optimizer {
+  std::string type;
+  // as far as we know, attr is usually float
+  std::map<std::string, float> attrs;
+};
+
 class IpuBackend {
  public:
   explicit IpuBackend();
 
-  void Compile(ir::Graph *graph,
-               const std::vector<std::string> &feed_list,
+  void Compile(ir::Graph *graph, const std::vector<std::string> &feed_list,
                const std::vector<std::string> &fetch_list);
 
   void Run(const std::vector<const Tensor *> &inputs,
            std::vector<Tensor *> &outputs);
+
+  std::string GetOptimizerType() { return optimizer_.type; }
+
+  void SetOptimizerType(const std::string &type) { optimizer_.type = type; }
+
+  const std::map<std::string, float> &GetOptimizerAttr() {
+    return optimizer_.attrs;
+  }
+
+  void SetOptimizerAttr(const std::string &attr, float value) {
+    optimizer_.attrs[attr] = value;
+  }
 
   static std::shared_ptr<IpuBackend> GetInstance() {
     if (NULL == instance_) {
@@ -60,6 +77,7 @@ class IpuBackend {
   // std::map<std::string, popart::TensorId> inputs_;
   // std::map<std::string, popart::TensorId> outputs_;
   // std::map<std::string, popart::TensorId> tensors_;
+  Optimizer optimizer_;
 
   std::vector<popart::TensorId> inputs_;
   std::vector<popart::TensorId> outputs_;
