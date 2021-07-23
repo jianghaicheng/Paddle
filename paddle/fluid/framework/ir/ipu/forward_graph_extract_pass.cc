@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/ir/ipu/forward_graph_extract_pass.h"
+
 #include <glog/logging.h>
 
 #include <algorithm>
@@ -24,27 +26,11 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/ipu/ipu_pass_base.h"
-#include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/program_desc.h"
-
-// debug
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-
-class Graph;
-
-class ForwardGraphExtractPass : public IPUPassBase {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-
- private:
-};
 
 void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter ForwardGraphExtractPass::ApplyImpl";
