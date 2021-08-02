@@ -144,6 +144,10 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \return A bool variable implying whether we are in xpu mode.
   bool use_xpu() const { return use_xpu_; }
 
+  /// \brief Check if we are using ipu.
+  /// \return A bool variable implying whether we are in ipu mode.
+  bool use_ipu() const { return use_ipu_; }
+
   /// \brief Default destructor.
   virtual ~PassStrategy() = default;
 
@@ -151,6 +155,7 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \cond Protected
   bool use_xpu_{false};
   bool use_gpu_{false};
+  bool use_ipu_{false};
   bool use_mkldnn_{false};
   /// \endcond
 };
@@ -237,6 +242,22 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
 class PD_INFER_DECL XpuPassStrategy final : public PassStrategy {
  public:
   XpuPassStrategy() : PassStrategy({}) {}
+};
+
+/// \class IpuPassStrategy
+/// \brief The IPU passes controller, it is used in AnalysisPredictor with IPU
+/// mode.
+class PD_INFER_DECL IpuPassStrategy final : public PassStrategy {
+ public:
+  /// \brief Default constructor of IpuPassStrategy.
+  IpuPassStrategy();
+
+  /// \brief Construct by copying another IpuPassStrategy object.
+  /// \param[in] other The IpuPassStrategy object we want to copy.
+  explicit IpuPassStrategy(const IpuPassStrategy &other)
+      : PassStrategy(other.AllPasses()) {
+    use_ipu_ = true;
+  }
 };
 
 /// \brief List of tensorRT subgraph passes.

@@ -181,6 +181,8 @@ struct PD_INFER_DECL AnalysisConfig {
                  bool autotune = true, const std::string& autotune_file = "",
                  const std::string& precision = "int16",
                  bool adaptive_seqlen = false);
+
+  void EnableIpu();            
   ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
@@ -193,6 +195,12 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the XPU is turned on.
   ///
   bool use_xpu() const { return use_xpu_; }
+  ///
+  /// \brief A boolean state telling whether the IPU is turned on.
+  ///
+  /// \return bool Whether the IPU is turned on.
+  ///
+  bool use_ipu() const { return use_ipu_; }
   ///
   /// \brief Get the GPU device id.
   ///
@@ -683,6 +691,9 @@ struct PD_INFER_DECL AnalysisConfig {
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
   bool use_mkldnn_bfloat16_{false};
   std::unordered_set<std::string> bfloat16_enabled_op_types_;
+
+  // ipu related.
+  bool use_ipu_{false};
 
   // If the config is already used on a predictor, it becomes invalid.
   // Any config can only be used with one predictor.

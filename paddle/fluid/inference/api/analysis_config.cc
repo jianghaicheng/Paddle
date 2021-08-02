@@ -110,6 +110,11 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
   Update();
 }
 
+void AnalysisConfig::EnableIpu() {
+  use_ipu_ = true;
+  Update();
+}
+
 AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #define CP_MEMBER(member__) member__ = other.member__;
 
@@ -193,12 +198,18 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   CP_MEMBER(thread_local_stream_);
 
+  // ipu related
+  CP_MEMBER(use_ipu_);
+
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_, false,
                       platform::errors::InvalidArgument(
                           "Only one choice can be made between CPU and XPU."));
     pass_builder_.reset(new GpuPassStrategy(
         *static_cast<GpuPassStrategy *>(other.pass_builder())));
+  } else if (use_ipu_) {
+    pass_builder_.reset(new IpuPassStrategy(
+        *static_cast<IpuPassStrategy *>(other.pass_builder())));
   } else if (use_xpu_) {
     pass_builder_.reset(new XpuPassStrategy(
         *static_cast<XpuPassStrategy *>(other.pass_builder())));
@@ -384,6 +395,9 @@ void AnalysisConfig::Update() {
         // Append after the Affine_channel_conv_fuse pass.
         pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
       }
+    } else if (use_ipu()) {
+      VLOG(1) << "IpuPassStrategy has been used for new.";
+      pass_builder_.reset(new IpuPassStrategy);
     } else if (use_xpu()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(), false,
@@ -398,6 +412,10 @@ void AnalysisConfig::Update() {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy(
           *static_cast<GpuPassStrategy *>(pass_builder_.get())));
+    } else if (use_ipu()) {
+      VLOG(1) << "IpuPassStrategy has been used.";
+      pass_builder_.reset(new IpuPassStrategy(
+          *static_cast<IpuPassStrategy *>(pass_builder_.get())));
     } else if (use_xpu()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(), false,
@@ -503,6 +521,14 @@ void AnalysisConfig::Update() {
 #endif
   }
 
+  if (use_ipu_) {
+#ifndef PADDLE_WITH_IPU
+    PADDLE_THROW(platform::errors::Unavailable(
+                          "You tried to enable the ipu "
+                          "but did not have the option -DWITH_IPU compiled."));
+#endif
+  }
+
   if (ir_debug_) {
     pass_builder()->TurnOnDebug();
   }
@@ -568,6 +594,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_adaptive_seqlen_;
 
   ss << thread_local_stream_;
+
+  ss << use_ipu_;
 
   return ss.str();
 }

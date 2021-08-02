@@ -288,4 +288,9 @@ void CpuPassStrategy::EnableMkldnnBfloat16() {
 #endif
 }
 
+IpuPassStrategy::IpuPassStrategy() : PassStrategy({}) {
+  passes_.assign({"ipu_graph_builder_pass",  //
+                  "ipu_runtime_replacer_pass"});            
+}
+
 }  // namespace paddle

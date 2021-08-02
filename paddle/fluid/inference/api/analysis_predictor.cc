@@ -264,6 +264,15 @@ bool AnalysisPredictor::CreateExecutor() {
           "with WITH_XPU."));
 #endif  // PADDLE_WITH_XPU
     }
+  } else if (config_.use_ipu()){
+#ifdef PADDLE_WITH_IPU
+      place_ = paddle::platform::IPUPlace();
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "You tried to use IPU forward propagation (inference without lite "
+          "engine), but Paddle was not compiled "
+          "with WITH_IPU."));
+#endif
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -546,6 +555,10 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Lite subgraph engine is enabled";
   }
 
+#ifdef PADDLE_WITH_IPU
+    argument_.SetUseIpu(config_.use_ipu_);
+#endif
+
   if (config_.use_mkldnn_) {
     LOG(INFO) << "MKLDNN is enabled";
     argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
@@ -792,6 +805,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
+  } else if (platform::is_ipu_place(place_)) {
+    // Currently, IPUPlace's tensor copy between cpu and ipu has been set in IpuBackend. 
+    res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_xpu_place(place_)) {
     if (config_.lite_engine_enabled()) {
       // Currently, Paddle-Lite's XPU user interface only supports the transfer
@@ -823,6 +839,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   res->input_or_output_ = false;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
+    res->SetPlace(PaddlePlace::kCPU);
+  } else if (platform::is_ipu_place(place_)) {
+    // Currently, IPUPlace's tensor copy between cpu and ipu has been set in IpuBackend. 
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_xpu_place(place_)) {
     if (config_.lite_engine_enabled()) {

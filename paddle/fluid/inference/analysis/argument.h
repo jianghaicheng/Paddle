@@ -250,6 +250,8 @@ struct Argument {
   DECL_ARGUMENT_FIELD(cpu_math_library_num_threads, CpuMathLibraryNumThreads,
                       int);
 
+  DECL_ARGUMENT_FIELD(use_ipu, UseIpu, bool);
+
  private:
   std::unordered_set<std::string> valid_fields_;
 };
