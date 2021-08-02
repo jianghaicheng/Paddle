@@ -82,12 +82,6 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
       LOG(WARNING) << "Op: " << node->Name() << " OpRole is NotSpecified ";
     }
   }
-  VLOG(10) << "all_ops[OpRole::kForward].size(): "
-           << all_ops[OpRole::kForward].size();
-  VLOG(10) << "all_ops_name[OpRole::kForward]: ";
-  for (auto& name : all_ops_name[OpRole::kForward]) {
-    VLOG(10) << "\t" << name;
-  }
 
   std::unordered_set<std::string> forward_var_names;
   std::unordered_set<ir::Node*> backward_vars;
@@ -110,11 +104,6 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
       }
     }
   }
-  VLOG(10) << "forward_var_names.size(): " << forward_var_names.size();
-  VLOG(10) << "forward_var_names: ";
-  for (auto& name : forward_var_names) {
-    VLOG(10) << "\t" << name;
-  }
 
   auto not_contains = [&](const std::string& name,
                           std::unordered_set<std::string>& names) {
@@ -131,10 +120,6 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
       }
     }
   }
-  VLOG(10) << "backward_vars: ";
-  for (auto* node : backward_vars) {
-    VLOG(10) << "\t" << node->Name();
-  }
 
   std::unordered_set<ir::Node*> rm_nodes;
   for (auto* node : graph->Nodes()) {
@@ -150,36 +135,26 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
 
   VLOG(10) << "Remove Node: ";
   for (auto* node : rm_nodes) {
+    // rm node releations
+    for (auto* node_in : node->inputs) {
+      for (size_t i = 0; i < node_in->outputs.size(); ++i) {
+        if (node_in->outputs[i] == node) {
+          node_in->outputs.erase(node_in->outputs.begin() + i);
+          break;
+        }
+      }
+    }
+    for (auto* node_out : node->outputs) {
+      for (size_t i = 0; i < node_out->inputs.size(); ++i) {
+        if (node_out->inputs[i] == node) {
+          node_out->inputs.erase(node_out->inputs.begin() + i);
+          break;
+        }
+      }
+    }
+
     VLOG(10) << "\t" << node->Name();
     graph->RemoveNode(node);
-  }
-
-  // travese nodes, remove empty inputs/outputs
-  for (auto* node : graph->Nodes()) {
-    VLOG(10) << "Node: " << node->Name()
-             << " inputs size: " << node->inputs.size()
-             << " outputs size: " << node->outputs.size();
-    std::vector<ir::Node*> tmp_vec;
-    for (auto* in_node : node->inputs) {
-      if (in_node) {
-        tmp_vec.push_back(in_node);
-      }
-    }
-    node->inputs.clear();
-    std::copy(std::begin(tmp_vec), std::end(tmp_vec), std::begin(node->inputs));
-    tmp_vec.clear();
-
-    for (auto* out_node : node->outputs) {
-      if (out_node) {
-        tmp_vec.push_back(out_node);
-      }
-    }
-    node->outputs.clear();
-    std::copy(std::begin(tmp_vec), std::end(tmp_vec),
-              std::begin(node->outputs));
-    VLOG(10) << "Node i/o cleared: " << node->Name()
-             << " inputs size: " << node->inputs.size()
-             << " outputs size: " << node->outputs.size();
   }
 
   VLOG(10) << "Post Graph: ";
