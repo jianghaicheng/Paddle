@@ -43,27 +43,12 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
     SymbolHandler handler = GetHandler(op_type);
     if (handler) {
       new_node = handler(graph, node);
-      new_node->inputs = node->inputs;
-      new_node->outputs = node->outputs;
-      // restore node releations
-      for (auto* node_in : node->inputs) {
-        for (size_t i = 0; i < node_in->outputs.size(); ++i) {
-          if (node_in->outputs[i] == node) {
-            node_in->outputs[i] = new_node;
-            break;
-          }
-        }
+      if (new_node->inputs.empty()) {
+        MoveNodeInputs(node, new_node);
       }
-      for (auto* node_out : node->outputs) {
-        for (size_t i = 0; i < node_out->inputs.size(); ++i) {
-          if (node_out->inputs[i] == node) {
-            node_out->inputs[i] = new_node;
-            break;
-          }
-        }
+      if (new_node->outputs.empty()) {
+        MoveNodeOutputs(node, new_node);
       }
-    }
-    if (new_node) {
       graph->RemoveNode(node);
     }
   }

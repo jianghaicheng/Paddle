@@ -38,5 +38,29 @@ SymbolHandler GetHandler(const std::string &kind) {
   return {};
 }
 
+void MoveNodeInputs(ir::Node *node, ir::Node *new_node) {
+  new_node->inputs = node->inputs;
+  for (auto *node_in : node->inputs) {
+    for (size_t i = 0; i < node_in->outputs.size(); ++i) {
+      if (node_in->outputs[i] == node) {
+        node_in->outputs[i] = new_node;
+        break;
+      }
+    }
+  }
+}
+
+void MoveNodeOutputs(ir::Node *node, ir::Node *new_node) {
+  new_node->outputs = node->outputs;
+  for (auto *node_out : node->outputs) {
+    for (size_t i = 0; i < node_out->inputs.size(); ++i) {
+      if (node_out->inputs[i] == node) {
+        node_out->inputs[i] = new_node;
+        break;
+      }
+    }
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

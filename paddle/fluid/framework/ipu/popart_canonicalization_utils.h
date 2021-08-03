@@ -36,5 +36,8 @@ bool RegisterHandler(const std::string &, const SymbolHandler &);
 
 SymbolHandler GetHandler(const std::string &);
 
+void MoveNodeInputs(ir::Node *node, ir::Node *new_node);
+void MoveNodeOutputs(ir::Node *node, ir::Node *new_node);
+
 }  // namespace framework
 }  // namespace paddle
