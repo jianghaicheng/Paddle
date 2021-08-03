@@ -49,6 +49,9 @@ print(graph)
 feed_list = ['a', 'b']
 fetch_list = ['tmp_0']
 
+popart_canonicalization_pass = core.get_pass("popart_canonicalization_pass")
+popart_canonicalization_pass.apply(graph)
+
 ipu_graph_builder_pass = core.get_pass("ipu_graph_builder_pass")
 ipu_graph_builder_pass.set("feed_list", feed_list)
 ipu_graph_builder_pass.set("fetch_list", fetch_list)

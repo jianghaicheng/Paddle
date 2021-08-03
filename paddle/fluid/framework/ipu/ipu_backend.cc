@@ -15,6 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/ipu/ipu_backend.h"
 
 #include <algorithm>
+#include <vector>
+
 #include <popart/builder.hpp>
 #include <popart/dataflow.hpp>
 #include <popart/devicemanager.hpp>
@@ -25,12 +27,12 @@ limitations under the License. */
 #include <popart/stepio.hpp>
 #include <popart/tensor.hpp>
 #include <popart/tensorinfo.hpp>
-#include <vector>
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ipu/ipu_utils.h"
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -68,26 +70,7 @@ void IpuBackend::Compile(ir::Graph* graph,
     }
   }
 
-  for (const ir::Node* n : graph->Nodes()) {
-    if (n->IsOp()) {
-      auto* op_desc = n->Op();
-      if (op_desc->Type() == "elementwise_add") {
-        if (inputs_.size() != 2) {
-          PADDLE_THROW(platform::errors::InvalidArgument("Invalid inputs."));
-        }
-        VLOG(1) << "found elementwise_add op";
-        popart::TensorId lhs = inputs_[0];
-        popart::TensorId rhs = inputs_[1];
-        VLOG(1) << "popart add lhs tensor id = " << lhs;
-        VLOG(1) << "popart add rhs tensor id = " << rhs;
-        popart::TensorId result = builder_->aiOnnxOpset11().add({lhs, rhs});
-        VLOG(1) << "popart add result tensor id = " << result;
-        tensors_.emplace(fetch_list[0], result);
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented("Unimplemented."));
-      }
-    }
-  }
+  LowerBody(graph);
 
   VLOG(1) << "-- fetch_list --";
   for (const auto& fetch_name : fetch_list) {
@@ -105,7 +88,9 @@ void IpuBackend::Compile(ir::Graph* graph,
     builder_->addOutputTensor(tensor->second);
     outputs_.push_back(tensor->second);
   }
+}
 
+void IpuBackend::Prepare() {
   VLOG(1) << "Save Model to file paddle_model.onnx ...\n";
   builder_->saveModelProto("paddle_model.onnx");
 
@@ -137,10 +122,11 @@ void IpuBackend::Compile(ir::Graph* graph,
 
 void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
                      std::vector<Tensor*>& outputs) {
-  // Prepare input tensor
+  Prepare();
+
   std::map<popart::TensorId, popart::IArray&> popart_inputs;
   std::map<popart::TensorId, popart::NDArrayWrapper<float>> input_wrappers;
-
+  // Prepare input tensor
   for (size_t i = 0; i < inputs.size(); i++) {
     auto tensor_id = inputs_[i];
     const Tensor* tensor = inputs[i];
@@ -151,7 +137,6 @@ void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
     input_wrappers.emplace(tensor_id, std::move(data));
     popart_inputs.emplace(tensor_id, input_wrappers.at(tensor_id));
   }
-
   // Prepare output tensor
   std::map<popart::TensorId, popart::IArray&> popart_anchors;
   std::map<popart::TensorId, popart::NDArrayWrapper<float>> anchor_wrappers;
@@ -171,6 +156,83 @@ void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
   VLOG(1) << "Running...";
   session_->run(stepio);
   VLOG(1) << "Running...done";
+}
+
+std::vector<std::string> IpuBackend::GetOpInputs(const OpDesc* op) {
+  auto inputs_ = op->Input("__inputs__");
+  std::vector<std::string> inputs;
+  for (const auto& in : inputs_) {
+    if (tensors_.find(in) != tensors_.end()) {
+      inputs.push_back(tensors_[in]);
+    } else {
+      inputs.push_back(in);
+    }
+  }
+  return inputs;
+}
+
+void IpuBackend::LowerBody(const ir::Graph* graph) {
+  auto nodes = TopologySortOperations(*graph);
+  for (const auto* node : nodes) {
+    auto* op = node->Op();
+    auto op_type = op->Type();
+    if (op_type == "RandomUniform") {
+      auto outputs = op->Output("__outputs__");
+      auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
+      auto dtype = BOOST_GET_CONST(int, op->GetAttr("dtype"));
+      auto high = BOOST_GET_CONST(float, op->GetAttr("high"));
+      auto low = BOOST_GET_CONST(float, op->GetAttr("low"));
+      popart::TensorId result =
+          builder_->aiOnnxOpset11().randomuniform(shape, dtype, high, low);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "RandomNormal") {
+      auto outputs = op->Output("__outputs__");
+      auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
+      auto dtype = BOOST_GET_CONST(int, op->GetAttr("dtype"));
+      auto mean = BOOST_GET_CONST(float, op->GetAttr("mean"));
+      auto scale = BOOST_GET_CONST(float, op->GetAttr("scale"));
+      popart::TensorId result =
+          builder_->aiOnnxOpset11().randomnormal(shape, dtype, mean, scale);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "ConstantOfShape") {
+      // TODO(alleng) use RandomUniform for now
+      auto outputs = op->Output("__outputs__");
+      auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
+      auto dtype = BOOST_GET_CONST(int, op->GetAttr("dtype"));
+      auto high = 1.0f;
+      auto low = 0.0f;
+      popart::TensorId result =
+          builder_->aiOnnxOpset11().randomuniform(shape, dtype, high, low);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Add") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      popart::TensorId result = builder_->aiOnnxOpset11().add(inputs);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Conv") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto dilations =
+          BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("dilations"));
+      auto group = BOOST_GET_CONST(int64_t, op->GetAttr("group"));
+      auto pads = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("pads"));
+      auto strides =
+          BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("strides"));
+      popart::TensorId result = builder_->aiOnnxOpset11().conv(
+          inputs, dilations, group, {}, pads, strides);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "ReduceMean") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto axes = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("axes"));
+      auto keepdims = BOOST_GET_CONST(int64_t, op->GetAttr("keepdims"));
+      popart::TensorId result =
+          builder_->aiOnnxOpset11().reducemean(inputs, axes, keepdims);
+      tensors_.emplace(outputs[0], result);
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented("Unimplemented."));
+    }
+  }
 }
 
 }  // namespace framework

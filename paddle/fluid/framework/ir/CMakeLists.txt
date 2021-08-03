@@ -129,6 +129,7 @@ if(WITH_IPU)
     pass_library(optimizer_extract_pass base DIR ipu DEPS ipu_pass_base)
     pass_library(ipu_graph_builder_pass base DIR ipu DEPS ipu_pass_base)
     pass_library(ipu_runtime_replacer_pass base DIR ipu DEPS ipu_pass_base)
+    pass_library(popart_canonicalization_pass base DIR ipu DEPS ipu_pass_base popart_canonicalization_utils)
 endif()
 
 cc_library(fuse_bn_act_pass SRCS fuse_bn_act_pass.cc DEPS pass graph_pattern_detector )

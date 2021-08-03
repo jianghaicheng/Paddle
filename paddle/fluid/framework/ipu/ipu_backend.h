@@ -66,7 +66,7 @@ class IpuBackend {
     optimizer_.attrs[attr] = value;
   }
 
-  std::vector<int64_t> GetTensorShape(const std::string& var_name) {
+  std::vector<int64_t> GetTensorShape(const std::string &var_name) {
     return builder_->getTensorShape(tensors_[var_name]);
   }
 
@@ -78,9 +78,11 @@ class IpuBackend {
   }
 
  private:
-  // std::map<std::string, popart::TensorId> inputs_;
-  // std::map<std::string, popart::TensorId> outputs_;
-  // std::map<std::string, popart::TensorId> tensors_;
+  void Prepare();
+  void LowerBody(const ir::Graph *);
+  std::vector<std::string> GetOpInputs(const OpDesc *op);
+
+ private:
   Optimizer optimizer_;
 
   std::vector<popart::TensorId> inputs_;
