@@ -42,9 +42,10 @@ namespace framework {
 using ipu::IpuBuildStrategy;
 
 struct Optimizer {
-  std::string type;
+  std::string type_;
+  std::string loss_;
   // as far as we know, attr is usually float
-  std::map<std::string, float> attrs;
+  std::map<std::string, float> attrs_;
 };
 
 class IpuBackend {
@@ -57,17 +58,19 @@ class IpuBackend {
   void Run(const std::vector<const Tensor *> &inputs,
            const std::vector<Tensor *> &outputs);
 
-  std::string GetOptimizerType() { return optimizer_.type; }
+  std::string GetOptimizerType() { return optimizer_.type_; }
 
-  void SetOptimizerType(const std::string &type) { optimizer_.type = type; }
+  void SetOptimizerType(const std::string &type) { optimizer_.type_ = type; }
 
   const std::map<std::string, float> &GetOptimizerAttr() {
-    return optimizer_.attrs;
+    return optimizer_.attrs_;
   }
 
   void SetOptimizerAttr(const std::string &attr, float value) {
-    optimizer_.attrs[attr] = value;
+    optimizer_.attrs_[attr] = value;
   }
+
+  void SetLoss(const std::string &loss) { optimizer_.loss_ = loss; }
 
   std::vector<int64_t> GetTensorShape(const std::string &var_name) {
     return builder_->getTensorShape(tensors_[var_name]);

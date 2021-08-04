@@ -54,6 +54,20 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
           }
         }
       }
+
+      if ((op_role == static_cast<int>(framework::OpRole::kLoss))) {
+        auto outputs = node->Op()->Outputs();
+        PADDLE_ENFORCE_EQ(
+            outputs.size(), 1,
+            platform::errors::InvalidArgument("Can only support one loss key"));
+
+        auto losses_name = outputs.begin()->second;
+        PADDLE_ENFORCE_EQ(losses_name.size(), 1,
+                          platform::errors::InvalidArgument(
+                              "Can only support one loss name"));
+
+        ipu_backend->SetLoss(losses_name[0]);
+      }
     }
   }
 
