@@ -118,6 +118,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/platform/ipu_info.h"
+#include "paddle/fluid/framework/ipu/ipu_backend.h"
 #endif
 
 #ifdef PADDLE_WITH_CRYPTO
@@ -3201,6 +3202,12 @@ All parameter, weight, gradient are variables in Paddle.
              }
            })
       .def("device_count", &ParallelExecutor::DeviceCount);
+
+#ifdef PADDLE_WITH_IPU
+  py::class_<framework::IpuBackend, std::shared_ptr<framework::IpuBackend>>(m,
+      "IpuBackend")
+      .def(py::init(&IpuBackend::GetInstance));
+#endif
 
   BindFleetWrapper(&m);
 

@@ -480,3 +480,51 @@ class CompiledProgram(object):
                 place_list = cpu_places()
         assert place_list, "No places for execution."
         return place_list
+
+
+class IpuCompiler(object):
+    """
+    The IpuCompiler is used to transform a program to a ipu-target program.
+
+    Args:
+      program(framework.Program): This argument is the Program being executed.
+      ipu_build_strategy: This argument is used to build the program with the
+          specified options, such as operators' replacement, dtype, etc.
+
+    Returns:
+      framework.Program
+    """
+
+    def __init__(self, program, ipu_build_strategy=None):
+        if not isinstance(program, framework.Program):
+            raise TypeError(
+                "The type of program is wrong, expected Program, but got %s" %
+                type(program))
+
+        self._scope = None
+        self._program = program
+        self._graph = core.Graph(program.desc)
+        self._ipu_build_strategy = ipu_build_strategy
+        self._compiled = False
+        self._backend = core.IpuBackend()
+        self._graph_passes = ["optimizer_extract_pass",
+                              "forward_graph_extract_pass"]
+
+    def compile(self, feed_list, fetch_list, scope=None):
+        for pass_name in self._graph_passes:
+            graph_pass = core.get_pass(pass_name)
+            graph_pass.apply(self._graph)
+
+        ipu_graph_builder_pass = core.get_pass("ipu_graph_builder_pass")
+        ipu_graph_builder_pass.set("feed_list", feed_list)
+        ipu_graph_builder_pass.set("fetch_list", fetch_list)
+        ipu_graph_builder_pass.apply(self._graph)
+
+        convert_pass = core.get_pass('graph_to_program_pass')
+        desc = core.ProgramDesc()
+        convert_pass.set_not_owned('program', desc)
+        convert_pass.apply(self._graph)
+        program = framework.Program._construct_from_desc(desc)
+
+        return program
+    

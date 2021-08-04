@@ -28,6 +28,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/ipu/ipu_build_strategy.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -37,6 +38,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+using ipu::IpuBuildStrategy;
 
 struct Optimizer {
   std::string type;
@@ -84,6 +87,7 @@ class IpuBackend {
 
  private:
   Optimizer optimizer_;
+  IpuBuildStrategy ipu_build_strategy_;
 
   std::vector<popart::TensorId> inputs_;
   std::vector<popart::TensorId> outputs_;
