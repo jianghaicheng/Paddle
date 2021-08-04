@@ -488,6 +488,7 @@ class IpuCompiler(object):
 
     Args:
       program(framework.Program): This argument is the Program being executed.
+      scope: This argument is the scope which contains model parameters.
       ipu_build_strategy: This argument is used to build the program with the
           specified options, such as operators' replacement, dtype, etc.
 
@@ -495,20 +496,27 @@ class IpuCompiler(object):
       framework.Program
     """
 
-    def __init__(self, program, ipu_build_strategy=None):
+    def __init__(self, program, scope=None, ipu_build_strategy=None):
         if not isinstance(program, framework.Program):
             raise TypeError(
                 "The type of program is wrong, expected Program, but got %s" %
                 type(program))
+        # import here to avoiding confused
+        import paddle
 
-        self._scope = None
+        if scope is not None:
+            self._scope = scope
+        else:
+            self._scope = paddle.static.global_scope()
         self._program = program
         self._graph = core.Graph(program.desc)
         self._ipu_build_strategy = ipu_build_strategy
         self._compiled = False
         self._backend = core.IpuBackend()
-        self._graph_passes = ["optimizer_extract_pass",
-                              "forward_graph_extract_pass"]
+        self._backend.set_scope(self._scope)
+        self._graph_passes = [
+            "optimizer_extract_pass", "forward_graph_extract_pass"
+        ]
 
     def compile(self, feed_list, fetch_list, scope=None):
         for pass_name in self._graph_passes:
@@ -527,4 +535,3 @@ class IpuCompiler(object):
         program = framework.Program._construct_from_desc(desc)
 
         return program
-    

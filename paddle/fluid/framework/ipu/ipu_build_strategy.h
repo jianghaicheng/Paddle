@@ -35,7 +35,7 @@ namespace framework {
 namespace ipu {
 
 struct IpuBuildStrategy {
-  popart::SessionOptions popart_options;
+  popart::SessionOptions popart_options_;
 };
 
 }  // namespace ipu

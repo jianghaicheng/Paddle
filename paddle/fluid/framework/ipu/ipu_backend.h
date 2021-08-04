@@ -73,6 +73,11 @@ class IpuBackend {
     return builder_->getTensorShape(tensors_[var_name]);
   }
 
+  // SetScope, so we can get model parameters from scope
+  void SetScope(Scope* scope) {
+    scope_ = scope;
+  }
+
   static std::shared_ptr<IpuBackend> GetInstance() {
     if (NULL == instance_) {
       instance_.reset(new IpuBackend());
@@ -88,13 +93,13 @@ class IpuBackend {
  private:
   Optimizer optimizer_;
   IpuBuildStrategy ipu_build_strategy_;
+  Scope *scope_ = nullptr;
 
   std::vector<popart::TensorId> inputs_;
   std::vector<popart::TensorId> outputs_;
   std::map<std::string, popart::TensorId> tensors_;
 
   std::unique_ptr<popart::Builder> builder_;
-  popart::SessionOptions popart_options_;
   std::unique_ptr<popart::Session> session_;
 
   static std::shared_ptr<IpuBackend> instance_;
