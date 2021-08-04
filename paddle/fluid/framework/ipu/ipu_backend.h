@@ -15,6 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <string>
+#include <vector>
+
 #include <popart/builder.hpp>
 #include <popart/dataflow.hpp>
 #include <popart/devicemanager.hpp>
@@ -24,12 +27,9 @@ limitations under the License. */
 #include <popart/sessionoptions.hpp>
 #include <popart/stepio.hpp>
 #include <popart/tensorinfo.hpp>
-#include <string>
-#include <unordered_set>
-#include <vector>
 
-#include "paddle/fluid/framework/ipu/ipu_build_strategy.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/ipu/ipu_build_strategy.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -49,13 +49,13 @@ struct Optimizer {
 
 class IpuBackend {
  public:
-  explicit IpuBackend();
+  IpuBackend();
 
   void Compile(ir::Graph *graph, const std::vector<std::string> &feed_list,
                const std::vector<std::string> &fetch_list);
 
   void Run(const std::vector<const Tensor *> &inputs,
-           std::vector<Tensor *> &outputs);
+           const std::vector<Tensor *> &outputs);
 
   std::string GetOptimizerType() { return optimizer_.type; }
 
@@ -74,9 +74,7 @@ class IpuBackend {
   }
 
   // SetScope, so we can get model parameters from scope
-  void SetScope(Scope* scope) {
-    scope_ = scope;
-  }
+  void SetScope(Scope *scope) { scope_ = scope; }
 
   static std::shared_ptr<IpuBackend> GetInstance() {
     if (NULL == instance_) {
@@ -87,6 +85,7 @@ class IpuBackend {
 
  private:
   void Prepare();
+  void LowerWeights(const ir::Graph *);
   void LowerBody(const ir::Graph *);
   std::vector<std::string> GetOpInputs(const OpDesc *op);
 

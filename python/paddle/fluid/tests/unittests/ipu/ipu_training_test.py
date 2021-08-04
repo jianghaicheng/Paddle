@@ -27,28 +27,28 @@ adam = paddle.optimizer.Adam(learning_rate=1e-3)
 adam.minimize(loss)
 
 # 运行期：先运行一次startup program初始化网络参数，然后调用飞桨的Executor和CompiledProgram API运行网络。
-place = paddle.IPUPlace()  # 使用何种设备运行网络，IPUPlace表示使用IPU运行
+place = paddle.IPUPlace(0)  # 使用何种设备运行网络，IPUPlace表示使用IPU运行
 executor = paddle.static.Executor(place)  # 创建执行器
 print("---------- startup_program --------------")
 prog = paddle.static.default_startup_program()
 print(prog._to_readable_code())
-executor.run(
-    paddle.static.default_startup_program())  # 运行startup program进行参数初始化
+executor.run(prog)  # 运行startup program进行参数初始化
+
 print("---------- main_program --------------")
 prog = paddle.static.default_main_program()
 print(prog._to_readable_code())
 
 # 再使用CompiledProgram编译网络，准备执行。
-compiled_program = paddle.static.CompiledProgram(
-    paddle.static.default_main_program())
+compiled_program = paddle.static.CompiledProgram(prog)
 
 BATCH_NUM = 2
 BATCH_SIZE = 32
 
 for batch_id in range(BATCH_NUM):
     input_image = np.random.random([BATCH_SIZE, 3, 224, 224]).astype('float32')
-    loss_numpy, = executor.run(
-        compiled_program, feed={'image': input_image}, fetch_list=[loss])
+    loss_numpy, = executor.run(compiled_program,
+                               feed={'image': input_image},
+                               fetch_list=[loss])
     print("Batch {}, loss = {}".format(batch_id, loss_numpy))
 
 # 关闭静态图模式

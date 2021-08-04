@@ -515,7 +515,8 @@ class IpuCompiler(object):
         self._backend = core.IpuBackend()
         self._backend.set_scope(self._scope)
         self._graph_passes = [
-            "optimizer_extract_pass", "forward_graph_extract_pass"
+            "optimizer_extract_pass", "forward_graph_extract_pass",
+            "popart_canonicalization_pass"
         ]
 
     def compile(self, feed_list, fetch_list, scope=None):
@@ -527,6 +528,11 @@ class IpuCompiler(object):
         ipu_graph_builder_pass.set("feed_list", feed_list)
         ipu_graph_builder_pass.set("fetch_list", fetch_list)
         ipu_graph_builder_pass.apply(self._graph)
+
+        ipu_runtime_replacer_pass = core.get_pass("ipu_runtime_replacer_pass")
+        ipu_runtime_replacer_pass.set("feed_list", feed_list)
+        ipu_runtime_replacer_pass.set("fetch_list", fetch_list)
+        ipu_runtime_replacer_pass.apply(self._graph)
 
         convert_pass = core.get_pass('graph_to_program_pass')
         desc = core.ProgramDesc()

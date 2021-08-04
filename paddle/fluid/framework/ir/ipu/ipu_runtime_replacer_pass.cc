@@ -33,7 +33,6 @@ namespace ir {
 
 void IpuRuntimeReplacerPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter IpuRuntimeReplacerPass::ApplyImpl";
-
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 

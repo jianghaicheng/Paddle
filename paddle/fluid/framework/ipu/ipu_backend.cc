@@ -70,6 +70,7 @@ void IpuBackend::Compile(ir::Graph* graph,
     }
   }
 
+  LowerWeights(graph);
   LowerBody(graph);
 
   VLOG(1) << "-- fetch_list --";
@@ -121,7 +122,7 @@ void IpuBackend::Prepare() {
 }
 
 void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
-                     std::vector<Tensor*>& outputs) {
+                     const std::vector<Tensor*>& outputs) {
   Prepare();
 
   std::map<popart::TensorId, popart::IArray&> popart_inputs;
@@ -169,6 +170,36 @@ std::vector<std::string> IpuBackend::GetOpInputs(const OpDesc* op) {
     }
   }
   return inputs;
+}
+
+void IpuBackend::LowerWeights(const ir::Graph* graph) {
+  PADDLE_ENFORCE_NOT_NULL(scope_,
+                          platform::errors::PreconditionNotMet(
+                              "You should call set_scope before LowerWeights"));
+
+  // at this step, i think the graph doesn't contains optimizer
+  // related states
+  for (const auto* node : graph->Nodes()) {
+    if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
+      if (node->Var()->Persistable()) {
+        auto var_name = node->Var()->Name();
+        auto var = scope_->FindVar(var_name);
+        if (var) {
+          auto tensor = var->Get<framework::LoDTensor>();
+          auto dtype = VarType2PopartType(tensor.type());
+          auto shape = std::vector<int64_t>();
+          for (size_t i = 0; i < tensor.dims().size(); ++i) {
+            shape.push_back(tensor.dims().at(i));
+          }
+          popart::TensorInfo tensor_info(dtype, shape);
+          popart::ConstVoidData const_data{tensor.data<void>(), tensor_info};
+          popart::TensorId result =
+              builder_->addInitializedInputTensor(const_data);
+          tensors_.emplace(var_name, result);
+        }
+      }
+    }
+  }
 }
 
 void IpuBackend::LowerBody(const ir::Graph* graph) {
@@ -230,7 +261,8 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
           builder_->aiOnnxOpset11().reducemean(inputs, axes, keepdims);
       tensors_.emplace(outputs[0], result);
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented("Unimplemented."));
+      PADDLE_THROW(platform::errors::Unimplemented("Unimplemented op type %s.",
+                                                   op_type));
     }
   }
 }

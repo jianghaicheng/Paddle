@@ -15,6 +15,7 @@
 import numpy as np
 import paddle
 import paddle.fluid.core as core
+import paddle.fluid.compiler as compiler
 from paddle.static import Program
 
 paddle.enable_static()
@@ -37,36 +38,10 @@ print("default_main_program:")
 main_prog = paddle.static.default_main_program()
 print(main_prog._to_readable_code())
 
-graph = core.Graph(main_prog.desc)
-
-print(graph)
-
-#graph_viz_pass = core.get_pass("graph_viz_pass")
-#graph_viz_path = "./test_viz_pass"
-#graph_viz_pass.set('graph_viz_path', graph_viz_path)
-#graph = graph_viz_pass.apply(graph)
-
 feed_list = ['a', 'b']
 fetch_list = ['tmp_0']
+program = compiler.IpuCompiler(main_prog).compile(feed_list, fetch_list)
 
-popart_canonicalization_pass = core.get_pass("popart_canonicalization_pass")
-popart_canonicalization_pass.apply(graph)
-
-ipu_graph_builder_pass = core.get_pass("ipu_graph_builder_pass")
-ipu_graph_builder_pass.set("feed_list", feed_list)
-ipu_graph_builder_pass.set("fetch_list", fetch_list)
-ipu_graph_builder_pass.apply(graph)
-
-ipu_runtime_replacer_pass = core.get_pass("ipu_runtime_replacer_pass")
-ipu_runtime_replacer_pass.set("feed_list", feed_list)
-ipu_runtime_replacer_pass.set("fetch_list", fetch_list)
-ipu_runtime_replacer_pass.apply(graph)
-
-convert_pass = core.get_pass('graph_to_program_pass')
-desc = core.ProgramDesc()
-convert_pass.set_not_owned('program', desc)
-convert_pass.apply(graph)
-program = Program._construct_from_desc(desc)
 print("Program to run:")
 print(program._to_readable_code())
 
