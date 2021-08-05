@@ -7,5 +7,4 @@ cc_library(popart_canonicalization_utils SRCS popart_canonicalization_utils.cc
 
 cc_library(ipu_utils SRCS ipu_utils.cc DEPS memory framework_proto popart)
 cc_library(ipu_build_strategy SRCS ipu_build_strategy.cc DEPS popart graph framework_proto enforce)
-cc_library(ipu_backend SRCS ipu_backend.cc DEPS popart graph framework_proto enforce ipu_utils
-                                                ipu_build_strategy popart_canonicalization_utils)
+cc_library(ipu_backend SRCS ipu_backend.cc DEPS popart graph framework_proto enforce ipu_utils ipu_build_strategy)
