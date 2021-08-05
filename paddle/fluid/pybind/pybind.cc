@@ -117,8 +117,8 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/ipu_info.h"
 #include "paddle/fluid/framework/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/ipu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_CRYPTO
@@ -1816,7 +1816,7 @@ All parameter, weight, gradient are variables in Paddle.
            &IsSamePlace<platform::NPUPlace, platform::CUDAPinnedPlace>)
       .def("__str__", string::to_string<const platform::NPUPlace &>);
 
-// IPUPlace
+  // IPUPlace
   py::class_<platform::IPUPlace>(m, "IPUPlace", R"DOC(
     IPUPlace is a descriptor of a device.
     It represents a IPU device on which a tensor will be allocated and a model will run.
@@ -3204,10 +3204,24 @@ All parameter, weight, gradient are variables in Paddle.
       .def("device_count", &ParallelExecutor::DeviceCount);
 
 #ifdef PADDLE_WITH_IPU
-  py::class_<framework::IpuBackend, std::shared_ptr<framework::IpuBackend>>(m,
-      "IpuBackend")
+  py::class_<framework::IpuBackend, std::shared_ptr<framework::IpuBackend>>(
+      m, "IpuBackend")
       .def(py::init(&IpuBackend::GetInstance))
-      .def("set_scope", &IpuBackend::SetScope);
+      .def("set_scope",
+           [](IpuBackend &self, const Scope &scope) { self.SetScope(scope); })
+      .def("set_ipu_build_strategy",
+           [](IpuBackend &self, const IpuBuildStrategy &strategy) {
+             self.SetIpuBuildStrategy(strategy);
+           });
+  // TODO(xiaobingw): maybe refactor at future
+  py::class_<framework::ipu::IpuBuildStrategy>(m, "IpuBuildStrategy")
+      .def(py::init())
+      .def_property(
+          "is_training",
+          [](const IpuBuildStrategy &self) { return self.is_training_; },
+          [](IpuBuildStrategy &self, bool is_training) {
+            self.is_training_ = is_training;
+          });
 #endif
 
   BindFleetWrapper(&m);

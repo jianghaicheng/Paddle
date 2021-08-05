@@ -504,16 +504,23 @@ class IpuCompiler(object):
         # import here to avoiding confused
         import paddle
 
+        self._program = program
+        self._graph = core.Graph(program.desc)
+        self._compiled = False
+
         if scope is not None:
             self._scope = scope
         else:
             self._scope = paddle.static.global_scope()
-        self._program = program
-        self._graph = core.Graph(program.desc)
-        self._ipu_build_strategy = ipu_build_strategy
-        self._compiled = False
+
+        if ipu_build_strategy is not None:
+            self._ipu_build_strategy = ipu_build_strategy
+        else:
+            self._ipu_build_strategy = get_ipu_build_strategy()
+
         self._backend = core.IpuBackend()
         self._backend.set_scope(self._scope)
+        self._backend.set_ipu_build_strategy(self._ipu_build_strategy)
         self._graph_passes = [
             "optimizer_extract_pass", "forward_graph_extract_pass",
             "popart_canonicalization_pass"
@@ -541,3 +548,19 @@ class IpuCompiler(object):
         program = framework.Program._construct_from_desc(desc)
 
         return program
+
+
+def get_ipu_build_strategy():
+    """
+    Create and return IpuBuildStrategy instance. We get IpuBuildStrategy from
+    python side, and the set by IpuBackend.set_ipu_build_strategy.
+    """
+    if not core.is_compiled_with_ipu():
+        raise ValueError(
+            "Can't get ipu_build_strategy, since PaddlePaddle is not compiled" \
+            " with IPU"
+        )
+
+    ipu_build_strategy = core.IpuBuildStrategy()
+
+    return ipu_build_strategy

@@ -91,6 +91,28 @@ void IpuBackend::Compile(ir::Graph* graph,
   }
 }
 
+std::unique_ptr<popart::Optimizer> IpuBackend::GetPopartOptimizer() {
+  // TODO(xiaobingw): change type_ to enum
+  PADDLE_ENFORCE_NE(
+      optimizer_.type_, "",
+      platform::errors::InvalidArgument("Optimizer type have not been set."));
+  if (optimizer_.type_ == "adam") {
+    auto optimizer = std::make_unique<popart::Adam>(
+        popart::OptimizerValue(0.01, false),
+        popart::OptimizerValue(0.0f, false),
+        popart::OptimizerValue(GetOptimizerAttr("beta1"), false),
+        popart::OptimizerValue(GetOptimizerAttr("beta2"), false),
+        popart::OptimizerValue(GetOptimizerAttr("epsilon"), false),
+        popart::OptimizerValue(1.0f, false), popart::AdamMode::Adam,
+        popart::WeightDecayMode::Decay, popart::DataType::FLOAT,
+        popart::DataType::FLOAT, popart::DataType::FLOAT);
+    return optimizer;
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Optimizer %s is not implemented now.", optimizer_.type_));
+  }
+}
+
 void IpuBackend::Prepare() {
   VLOG(1) << "Save Model to file paddle_model.onnx ...\n";
   builder_->saveModelProto("paddle_model.onnx");
@@ -111,19 +133,38 @@ void IpuBackend::Prepare() {
           deviceOpts);
   // or acquireAvailableDevice();
 
-  VLOG(1) << "Creating session from Onnx Model...";
-  session_ = popart::InferenceSession::createFromOnnxModel(proto, dataFlow,
-                                                           ipuModelDevice);
+  if (ipu_build_strategy_ != nullptr && ipu_build_strategy_->is_training_) {
+    VLOG(1) << "Creating TrainingSession from Onnx Model...";
+    auto popart_optimizer = GetPopartOptimizer();
+    auto it = tensors_.find(optimizer_.loss_);
+    PADDLE_ENFORCE_NE(
+        it, tensors_.end(),
+        paddle::platform::errors::InvalidArgument(
+            "loss_id = %s doesn't exist in popart graph.", optimizer_.loss_));
+    session_ = popart::TrainingSession::createFromOnnxModel(
+        proto, dataFlow, it->second, *popart_optimizer, ipuModelDevice);
+  } else {
+    VLOG(1) << "Creating InferenceSession from Onnx Model...";
+    session_ = popart::InferenceSession::createFromOnnxModel(proto, dataFlow,
+                                                             ipuModelDevice);
+  }
   VLOG(1) << "Creating session from Onnx Model...done";
 
   VLOG(1) << "Preparing session device...";
   session_->prepareDevice();
   VLOG(1) << "Preparing session device...done";
+
+  VLOG(1) << "Copy weights from host to device...";
+  session_->weightsFromHost();
+  VLOG(1) << "Copy weights from host to device...done";
 }
 
 void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
                      const std::vector<Tensor*>& outputs) {
-  Prepare();
+  if (!is_prepared_) {
+    Prepare();
+    is_prepared_ = true;
+  }
 
   std::map<popart::TensorId, popart::IArray&> popart_inputs;
   std::map<popart::TensorId, popart::NDArrayWrapper<float>> input_wrappers;

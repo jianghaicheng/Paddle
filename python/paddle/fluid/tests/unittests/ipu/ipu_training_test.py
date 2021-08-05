@@ -12,44 +12,66 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import numpy as np
+import paddle
+import paddle.static
+import paddle.fluid.compiler as compiler
 
-# 飞桨2.X默认模式为动态图，需要开启静态图模式
-paddle.enable_static()
+paddle.seed(2021)
+np.random.seed(2021)
 
-# 编译期：调用飞桨的API编写Python程序，如下述代码中定义了一个含conv2d的网络，并使用Adam优化器优化参数。
-image = paddle.static.data(
-    name='image', shape=[None, 3, 224, 224], dtype='float32')
-conv_result = paddle.static.nn.conv2d(image, num_filters=64, filter_size=3)
-loss = paddle.mean(conv_result)
-adam = paddle.optimizer.Adam(learning_rate=1e-3)
-adam.minimize(loss)
+if __name__ == "__main__":
+    run_on_ipu = True
+    fetch_loss = True
 
-# 运行期：先运行一次startup program初始化网络参数，然后调用飞桨的Executor和CompiledProgram API运行网络。
-place = paddle.IPUPlace(0)  # 使用何种设备运行网络，IPUPlace表示使用IPU运行
-executor = paddle.static.Executor(place)  # 创建执行器
-print("---------- startup_program --------------")
-prog = paddle.static.default_startup_program()
-print(prog._to_readable_code())
-executor.run(prog)  # 运行startup program进行参数初始化
+    paddle.enable_static()
 
-print("---------- main_program --------------")
-prog = paddle.static.default_main_program()
-print(prog._to_readable_code())
+    # model input
+    image = paddle.static.data(
+        name='image', shape=[1, 3, 10, 10], dtype='float32')
+    conv1 = paddle.static.nn.conv2d(
+        image, num_filters=3, filter_size=3, bias_attr=False)
+    conv2 = conv1 + conv1
+    loss = paddle.mean(conv2)
+    adam = paddle.optimizer.Adam(learning_rate=1e-3)
 
-# 再使用CompiledProgram编译网络，准备执行。
-compiled_program = paddle.static.CompiledProgram(prog)
+    # apply optimizer
+    adam.minimize(loss)
 
-BATCH_NUM = 2
-BATCH_SIZE = 32
+    # switch cpu/ipu place
+    if run_on_ipu:
+        place = paddle.IPUPlace(0)
+    else:
+        place = paddle.CPUPlace()
+    executor = paddle.static.Executor(place)
 
-for batch_id in range(BATCH_NUM):
-    input_image = np.random.random([BATCH_SIZE, 3, 224, 224]).astype('float32')
-    loss_numpy, = executor.run(compiled_program,
-                               feed={'image': input_image},
-                               fetch_list=[loss])
-    print("Batch {}, loss = {}".format(batch_id, loss_numpy))
+    startup_prog = paddle.static.default_startup_program()
+    executor.run(startup_prog)
 
-# 关闭静态图模式
-paddle.disable_static()
+    # graph
+    feed_list = [image.name]
+
+    # switch loss and conv1
+    if fetch_loss:
+        fetch_node = loss
+    else:
+        fetch_node = conv1
+    fetch_list = [fetch_node.name]
+
+    main_prog = paddle.static.default_main_program()
+
+    if run_on_ipu:
+        ipu_build_strategy = compiler.get_ipu_build_strategy()
+        ipu_build_strategy.is_training = False  # default True
+        program = compiler.IpuCompiler(
+            main_prog, ipu_build_strategy=ipu_build_strategy).compile(
+                feed_list, fetch_list)
+    else:
+        program = main_prog
+
+    np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
+    res = executor.run(program,
+                       feed={image.name: np_image},
+                       fetch_list=[fetch_node])
+
+    print(res)

@@ -18,11 +18,13 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include <popart/adam.hpp>
 #include <popart/builder.hpp>
 #include <popart/dataflow.hpp>
 #include <popart/devicemanager.hpp>
 #include <popart/names.hpp>
 #include <popart/ndarraywrapper.hpp>
+#include <popart/optimizer.hpp>
 #include <popart/session.hpp>
 #include <popart/sessionoptions.hpp>
 #include <popart/stepio.hpp>
@@ -62,8 +64,11 @@ class IpuBackend {
 
   void SetOptimizerType(const std::string &type) { optimizer_.type_ = type; }
 
-  const std::map<std::string, float> &GetOptimizerAttr() {
-    return optimizer_.attrs_;
+  float GetOptimizerAttr(const std::string &name, float default_value = 0.0f) {
+    if (optimizer_.attrs_.count(name) == 0) {
+      return default_value;
+    }
+    return optimizer_.attrs_.at(name);
   }
 
   void SetOptimizerAttr(const std::string &attr, float value) {
@@ -72,12 +77,18 @@ class IpuBackend {
 
   void SetLoss(const std::string &loss) { optimizer_.loss_ = loss; }
 
+  std::unique_ptr<popart::Optimizer> GetPopartOptimizer();
+
   std::vector<int64_t> GetTensorShape(const std::string &var_name) {
     return builder_->getTensorShape(tensors_[var_name]);
   }
 
   // SetScope, so we can get model parameters from scope
-  void SetScope(Scope *scope) { scope_ = scope; }
+  void SetScope(const Scope &scope) { scope_.reset(&scope); }
+
+  void SetIpuBuildStrategy(const IpuBuildStrategy &strategy) {
+    ipu_build_strategy_.reset(&strategy);
+  }
 
   static std::shared_ptr<IpuBackend> GetInstance() {
     if (NULL == instance_) {
@@ -94,8 +105,9 @@ class IpuBackend {
 
  private:
   Optimizer optimizer_;
-  IpuBuildStrategy ipu_build_strategy_;
-  Scope *scope_ = nullptr;
+  bool is_prepared_ = false;
+  std::shared_ptr<const Scope> scope_ = nullptr;
+  std::shared_ptr<const IpuBuildStrategy> ipu_build_strategy_ = nullptr;
 
   std::vector<popart::TensorId> inputs_;
   std::vector<popart::TensorId> outputs_;
