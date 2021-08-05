@@ -3207,12 +3207,9 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::IpuBackend, std::shared_ptr<framework::IpuBackend>>(
       m, "IpuBackend")
       .def(py::init(&IpuBackend::GetInstance))
-      .def("set_scope",
-           [](IpuBackend &self, const Scope &scope) { self.SetScope(scope); })
-      .def("set_ipu_build_strategy",
-           [](IpuBackend &self, const IpuBuildStrategy &strategy) {
-             self.SetIpuBuildStrategy(strategy);
-           });
+      .def("set_scope", &IpuBackend::SetScope)
+      .def("set_ipu_build_strategy", &IpuBackend::SetIpuBuildStrategy);
+
   // TODO(xiaobingw): maybe refactor at future
   py::class_<framework::ipu::IpuBuildStrategy>(m, "IpuBuildStrategy")
       .def(py::init())

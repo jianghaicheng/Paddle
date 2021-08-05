@@ -84,10 +84,10 @@ class IpuBackend {
   }
 
   // SetScope, so we can get model parameters from scope
-  void SetScope(const Scope &scope) { scope_.reset(&scope); }
+  void SetScope(const Scope &scope) { scope_ = &scope; }
 
   void SetIpuBuildStrategy(const IpuBuildStrategy &strategy) {
-    ipu_build_strategy_.reset(&strategy);
+    ipu_build_strategy_ = &strategy;
   }
 
   static std::shared_ptr<IpuBackend> GetInstance() {
@@ -106,8 +106,8 @@ class IpuBackend {
  private:
   Optimizer optimizer_;
   bool is_prepared_ = false;
-  std::shared_ptr<const Scope> scope_ = nullptr;
-  std::shared_ptr<const IpuBuildStrategy> ipu_build_strategy_ = nullptr;
+  const Scope *scope_ = nullptr;
+  const IpuBuildStrategy *ipu_build_strategy_ = nullptr;
 
   std::vector<popart::TensorId> inputs_;
   std::vector<popart::TensorId> outputs_;
