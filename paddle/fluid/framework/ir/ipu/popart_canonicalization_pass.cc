@@ -42,7 +42,11 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
     ir::Node* new_node = nullptr;
     SymbolHandler handler = GetHandler(op_type);
     if (handler) {
+      VLOG(10) << "Raw Paddle Node:";
+      VLOG(10) << node->Op()->Proto()->DebugString();
       new_node = handler(graph, node);
+      VLOG(10) << "Post PopArt Node:";
+      VLOG(10) << new_node->Op()->Proto()->DebugString();
       if (new_node->inputs.empty()) {
         MoveNodeInputs(node, new_node);
       }

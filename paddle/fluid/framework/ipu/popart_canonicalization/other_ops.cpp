@@ -84,10 +84,16 @@ ir::Node *reduce_mean_handler(ir::Graph *graph, ir::Node *node) {
   std::vector<std::string> outputs;
   outputs.push_back(op->Output("Out").front());
   op_desc->SetOutput("__outputs__", outputs);
-
-  auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dim"));
-  auto axes = std::vector<int64_t>{axes_.begin(), axes_.end()};
-  op_desc->SetAttr("axes", axes);
+  auto reduce_all = BOOST_GET_CONST(bool, op->GetAttr("reduce_all"));
+  if (reduce_all) {
+    // TODO(alleng) get axes from input tensor shape/dim
+    auto axes = std::vector<int64_t>{0, 1, 2, 3};
+    op_desc->SetAttr("axes", axes);
+  } else {
+    auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dim"));
+    auto axes = std::vector<int64_t>{axes_.begin(), axes_.end()};
+    op_desc->SetAttr("axes", axes);
+  }
   auto keepdims_ = BOOST_GET_CONST(bool, op->GetAttr("keep_dim"));
   auto keepdims = int64_t{keepdims_};
   op_desc->SetAttr("keepdims", keepdims);
