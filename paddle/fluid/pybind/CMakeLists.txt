@@ -166,26 +166,15 @@ if(WITH_PYTHON)
     # copy these *.so to current directory and append current directory to
     # LD_LIBRARY_PATH. This is different with Windows platformm, which search
     # *.dll in current directory automatically.
-    if(WITH_IPU)
-      execute_process(COMMAND bash -c "source ${ENABLE_POPLAR_CMD} && source ${ENABLE_POPART_CMD} &&
-                                        ${CMAKE_CURRENT_BINARY_DIR}/op_function_generator ${tmp_impl_file}")
-      add_custom_command(TARGET op_function_generator
-            POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
-            COMMENT "copy_if_different ${impl_file}"
-            VERBATIM
-      )
-    else()
-      add_custom_command(TARGET op_function_generator
-            POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
-                "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator"
-                "${tmp_impl_file}"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
-            COMMENT "copy_if_different ${impl_file}"
-            VERBATIM
-      )
-    endif()
+    add_custom_command(TARGET op_function_generator
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
+        "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator"
+        "${tmp_impl_file}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
+      COMMENT "copy_if_different ${impl_file}"
+      VERBATIM
+    )
     if(WITH_MKL)
       add_custom_command(TARGET op_function_generator
             PRE_LINK
