@@ -41,10 +41,12 @@ ir::Node *conv2d_handler(ir::Graph *graph, ir::Node *node) {
   auto dilations = std::vector<int64_t>{dilations_.begin(), dilations_.end()};
   auto group_ = BOOST_GET_CONST(int, op->GetAttr("groups"));
   auto group = int64_t{group_};
-  // auto paddings_ = BOOST_GET_CONST(std::vector<int>,
-  // op->GetAttr("paddings")); auto pads =
-  // std::vector<int64_t>{paddings_.begin(), paddings_.end()};
-  auto pads = std::vector<int64_t>{1, 1, 1, 1};
+  auto pads_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("paddings"));
+  if (pads_.size() == 2) {
+    pads_.push_back(pads_[0]);
+    pads_.push_back(pads_[1]);
+  }
+  auto pads = std::vector<int64_t>{pads_.begin(), pads_.end()};
   auto stride_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("strides"));
   auto stride = std::vector<int64_t>{stride_.begin(), stride_.end()};
   op_desc->SetAttr("dilations", dilations);
@@ -85,11 +87,7 @@ ir::Node *reduce_mean_handler(ir::Graph *graph, ir::Node *node) {
   outputs.push_back(op->Output("Out").front());
   op_desc->SetOutput("__outputs__", outputs);
   auto reduce_all = BOOST_GET_CONST(bool, op->GetAttr("reduce_all"));
-  if (reduce_all) {
-    // TODO(alleng) get axes from input tensor shape/dim
-    auto axes = std::vector<int64_t>{0, 1, 2, 3};
-    op_desc->SetAttr("axes", axes);
-  } else {
+  if (!reduce_all) {
     auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dim"));
     auto axes = std::vector<int64_t>{axes_.begin(), axes_.end()};
     op_desc->SetAttr("axes", axes);
@@ -113,28 +111,9 @@ ir::Node *uniform_random_handler(ir::Graph *graph, ir::Node *node) {
 
   auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
   op_desc->SetAttr("shape", shape);
-  // auto dtype = BOOST_GET_CONST(int, op->GetAttr("dtype"));
-  op_desc->SetAttr("dtype", 1);
-  // cvt dtype
-  /*
-    enum Type {
-    // Pod Types
-    BOOL = 0;
-    INT16 = 1;
-    INT32 = 2;
-    INT64 = 3;
-    FP16 = 4;
-    FP32 = 5;
-    FP64 = 6;
-    // Tensor<size_t> is used in C++.
-    SIZE_T = 19;
-    UINT8 = 20;
-    INT8 = 21;
-    BF16 = 22;
-    COMPLEX64 = 23;
-    COMPLEX128 = 24;
-    ...
-  */
+  auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
+  auto dtype = ConvertDataType(dtype_);
+  op_desc->SetAttr("dtype", dtype);
   auto max = BOOST_GET_CONST(float, op->GetAttr("max"));
   op_desc->SetAttr("high", max);
   auto min = BOOST_GET_CONST(float, op->GetAttr("min"));
@@ -155,8 +134,9 @@ ir::Node *gaussian_random_handler(ir::Graph *graph, ir::Node *node) {
 
   auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
   op_desc->SetAttr("shape", shape);
-  // auto dtype = BOOST_GET_CONST(int, op->GetAttr("dtype"));
-  op_desc->SetAttr("dtype", 1);
+  auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
+  auto dtype = ConvertDataType(dtype_);
+  op_desc->SetAttr("dtype", dtype);
 
   auto mean = BOOST_GET_CONST(float, op->GetAttr("mean"));
   op_desc->SetAttr("mean", mean);
@@ -179,9 +159,9 @@ ir::Node *fill_constant_handler(ir::Graph *graph, ir::Node *node) {
 
   auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
   op_desc->SetAttr("shape", shape);
-  // auto dtype = BOOST_GET_CONST(int, op->GetAttr("dtype"));
-  op_desc->SetAttr("dtype", 1);
-
+  auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
+  auto dtype = ConvertDataType(dtype_);
+  op_desc->SetAttr("dtype", dtype);
   auto value = BOOST_GET_CONST(float, op->GetAttr("value"));
   op_desc->SetAttr("value", value);
 

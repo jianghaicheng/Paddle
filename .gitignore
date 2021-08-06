@@ -33,6 +33,10 @@ cmake-build-*
 paddle/fluid/operators/distributed/send_recv.proto
 model_test
 
+# clangd background index
+.clangd/
+.cache/
+
 python/paddle/distributed/fleet/proto/
 python/paddle/fluid/core*.so
 

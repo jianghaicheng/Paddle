@@ -38,6 +38,9 @@ SymbolHandler GetHandler(const std::string &);
 
 void MoveNodeInputs(ir::Node *node, ir::Node *new_node);
 void MoveNodeOutputs(ir::Node *node, ir::Node *new_node);
+void ConnectNodes(ir::Node *first_node, ir::Node *next_node);
+
+int ConvertDataType(int);
 
 }  // namespace framework
 }  // namespace paddle

@@ -14,9 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ipu/ipu_backend.h"
 
-#include <algorithm>
-#include <vector>
-
 #include <popart/builder.hpp>
 #include <popart/dataflow.hpp>
 #include <popart/devicemanager.hpp>
@@ -269,8 +266,9 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto outputs = op->Output("__outputs__");
       auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
       auto dtype = BOOST_GET_CONST(int, op->GetAttr("dtype"));
-      auto high = 1.0f;
-      auto low = 0.0f;
+      auto value = BOOST_GET_CONST(float, op->GetAttr("value"));
+      auto high = value;
+      auto low = value;
       popart::TensorId result =
           builder_->aiOnnxOpset11().randomuniform(shape, dtype, high, low);
       tensors_.emplace(outputs[0], result);
@@ -294,7 +292,10 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
     } else if (op_type == "ReduceMean") {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");
-      auto axes = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("axes"));
+      auto axes = nonstd::optional<std::vector<int64_t>>();
+      if (op->HasAttr("axes")) {
+        axes = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("axes"));
+      }
       auto keepdims = BOOST_GET_CONST(int64_t, op->GetAttr("keepdims"));
       popart::TensorId result =
           builder_->aiOnnxOpset11().reducemean(inputs, axes, keepdims);

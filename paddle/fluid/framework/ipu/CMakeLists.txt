@@ -1,7 +1,6 @@
 set(POPART_CANONICALIZATION_HANDLERS_SRC
     "popart_canonicalization/other_ops.cpp"
 )
-# TODO(alleng) build static library
 cc_library(popart_canonicalization_utils SRCS popart_canonicalization_utils.cc
   ${POPART_CANONICALIZATION_HANDLERS_SRC} DEPS framework_proto enforce)
 
