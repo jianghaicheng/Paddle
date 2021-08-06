@@ -16,6 +16,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+namespace ipu {
 
 popart::DataType VarType2PopartType(proto::VarType::Type type) {
   switch (type) {
@@ -46,6 +47,19 @@ popart::DataType VarType2PopartType(proto::VarType::Type type) {
           "Unsupported Paddle var type."));
   }
 }
-
+// count num should > 0
+bool GetBoolEnv(std::string str) {
+  char *str_val = getenv(str.c_str());
+  if (str_val == NULL) {
+    return false;
+  } else {
+    bool val = false;
+    if (strcmp(str_val, "1") == 0 || strcmp(str_val, "true") == 0 ||
+        strcmp(str_val, "True") == 0 || strcmp(str_val, "TRUE") == 0)
+      val = true;
+    return val;
+  }
+}
+}  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

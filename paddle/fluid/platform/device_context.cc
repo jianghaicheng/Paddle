@@ -16,6 +16,9 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/framework/ipu/ipu_backend.h"
+#endif
 #include "glog/logging.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -181,20 +184,11 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 Place CPUDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_IPU
-IPUDeviceContext::IPUDeviceContext() {
-  std::map<std::string, std::string> deviceOpts{{"numIPUs", "1"}};
-  gc_devices_  =
-  popart::DeviceManager::createDeviceManager().createIpuModelDevice(
-          deviceOpts);
-}
-
 // TODO(Cheng) get current device
 IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {
-  //......
-  // std::map<std::string, std::string> deviceOpts{{"numIPUs", "1"}};
-  // gc_devices_  =
-  // popart::DeviceManager::createDeviceManager().createIpuModelDevice(
-  //         deviceOpts);
+  int id = place.GetDeviceId();
+  std::shared_ptr<framework::ipu::IpuBackend> ipu_backend = framework::ipu::IpuBackend::GetInstance();
+  device_ = ipu_backend->GetDevice(id);
 }
 
 Place IPUDeviceContext::GetPlace() const { return place_; }

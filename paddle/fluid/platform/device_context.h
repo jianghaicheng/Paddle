@@ -60,11 +60,10 @@ limitations under the License. */
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/stream/npu_stream.h"
 #endif
-#include "unsupported/Eigen/CXX11/Tensor"
-
 #ifdef PADDLE_WITH_IPU
-#include <popart/devicemanager.hpp>
+#include "paddle/fluid/framework/ipu/device.h"
 #endif
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {
 struct DefaultDevice;
@@ -143,18 +142,21 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 // Graphcore IPU
 #ifdef PADDLE_WITH_IPU
 class IPUDeviceContext : public DeviceContext {
-public:
-  IPUDeviceContext();
+ public:
+  IPUDeviceContext() = delete;
   explicit IPUDeviceContext(IPUPlace place);
   virtual ~IPUDeviceContext();
-  Eigen::DefaultDevice* eigen_device() const{ return nullptr; }
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
   Place GetPlace() const override;
-    /*! \brief  Wait for all operations completion in the stream. */
+  /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
+  int DeviceId() const {
+    return device_.getId();
+  }
 
-private:
+ private:
   IPUPlace place_;
-  std::shared_ptr<popart::DeviceInfo> gc_devices_;
+  framework::ipu::Device device_;
 };
 template <>
 struct DefaultDeviceContextType<platform::IPUPlace> {

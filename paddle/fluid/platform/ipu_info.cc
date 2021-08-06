@@ -10,51 +10,21 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/ipu_info.h"
+#include "paddle/fluid/framework/ipu/ipu_backend.h"
 
 namespace paddle {
 namespace platform {
 
-std::vector<std::shared_ptr<popart::DeviceInfo>> GetIPUDevices() {
-  char *p;
-  bool use_cpu_model = false;
-  if ((p = getenv("TF_POPLAR_FLAGS"))) {
-    if (strcmp(p, "--use_cpu_model") == 0) {
-      use_cpu_model = true;
-    }
-  }
-  std::vector<std::shared_ptr<popart::DeviceInfo>> devices;
-  if (use_cpu_model) {
-    auto dm = popart::DeviceManager::createDeviceManager();
-    devices = dm.enumerateDevices();
-  } else {
-    std::map<std::string, std::string> deviceOpts{{"numIPUs", "1"}};
-    auto ipuModelDevice =
-        popart::DeviceManager::createDeviceManager().createIpuModelDevice(
-            deviceOpts);
-    devices.push_back(ipuModelDevice);
-  }
-  return devices;
-}
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetSelectedIPUDevices() {
-  std::vector<int> devices_ids;
-  auto devices = GetIPUDevices();
-  for (auto dev : devices) {
-    devices_ids.push_back(dev->getId());
-  }
-  return devices_ids;
+  std::shared_ptr<framework::ipu::IpuBackend> ipu_backend = framework::ipu::IpuBackend::GetInstance();
+  return ipu_backend->GetDeviceIds();
 }
 
 //! Get the total number of IPU devices in system.
 int GetIPUDeviceCount() {
-  auto devices = GetIPUDevices();
-  if (devices.empty()) {
-    LOG(ERROR)
-        << "\nNo IPU detected in the system: are you sure the gc-driver is "
-           "enabled ?";
-    return 0;
-  }
-  return devices.size();
+  std::shared_ptr<framework::ipu::IpuBackend> ipu_backend = framework::ipu::IpuBackend::GetInstance();
+  return ipu_backend->GetNumDevices();
 }
 }  // namespace platform
 }  // namespace paddle

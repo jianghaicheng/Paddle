@@ -30,7 +30,13 @@ class IpuRuntimeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #ifdef PADDLE_WITH_IPU
-    auto ipu_backend = paddle::framework::IpuBackend::GetInstance();
+    auto ipu_backend = framework::ipu::IpuBackend::GetInstance();
+    if (!ipu_backend->DeviceIsAttached()) {
+      const platform::IPUDeviceContext& ipu_ctx =
+          reinterpret_cast<const platform::IPUDeviceContext&>(
+              ctx.device_context());
+      ipu_backend->AttachDevice(ipu_ctx.DeviceId());
+    }
     VLOG(4) << "IpuRuntime Kernel, begin to run graph";
     auto inputs = ctx.MultiInput<framework::Tensor>("FeedList");
     auto outputs = ctx.MultiOutput<framework::Tensor>("FetchList");

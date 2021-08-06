@@ -29,7 +29,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
-  auto ipu_backend = paddle::framework::IpuBackend::GetInstance();
+  auto ipu_backend = paddle::framework::ipu::IpuBackend::GetInstance();
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()) {

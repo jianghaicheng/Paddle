@@ -262,6 +262,7 @@ from .fluid.framework import is_compiled_with_cuda  # noqa: F401
 from .fluid.framework import is_compiled_with_rocm  # noqa: F401
 from .device import is_compiled_with_xpu  # noqa: F401
 from .device import is_compiled_with_npu  # noqa: F401
+from .device import is_compiled_with_ipu  # noqa: F401
 from .device import XPUPlace  # noqa: F401
 
 from .fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401

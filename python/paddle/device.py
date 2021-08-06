@@ -68,7 +68,7 @@ def is_compiled_with_ipu():
         .. code-block:: python
 
             import paddle
-            support_npu = paddle.is_compiled_with_ipu()
+            support_ipu = paddle.is_compiled_with_ipu()
     """
     return core.is_compiled_with_ipu()
 

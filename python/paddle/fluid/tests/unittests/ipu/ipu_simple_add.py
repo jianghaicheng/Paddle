@@ -24,7 +24,7 @@ a = paddle.static.data(name='a', shape=[1], dtype='float32')
 b = paddle.static.data(name='b', shape=[1], dtype='float32')
 c = a + b
 
-place = paddle.CPUPlace()
+place = paddle.IPUPlace(0)
 executor = paddle.static.Executor(place)
 
 print("------------------------")

@@ -28,17 +28,16 @@ limitations under the License. */
 #include <popart/tensor.hpp>
 #include <popart/tensorinfo.hpp>
 
-#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ipu/ipu_utils.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
+namespace ipu {
 
 std::shared_ptr<IpuBackend> IpuBackend::instance_ = nullptr;
 
@@ -127,11 +126,10 @@ void IpuBackend::Prepare() {
   }
   auto dataFlow = popart::DataFlow(1, anchor_ids);
 
-  std::map<std::string, std::string> deviceOpts{{"numIPUs", "1"}};
-  auto ipuModelDevice =
-      popart::DeviceManager::createDeviceManager().createIpuModelDevice(
-          deviceOpts);
-  // or acquireAvailableDevice();
+  PADDLE_ENFORCE_NOT_NULL(
+      curr_device_,
+      platform::errors::Unavailable("IPU device isn't attached, please call "
+                                    "IpuBackend::AttachDevice(id) first."));
 
   if (ipu_build_strategy_ != nullptr && ipu_build_strategy_->is_training_) {
     VLOG(1) << "Creating TrainingSession from Onnx Model...";
@@ -142,11 +140,11 @@ void IpuBackend::Prepare() {
         paddle::platform::errors::InvalidArgument(
             "loss_id = %s doesn't exist in popart graph.", optimizer_.loss_));
     session_ = popart::TrainingSession::createFromOnnxModel(
-        proto, dataFlow, it->second, *popart_optimizer, ipuModelDevice);
+        proto, dataFlow, it->second, *popart_optimizer, curr_device_);
   } else {
     VLOG(1) << "Creating InferenceSession from Onnx Model...";
     session_ = popart::InferenceSession::createFromOnnxModel(proto, dataFlow,
-                                                             ipuModelDevice);
+                                                             curr_device_);
   }
   VLOG(1) << "Creating session from Onnx Model...done";
 
@@ -308,5 +306,77 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
   }
 }
 
+size_t IpuBackend::GetNumDevices() {
+  // IpuModel
+  bool ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
+  if (ipu_model) return 1;
+  // Real dev
+  size_t num_devices =
+      popart::DeviceManager::createDeviceManager().enumerateDevices().size();
+  PADDLE_ENFORCE_GT(
+      num_devices, 0,
+      platform::errors::Unavailable(
+          "Do not found any IPU devices, please make "
+          "sure Poplar sdk is enabled or enable ENV \"POPLAR_IPUMODEL=1\""));
+  return num_devices;
+}
+
+std::vector<int> IpuBackend::GetDeviceIds() {
+  bool ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
+  if (ipu_model) {
+    return {0};
+  }
+  std::vector<int> device_ids;
+  auto devices =
+      popart::DeviceManager::createDeviceManager().enumerateDevices();
+  PADDLE_ENFORCE_GT(
+      devices.size(), 0,
+      platform::errors::Unavailable("Do not found any IPU devices, please make "
+                                    "sure Poplar sdk is enabled."));
+
+  for (auto device : devices) {
+    device_ids.push_back(device->getId());
+  }
+
+  return device_ids;
+}
+
+Device IpuBackend::GetDevice(int id) {
+  bool ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
+  if (ipu_model) {
+    std::map<std::string, std::string> deviceOpts{{"numIPUs", "1 "}};
+    curr_device_ =
+        popart::DeviceManager::createDeviceManager().createIpuModelDevice(
+            deviceOpts);
+    Device device(*curr_device_.get());
+    return device;
+  }
+  size_t num_devices = GetNumDevices();
+  if (id < 0 || id >= num_devices) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "device id %d is invalid, number devices is %d", id, num_devices));
+  }
+  std::shared_ptr<popart::DeviceInfo> popart_device_info =
+      popart::DeviceManager::createDeviceManager().getDevice(
+          popart::SyncPattern::Full, id);
+  Device device(*popart_device_info.get());
+  return device;
+}
+
+void IpuBackend::AttachDevice(int id) {
+  bool ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
+  if (ipu_model) {
+    return;
+  }
+  curr_device_ =
+      popart::DeviceManager::createDeviceManager().acquireDeviceById(id);
+  PADDLE_ENFORCE_NOT_NULL(
+      curr_device_,
+      platform::errors::Unavailable("Can't attach IPU device id = %d.", id));
+}
+
+bool IpuBackend::DeviceIsAttached() { return curr_device_ != nullptr; }
+
+}  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

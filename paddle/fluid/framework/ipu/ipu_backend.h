@@ -32,17 +32,17 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ipu/ipu_build_strategy.h"
+#include "paddle/fluid/framework/ipu/device.h"
 #include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
+namespace ipu {
 
 using ipu::IpuBuildStrategy;
-
 struct Optimizer {
   std::string type_;
   std::string loss_;
@@ -89,6 +89,11 @@ class IpuBackend {
   void SetIpuBuildStrategy(const IpuBuildStrategy &strategy) {
     ipu_build_strategy_ = &strategy;
   }
+  size_t GetNumDevices();
+  std::vector<int> GetDeviceIds();
+  Device GetDevice(int id);
+  void AttachDevice(int id);
+  bool DeviceIsAttached();
 
   static std::shared_ptr<IpuBackend> GetInstance() {
     if (NULL == instance_) {
@@ -115,9 +120,11 @@ class IpuBackend {
 
   std::unique_ptr<popart::Builder> builder_;
   std::unique_ptr<popart::Session> session_;
+  std::shared_ptr<popart::DeviceInfo> curr_device_;
 
   static std::shared_ptr<IpuBackend> instance_;
 };
 
+}  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

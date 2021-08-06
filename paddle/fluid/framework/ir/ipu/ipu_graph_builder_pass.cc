@@ -49,7 +49,7 @@ void IpuGraphBuilderPass::ApplyImpl(ir::Graph* graph) const {
   std::vector<std::string> fetch_list;
   fetch_list = Get<std::vector<std::string>>("fetch_list");
 
-  std::shared_ptr<IpuBackend> ipu_backend = IpuBackend::GetInstance();
+  std::shared_ptr<ipu::IpuBackend> ipu_backend = ipu::IpuBackend::GetInstance();
 
   ipu_backend->Compile(graph, feed_list, fetch_list);
 

@@ -24,11 +24,13 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+namespace ipu {
 
 popart::DataType VarType2PopartType(proto::VarType::Type type);
+bool GetBoolEnv(std::string str);
 
 template <typename T>
-std::unique_ptr<popart::NDArrayWrapper<T>> Tensor2IArray(Tensor &tensor) {
+std::unique_ptr<popart::NDArrayWrapper<T>> Tensor2IArray(const Tensor &tensor) {
   auto dtype = VarType2PopartType(tensor.type());
   auto shape = std::vector<int64_t>();
   for (size_t i = 0; i < tensor.dims().size(); ++i) {
@@ -42,7 +44,7 @@ std::unique_ptr<popart::NDArrayWrapper<T>> Tensor2IArray(Tensor &tensor) {
 
 template <typename T>
 std::unique_ptr<popart::NDArrayWrapper<T>> LoDTensor2IArray(
-    LoDTensor &lod_tensor) {
+    LoDTensor const &lod_tensor) {
   if (lod_tensor.lod().size() == 0) {
     return Tensor2IArray<T>(lod_tensor);
   } else {
@@ -51,5 +53,6 @@ std::unique_ptr<popart::NDArrayWrapper<T>> LoDTensor2IArray(
   }
 }
 
+}  // namespace ipu
 }  // namespace framework
 }  // namespace paddle
