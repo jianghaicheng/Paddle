@@ -289,7 +289,9 @@ void CpuPassStrategy::EnableMkldnnBfloat16() {
 }
 
 IpuPassStrategy::IpuPassStrategy() : PassStrategy({}) {
-  passes_.assign({"ipu_graph_builder_pass",  //
+  passes_.assign({"forward_graph_extract_pass",
+                  "popart_canonicalization_pass", 
+                  "ipu_graph_builder_pass",
                   "ipu_runtime_replacer_pass"});            
 }
 

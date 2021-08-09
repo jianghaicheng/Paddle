@@ -29,6 +29,8 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/ipu/ipu_backend.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/scope.h"
 
 // debug
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
@@ -51,6 +53,12 @@ void IpuGraphBuilderPass::ApplyImpl(ir::Graph* graph) const {
 
   std::shared_ptr<ipu::IpuBackend> ipu_backend = ipu::IpuBackend::GetInstance();
 
+  // For Paddle inference 
+  if (graph->Has(kParamScopeAttr)) {
+    auto& scope = graph->Get<Scope>(kParamScopeAttr);
+    ipu_backend->SetScope(&scope);
+  }
+  
   ipu_backend->Compile(graph, feed_list, fetch_list);
 
   VLOG(10) << "Post Graph: ";
