@@ -46,6 +46,6 @@ Run graph by PopART runtime.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(ipu_runtime, ops::IpuRuntimeOp,
-                  ops::IpuRuntimeOpMaker);
+REGISTER_OPERATOR(ipu_runtime, ops::IpuRuntimeOp, ops::IpuRuntimeOpMaker);
 REGISTER_OP_CPU_KERNEL(ipu_runtime, ops::IpuRuntimeKernel<float>)
+REGISTER_OP_IPU_KERNEL(ipu_runtime, ops::IpuRuntimeKernel<float>)
