@@ -45,6 +45,11 @@ class TestConvNet(unittest.TestCase):
             conv2 = conv1 + conv1
             loss = paddle.mean(conv2)
 
+            # TODO: support get learning rate with pass(extract_optimizer_pass),
+            # currently, hardcode within ipu_backend.cc
+            adam = paddle.optimizer.Adam(learning_rate=1e-2)
+            adam.minimize(loss)
+
         if run_ipu:
             place = paddle.IPUPlace(0)
         else:
@@ -53,19 +58,32 @@ class TestConvNet(unittest.TestCase):
 
         exe.run(startup_prog)
 
-        print("Start run on {}".format(place))
+        if run_ipu:
+            feed_list = [image.name]
+            fetch_list = [loss.name]
+            ipu_build_strategy = compiler.get_ipu_build_strategy()
+            ipu_build_strategy.is_training = True
+            program = compiler.IpuCompiler(
+                main_prog, ipu_build_strategy=ipu_build_strategy).compile(
+                    feed_list, fetch_list)
+        else:
+            program = main_prog
+
+        result = []
         for epoch in range(100):
-            loss_res = exe.run(main_prog,
+            loss_res = exe.run(program,
                                feed={"image": np_image},
                                fetch_list=[loss])
+            result.append(loss_res)
 
-        return loss_res
+        return np.array(result)
 
-    def test_ipu(self):
-        cpu_loss = self._test(False)
-        ipu_loss = self._test(True)
+    def test_training(self):
+        # cpu and ipu dimenstion mismatch, cpu:(100, 1, 1), ipu:(100, 1)
+        cpu_loss = self._test(False).flatten()
+        ipu_loss = self._test(True).flatten()
 
-        self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=1e-3))
+        self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=1e-4))
 
 
 if __name__ == "__main__":
