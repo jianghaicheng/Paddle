@@ -56,7 +56,7 @@ void IpuGraphBuilderPass::ApplyImpl(ir::Graph* graph) const {
   // For Paddle inference 
   if (graph->Has(kParamScopeAttr)) {
     auto& scope = graph->Get<Scope>(kParamScopeAttr);
-    ipu_backend->SetScope(&scope);
+    ipu_backend->SetScope(scope);
   }
   
   ipu_backend->Compile(graph, feed_list, fetch_list);
