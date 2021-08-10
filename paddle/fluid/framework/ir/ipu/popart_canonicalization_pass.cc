@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/ir/ipu/popart_canonicalization_pass.h"
 
-#include "paddle/fluid/framework/ipu/popart_canonicalization_utils.h"
+#include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -45,7 +45,7 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
       VLOG(10) << "Raw Paddle Node:";
       VLOG(10) << node->Op()->Proto()->DebugString();
       new_node = handler(graph, node);
-      VLOG(10) << "Post PopArt Node:";
+      VLOG(10) << "Post Popart Node:";
       VLOG(10) << new_node->Op()->Proto()->DebugString();
       if (new_node->inputs.empty()) {
         MoveNodeInputs(node, new_node);
@@ -56,6 +56,7 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
       graph->RemoveNode(node);
     }
   }
+
   VLOG(10) << "Post Graph: ";
   VLOG(10) << DebugString(graph);
   VLOG(10) << "leave PopartCanonicalizationPass::ApplyImpl";

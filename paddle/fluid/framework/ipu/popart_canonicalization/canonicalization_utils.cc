@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ipu/popart_canonicalization_utils.h"
+#include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
 
 namespace paddle {
 namespace framework {

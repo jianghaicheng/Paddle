@@ -1,8 +1,13 @@
-set(POPART_CANONICALIZATION_HANDLERS_SRC
-    "popart_canonicalization/other_ops.cpp"
+set(POPART_CANONICALIZATION_SRC
+    "popart_canonicalization/canonicalization_utils.cc"
+    "popart_canonicalization/activation_ops.cc"
+    "popart_canonicalization/logic_ops.cc"
+    "popart_canonicalization/math_ops.cc"
+    "popart_canonicalization/nn_ops.cc"
+    "popart_canonicalization/tensor_ops.cc"
+    "popart_canonicalization/other_ops.cc"
 )
-cc_library(popart_canonicalization_utils SRCS popart_canonicalization_utils.cc
-  ${POPART_CANONICALIZATION_HANDLERS_SRC} DEPS framework_proto enforce)
+cc_library(popart_canonicalization_utils SRCS ${POPART_CANONICALIZATION_SRC} DEPS framework_proto enforce)
 
 cc_library(ipu_device SRCS device.cc DEPS enforce popart)
 cc_library(ipu_utils SRCS ipu_utils.cc DEPS memory framework_proto popart)
