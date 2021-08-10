@@ -27,8 +27,8 @@ SEED = 2021
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
-class TestConvNet(unittest.TestCase):
-    def _test(self, run_ipu=True):
+class TestSGD(unittest.TestCase):
+    def _test_sgd(self, run_ipu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
@@ -42,11 +42,10 @@ class TestConvNet(unittest.TestCase):
                 name='image', shape=[1, 3, 10, 10], dtype='float32')
             conv1 = paddle.static.nn.conv2d(
                 image, num_filters=3, filter_size=3, bias_attr=False)
-            conv2 = conv1 + conv1
-            loss = paddle.mean(conv2)
+            loss = paddle.mean(conv1)
 
-            adam = paddle.optimizer.Adam(learning_rate=1e-2)
-            adam.minimize(loss)
+            sgd = paddle.optimizer.SGD(learning_rate=1e-1)
+            sgd.minimize(loss)
 
         if run_ipu:
             place = paddle.IPUPlace(0)
@@ -75,10 +74,10 @@ class TestConvNet(unittest.TestCase):
 
         return np.array(result)
 
-    def test_training(self):
+    def test_sgd(self):
         # cpu and ipu dimenstion mismatch, cpu:(100, 1, 1), ipu:(100, 1)
-        cpu_loss = self._test(False).flatten()
-        ipu_loss = self._test(True).flatten()
+        ipu_loss = self._test_sgd(True).flatten()
+        cpu_loss = self._test_sgd(False).flatten()
 
         self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=1e-4))
 

@@ -31,8 +31,8 @@ limitations under the License. */
 #include <popart/tensorinfo.hpp>
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/ipu/ipu_build_strategy.h"
 #include "paddle/fluid/framework/ipu/device.h"
+#include "paddle/fluid/framework/ipu/ipu_build_strategy.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -85,6 +85,8 @@ class IpuBackend {
 
   // SetScope, so we can get model parameters from scope
   void SetScope(const Scope &scope) { scope_ = &scope; }
+
+  auto *GetLRFromScope(const std::string &name) { return scope_->GetVar(name); }
 
   void SetIpuBuildStrategy(const IpuBuildStrategy &strategy) {
     ipu_build_strategy_ = &strategy;

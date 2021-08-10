@@ -53,6 +53,29 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
             VLOG(10) << "Skip " << attr_type;
           }
         }
+
+        auto learning_rate_name = node->Op()->Input("LearningRate");
+        PADDLE_ENFORCE_EQ(learning_rate_name.size(), 1u,
+                          platform::errors::InvalidArgument(
+                              "In op(%s), find input(LearningRate) failed.",
+                              node->Op()->Type()));
+
+        auto learning_rate_var =
+            ipu_backend->GetLRFromScope(learning_rate_name[0]);
+        auto tensor = learning_rate_var->Get<framework::LoDTensor>();
+        PADDLE_ENFORCE_EQ(
+            tensor.numel(), 1,
+            platform::errors::PreconditionNotMet(
+                "The learning rate tensor size must be equal to one. "
+                "The var's shape is [",
+                tensor.dims(), "] now"));
+
+        PADDLE_ENFORCE_EQ(
+            tensor.type(), framework::proto::VarType::FP32,
+            platform::errors::InvalidArgument(
+                "LR requiree float, but got (%s).", tensor.type()));
+
+        ipu_backend->SetOptimizerAttr("LearningRate", tensor.data<float>()[0]);
       }
 
       if ((op_role == static_cast<int>(framework::OpRole::kLoss))) {

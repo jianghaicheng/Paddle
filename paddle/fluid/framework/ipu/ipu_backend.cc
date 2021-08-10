@@ -92,16 +92,26 @@ std::unique_ptr<popart::Optimizer> IpuBackend::GetPopartOptimizer() {
   PADDLE_ENFORCE_NE(
       optimizer_.type_, "",
       platform::errors::InvalidArgument("Optimizer type have not been set."));
-  if (optimizer_.type_ == "adam") {
+  if (optimizer_.type_ == "sgd") {
+    auto optimizer = std::make_unique<popart::SGD>(
+        popart::OptimizerValue(GetOptimizerAttr("LearningRate"), false),
+        popart::OptimizerValue(popart::SGD::getUnsetWeightDecay()),
+        popart::OptimizerValue(popart::SGD::getUnsetMomentum()),
+        popart::OptimizerValue(popart::SGD::getUnsetDampening()),
+        popart::OptimizerValue(popart::SGD::getUnsetVelocityScaling()),
+        popart::OptimizerValue(popart::SGD::getUnsetLossScaling()));
+    return optimizer;
+  } else if (optimizer_.type_ == "adam") {
     auto optimizer = std::make_unique<popart::Adam>(
-        popart::OptimizerValue(0.01, false),
-        popart::OptimizerValue(0.0f, false),
+        popart::OptimizerValue(GetOptimizerAttr("LearningRate"), false),
+        popart::OptimizerValue(popart::Adam::getUnsetWeightDecay()),
         popart::OptimizerValue(GetOptimizerAttr("beta1"), false),
         popart::OptimizerValue(GetOptimizerAttr("beta2"), false),
         popart::OptimizerValue(GetOptimizerAttr("epsilon"), false),
-        popart::OptimizerValue(1.0f, false), popart::AdamMode::Adam,
-        popart::WeightDecayMode::Decay, popart::DataType::FLOAT,
-        popart::DataType::FLOAT, popart::DataType::FLOAT);
+        popart::OptimizerValue(popart::Adam::getUnsetLossScaling()),
+        popart::AdamMode::Adam, popart::WeightDecayMode::Decay,
+        popart::DataType::FLOAT, popart::DataType::FLOAT,
+        popart::DataType::FLOAT);
     return optimizer;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
