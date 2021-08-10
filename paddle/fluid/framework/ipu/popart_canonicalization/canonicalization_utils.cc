@@ -16,6 +16,7 @@
 
 namespace paddle {
 namespace framework {
+namespace ipu {
 
 // onnx dtype
 // https://github.com/onnx/onnx/blob/master/onnx/onnx-ml.proto3
@@ -133,5 +134,6 @@ int ConvertDataType(int type) {
   }
 }
 
+}  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

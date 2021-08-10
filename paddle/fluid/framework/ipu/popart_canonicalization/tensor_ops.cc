@@ -17,6 +17,7 @@
 
 namespace paddle {
 namespace framework {
+namespace ipu {
 namespace {
 
 ir::Node *fill_constant_handler(ir::Graph *graph, ir::Node *node) {
@@ -93,5 +94,6 @@ REGISTER_HANDLER(gaussian_random, gaussian_random_handler);
 REGISTER_HANDLER(uniform_random, uniform_random_handler);
 
 }  // namespace
+}  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

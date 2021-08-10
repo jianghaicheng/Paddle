@@ -40,7 +40,7 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
     auto op_type = op->Type();
 
     ir::Node* new_node = nullptr;
-    SymbolHandler handler = GetHandler(op_type);
+    ipu::SymbolHandler handler = ipu::GetHandler(op_type);
     if (handler) {
       VLOG(10) << "Raw Paddle Node:";
       VLOG(10) << node->Op()->Proto()->DebugString();
@@ -48,10 +48,10 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
       VLOG(10) << "Post Popart Node:";
       VLOG(10) << new_node->Op()->Proto()->DebugString();
       if (new_node->inputs.empty()) {
-        MoveNodeInputs(node, new_node);
+        ipu::MoveNodeInputs(node, new_node);
       }
       if (new_node->outputs.empty()) {
-        MoveNodeOutputs(node, new_node);
+        ipu::MoveNodeOutputs(node, new_node);
       }
       graph->RemoveNode(node);
     }

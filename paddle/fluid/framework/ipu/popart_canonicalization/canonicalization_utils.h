@@ -24,9 +24,11 @@
 
 namespace paddle {
 namespace framework {
+namespace ipu {
 
 #define REGISTER_HANDLER(name, func) \
-  static bool __UNUSED_##name = paddle::framework::RegisterHandler(#name, func)
+  static bool __UNUSED_##name =      \
+      paddle::framework::ipu::RegisterHandler(#name, func)
 
 using SymbolHandler = std::function<ir::Node *(ir::Graph *, ir::Node *)>;
 
@@ -42,5 +44,6 @@ void ConnectNodes(ir::Node *first_node, ir::Node *next_node);
 
 int ConvertDataType(int);
 
+}  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

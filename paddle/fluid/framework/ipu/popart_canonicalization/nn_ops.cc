@@ -17,6 +17,7 @@
 
 namespace paddle {
 namespace framework {
+namespace ipu {
 namespace {
 
 ir::Node *conv2d_handler(ir::Graph *graph, ir::Node *node) {
@@ -61,5 +62,6 @@ ir::Node *conv2d_handler(ir::Graph *graph, ir::Node *node) {
 REGISTER_HANDLER(conv2d, conv2d_handler);
 
 }  // namespace
+}  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

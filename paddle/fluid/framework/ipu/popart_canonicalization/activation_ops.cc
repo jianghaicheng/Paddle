@@ -17,10 +17,12 @@
 
 namespace paddle {
 namespace framework {
+namespace ipu {
 namespace {
 
 //
 
 }  // namespace
+}  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

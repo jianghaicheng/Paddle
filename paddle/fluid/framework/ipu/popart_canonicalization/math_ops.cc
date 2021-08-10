@@ -17,6 +17,7 @@
 
 namespace paddle {
 namespace framework {
+namespace ipu {
 namespace {
 
 ir::Node *elementwise_add_handler(ir::Graph *graph, ir::Node *node) {
@@ -65,5 +66,6 @@ REGISTER_HANDLER(elementwise_add, elementwise_add_handler);
 REGISTER_HANDLER(reduce_mean, reduce_mean_handler);
 
 }  // namespace
+}  // namespace ipu
 }  // namespace framework
 }  // namespace paddle
