@@ -327,6 +327,11 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       popart::TensorId result = builder_->aiOnnxOpset11().conv(
           inputs, dilations, group, {}, pads, strides);
       tensors_.emplace(outputs[0], result);
+    } else if (op_type == "MatMul") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      popart::TensorId result = builder_->aiOnnxOpset11().matmul(inputs);
+      tensors_.emplace(outputs[0], result);
     } else if (op_type == "ReduceMean") {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");
@@ -337,6 +342,17 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto keepdims = BOOST_GET_CONST(int64_t, op->GetAttr("keepdims"));
       popart::TensorId result =
           builder_->aiOnnxOpset11().reducemean(inputs, axes, keepdims);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Softmax") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto axis = BOOST_GET_CONST(int64_t, op->GetAttr("axis"));
+      popart::TensorId result = builder_->aiOnnxOpset11().softmax(inputs, axis);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Sum") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      popart::TensorId result = builder_->aiOnnxOpset11().sum(inputs);
       tensors_.emplace(outputs[0], result);
     } else if (op_type == "Pow") {
       auto inputs = GetOpInputs(op);
@@ -365,13 +381,14 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto outputs = op->Output("__outputs__");
       auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
       auto groups = BOOST_GET_CONST(int64_t, op->GetAttr("groups"));
-      std::vector<popart::TensorId> result = 
-          builder_->aiGraphcoreOpset1().groupnormalization(inputs, groups, epsilon);
-      //Y
+      std::vector<popart::TensorId> result =
+          builder_->aiGraphcoreOpset1().groupnormalization(inputs, groups,
+                                                           epsilon);
+      // Y
       tensors_.emplace(outputs[0], result[0]);
-      //Mean
+      // Mean
       tensors_.emplace(outputs[1], result[1]);
-      //Variance
+      // Variance
       tensors_.emplace(outputs[2], result[2]);
     } else if (op_type == "MaxPool") {
       auto inputs = GetOpInputs(op);
