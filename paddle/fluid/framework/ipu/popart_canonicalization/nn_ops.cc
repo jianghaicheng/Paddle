@@ -103,8 +103,8 @@ ir::Node *pool2d_handler(ir::Graph *graph, ir::Node *node) {
   std::vector<std::string> outputs;
   outputs.push_back(op->Output("Out").front());
   op_desc->SetOutput("__outputs__", outputs);
-
   auto ksize = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
+
   std::vector<int64_t> kenel_shape_int64{ksize.begin(), ksize.end()};
   op_desc->SetAttr("kernel_shape", kenel_shape_int64);
   auto ceil_mode = BOOST_GET_CONST(bool, op->GetAttr("ceil_mode"));
@@ -129,8 +129,45 @@ ir::Node *pool2d_handler(ir::Graph *graph, ir::Node *node) {
   op_desc->Flush();
   return graph->CreateOpNode(op_desc.get());
 }
+
+ir::Node *group_norm_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  auto op_desc = std::make_unique<framework::OpDesc>();
+  op_desc->SetType("GroupNorm");
+
+  std::vector<std::string> inputs;
+  inputs.push_back(op->Input("X").front());
+  if (op->HasInput("Scale")) {
+    if (!op->Input("Scale").empty()) {
+      inputs.push_back(op->Input("Scale").front());
+    }
+  }
+  if (op->HasInput("Bias")) {
+    if (!op->Input("Bias").empty()) {
+      inputs.push_back(op->Input("Bias").front());
+    }
+  }
+  op_desc->SetInput("__inputs__", inputs);
+  
+  std::vector<std::string> outputs;
+  outputs.push_back(op->Output("Y").front());
+  outputs.push_back(op->Output("Mean").front());
+  outputs.push_back(op->Output("Variance").front());
+  op_desc->SetOutput("__outputs__", outputs);
+
+  auto epsilon_ = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
+  op_desc->SetAttr("epsilon", epsilon_);
+  auto groups_ = BOOST_GET_CONST(int, op->GetAttr("groups"));
+  auto groups = int64_t{groups_};
+  op_desc->SetAttr("groups", groups);
+
+  op_desc->Flush();
+  return graph->CreateOpNode(op_desc.get());
+}
+
 REGISTER_HANDLER(pool2d, pool2d_handler);
 REGISTER_HANDLER(batch_norm, batch_norm_handler);
+REGISTER_HANDLER(group_norm, group_norm_handler);
 REGISTER_HANDLER(conv2d, conv2d_handler);
 
 }  // namespace

@@ -251,6 +251,7 @@ struct Argument {
                       int);
 
   DECL_ARGUMENT_FIELD(use_ipu, UseIpu, bool);
+  DECL_ARGUMENT_FIELD(ipu_device_id, IPUDeviceId, int);
 
  private:
   std::unordered_set<std::string> valid_fields_;

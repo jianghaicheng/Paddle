@@ -360,6 +360,19 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       for (int i = 0; i < num_outputs; i++) {
         tensors_.emplace(outputs[i], result[i]);
       }
+    } else if (op_type == "GroupNorm") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
+      auto groups = BOOST_GET_CONST(int64_t, op->GetAttr("groups"));
+      std::vector<popart::TensorId> result = 
+          builder_->aiGraphcoreOpset1().groupnormalization(inputs, groups, epsilon);
+      //Y
+      tensors_.emplace(outputs[0], result[0]);
+      //Mean
+      tensors_.emplace(outputs[1], result[1]);
+      //Variance
+      tensors_.emplace(outputs[2], result[2]);
     } else if (op_type == "MaxPool") {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");

@@ -182,7 +182,7 @@ struct PD_INFER_DECL AnalysisConfig {
                  const std::string& precision = "int16",
                  bool adaptive_seqlen = false);
 
-  void EnableIpu();            
+  void EnableIpu(int device_id = 0);            
   ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
@@ -213,6 +213,12 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return int The XPU device id.
   ///
   int xpu_device_id() const { return xpu_device_id_; }
+  ///
+  /// \brief Get the IPU device id.
+  ///
+  /// \return nt The IPU device id.
+  ///
+  int ipu_device_id() const { return ipu_device_id_; }
   ///
   /// \brief Get the initial size in MB of the GPU memory pool.
   ///
@@ -694,6 +700,7 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // ipu related.
   bool use_ipu_{false};
+  int ipu_device_id_{0};
 
   // If the config is already used on a predictor, it becomes invalid.
   // Any config can only be used with one predictor.
