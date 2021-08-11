@@ -106,37 +106,6 @@ ir::Node *pow_handler(ir::Graph *graph, ir::Node *node) {
   return node_pow;
 }
 
-ir::Node *batch_norm_handler(ir::Graph *graph, ir::Node *node) {
-  auto *op = node->Op();
-  auto op_desc = std::make_unique<framework::OpDesc>();
-  op_desc->SetType("BatchNormalization");
-  std::vector<std::string> inputs;
-  inputs.push_back(op->Input("X").front());
-  inputs.push_back(op->Input("Scale").front());
-  inputs.push_back(op->Input("Bias").front());
-  inputs.push_back(op->Input("Mean").front());
-  inputs.push_back(op->Input("Variance").front());
-  // inputs.push_back(op->Input("MomentumTensor").front());
-  op_desc->SetInput("__inputs__", inputs);
-  std::vector<std::string> outputs;
-  outputs.push_back(op->Output("Y").front());
-  outputs.push_back(op->Output("MeanOut").front());
-  outputs.push_back(op->Output("VarianceOut").front());
-  outputs.push_back(op->Output("SavedMean").front());
-  outputs.push_back(op->Output("SavedVariance").front());
-  outputs.push_back(op->Output("ReserveSpace").front());
-  op_desc->SetOutput("__outputs__", outputs);
-  // attrs
-  op_desc->SetAttr("momentum", BOOST_GET_CONST(float, op->GetAttr("momentum")));
-  op_desc->SetAttr("epsilon", BOOST_GET_CONST(float, op->GetAttr("epsilon")));
-  // op_desc->SetAttr("data_layout", BOOST_GET_CONST(string,
-  // op->GetAttr("data_layout"));
-  // op_desc->SetAttr("num_outputs", static_cast<int>(1));
-  op_desc->Flush();
-  return graph->CreateOpNode(op_desc.get());
-}
-
-REGISTER_HANDLER(batch_norm, batch_norm_handler);
 REGISTER_HANDLER(elementwise_add, elementwise_add_handler);
 REGISTER_HANDLER(reduce_mean, reduce_mean_handler);
 REGISTER_HANDLER(pow, pow_handler);

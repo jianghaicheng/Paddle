@@ -360,6 +360,42 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       for (int i = 0; i < num_outputs; i++) {
         tensors_.emplace(outputs[i], result[i]);
       }
+    } else if (op_type == "MaxPool") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      // popart have only one output.
+      auto kernel_shape =
+          BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("kernel_shape"));
+      auto ceil_mode = BOOST_GET_CONST(bool, op->GetAttr("ceil_mode"));
+
+      auto paddings =
+          BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("paddings"));
+      auto storage_order = BOOST_GET_CONST(int, op->GetAttr("storage_order"));
+      auto strides =
+          BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("strides"));
+      auto result = builder_->aiOnnxOpset11().maxpool(inputs, 1, kernel_shape,
+                                                      ceil_mode, {}, paddings,
+                                                      storage_order, strides);
+      tensors_.emplace(outputs[0], result[0]);
+    } else if (op_type == "AveragePool") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      // popart have only one output.
+      auto kernel_shape =
+          BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("kernel_shape"));
+      auto ceil_mode = BOOST_GET_CONST(bool, op->GetAttr("ceil_mode"));
+
+      auto paddings =
+          BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("paddings"));
+      auto strides =
+          BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("strides"));
+      auto count_include_pad =
+          BOOST_GET_CONST(int, op->GetAttr("count_include_pad"));
+      auto result = builder_->aiOnnxOpset11().averagepool(
+          inputs, kernel_shape, ceil_mode, count_include_pad, paddings,
+          strides);
+
+      tensors_.emplace(outputs[0], result);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented("Unimplemented op type %s.",
                                                    op_type));

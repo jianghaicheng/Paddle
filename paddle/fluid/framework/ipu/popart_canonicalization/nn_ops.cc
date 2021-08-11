@@ -88,7 +88,48 @@ ir::Node *batch_norm_handler(ir::Graph *graph, ir::Node *node) {
   op_desc->Flush();
   return graph->CreateOpNode(op_desc.get());
 }
+ir::Node *pool2d_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  auto op_desc = std::make_unique<framework::OpDesc>();
+  auto pool_type = BOOST_GET_CONST(std::string, op->GetAttr("pooling_type"));
+  if (pool_type == "max") {
+    op_desc->SetType("MaxPool");
+  } else if (pool_type == "avg") {
+    op_desc->SetType("AveragePool");
+  }
+  std::vector<std::string> inputs;
+  inputs.push_back(op->Input("X").front());
+  op_desc->SetInput("__inputs__", inputs);
+  std::vector<std::string> outputs;
+  outputs.push_back(op->Output("Out").front());
+  op_desc->SetOutput("__outputs__", outputs);
 
+  auto ksize = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
+  std::vector<int64_t> kenel_shape_int64{ksize.begin(), ksize.end()};
+  op_desc->SetAttr("kernel_shape", kenel_shape_int64);
+  auto ceil_mode = BOOST_GET_CONST(bool, op->GetAttr("ceil_mode"));
+  op_desc->SetAttr("ceil_mode", ceil_mode);
+
+  // op_desc->SetAttr("dilations", {});
+  auto pads = BOOST_GET_CONST(std::vector<int>, op->GetAttr("paddings"));
+  std::vector<int64_t> paddings_int64{pads.begin(), pads.end()};
+  if (paddings_int64.size() == 2) {
+    paddings_int64.push_back(paddings_int64[0]);
+    paddings_int64.push_back(paddings_int64[1]);
+  }
+  op_desc->SetAttr("paddings", paddings_int64);
+
+  auto strides = BOOST_GET_CONST(std::vector<int>, op->GetAttr("strides"));
+  std::vector<int64_t> strides_int64{strides.begin(), strides.end()};
+
+  op_desc->SetAttr("strides", strides_int64);
+  op_desc->SetAttr("count_include_pad", 0);
+  op_desc->SetAttr("storage_order", 0);
+
+  op_desc->Flush();
+  return graph->CreateOpNode(op_desc.get());
+}
+REGISTER_HANDLER(pool2d, pool2d_handler);
 REGISTER_HANDLER(batch_norm, batch_norm_handler);
 REGISTER_HANDLER(conv2d, conv2d_handler);
 
