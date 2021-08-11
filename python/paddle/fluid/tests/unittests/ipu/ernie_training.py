@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# refrenece : https://github.com/PaddlePaddle/PaddleNLP/tree/develop/examples/language_model/ernie
+
 import os
 import argparse
 from contextlib import contextmanager
