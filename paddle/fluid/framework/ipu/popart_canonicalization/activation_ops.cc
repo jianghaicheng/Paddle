@@ -20,7 +20,20 @@ namespace framework {
 namespace ipu {
 namespace {
 
-//
+ir::Node *relu_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  auto op_desc = std::make_unique<framework::OpDesc>();
+  op_desc->SetType("Relu");
+  std::vector<std::string> inputs;
+  inputs.push_back(op->Input("X").front());
+  op_desc->SetInput("__inputs__", inputs);
+  std::vector<std::string> outputs;
+  outputs.push_back(op->Output("Out").front());
+  op_desc->SetOutput("__outputs__", outputs);
+  op_desc->Flush();
+  return graph->CreateOpNode(op_desc.get());
+}
+REGISTER_HANDLER(relu, relu_handler);
 
 }  // namespace
 }  // namespace ipu

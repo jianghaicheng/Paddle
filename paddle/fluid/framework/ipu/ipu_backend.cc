@@ -343,6 +343,23 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto outputs = op->Output("__outputs__");
       popart::TensorId result = builder_->aiOnnxOpset11().pow(inputs);
       tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Relu") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto result = builder_->aiOnnxOpset11().relu(inputs);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "BatchNormalization") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      // num_outputs training mode 5, inference mode 1
+      auto num_outputs = ipu_build_strategy_->is_training_ ? 5 : 1;
+      auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
+      auto momentum = BOOST_GET_CONST(float, op->GetAttr("momentum"));
+      auto result = builder_->aiOnnxOpset11().batchnormalization(
+          inputs, num_outputs, epsilon, momentum);
+      for (int i = 0; i < num_outputs; i++) {
+        tensors_.emplace(outputs[i], result[i]);
+      }
     } else {
       PADDLE_THROW(platform::errors::Unimplemented("Unimplemented op type %s.",
                                                    op_type));
