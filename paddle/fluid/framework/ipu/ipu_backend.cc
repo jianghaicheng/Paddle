@@ -249,10 +249,12 @@ void IpuBackend::LowerWeights(const ir::Graph* graph) {
 }
 
 void IpuBackend::LowerBody(const ir::Graph* graph) {
+  VLOG(10) << "enter IpuBackend::LowerBody";
   auto nodes = TopologySortOperations(*graph);
   for (const auto* node : nodes) {
     auto* op = node->Op();
     auto op_type = op->Type();
+    VLOG(10) << "Lowering Node: " << node->Name() << " Op: " << op_type;
     if (op_type == "RandomUniform") {
       auto outputs = op->Output("__outputs__");
       auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
@@ -271,16 +273,42 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       popart::TensorId result =
           builder_->aiOnnxOpset11().randomnormal(shape, dtype, mean, scale);
       tensors_.emplace(outputs[0], result);
-    } else if (op_type == "ConstantOfShape") {
-      // TODO(alleng) use RandomUniform for now
+    } else if (op_type == "Constant") {
       auto outputs = op->Output("__outputs__");
-      auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
-      auto dtype = BOOST_GET_CONST(int, op->GetAttr("dtype"));
-      auto value = BOOST_GET_CONST(float, op->GetAttr("value"));
-      auto high = value;
-      auto low = value;
-      popart::TensorId result =
-          builder_->aiOnnxOpset11().randomuniform(shape, dtype, high, low);
+      auto dims = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("dims"));
+      auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
+      auto dtype = OnnxDtype2PopartType(dtype_);
+      popart::TensorInfo tensor_info{dtype, dims};
+      auto value_attr = op->GetAttr("value");
+      auto const_data = std::unique_ptr<popart::ConstVoidData>{};
+      // Attribute only support vector of int,int64_t,float,double,bool
+      // if need store other data type, we should try another way
+      switch (dtype) {
+        case popart::DataType::FLOAT:
+          const_data.reset(new popart::ConstVoidData(
+              BOOST_GET_CONST(std::vector<float>, value_attr).data(),
+              tensor_info));
+          break;
+        case popart::DataType::INT32:
+          const_data.reset(new popart::ConstVoidData(
+              BOOST_GET_CONST(std::vector<int>, value_attr).data(),
+              tensor_info));
+          break;
+        case popart::DataType::DOUBLE:
+          const_data.reset(new popart::ConstVoidData(
+              BOOST_GET_CONST(std::vector<double>, value_attr).data(),
+              tensor_info));
+          break;
+        case popart::DataType::INT64:
+          const_data.reset(new popart::ConstVoidData(
+              BOOST_GET_CONST(std::vector<int64_t>, value_attr).data(),
+              tensor_info));
+          break;
+        default:
+          PADDLE_THROW(
+              platform::errors::Unimplemented("popart::DataType %d", dtype));
+      }
+      popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
       tensors_.emplace(outputs[0], result);
     } else if (op_type == "Add") {
       auto inputs = GetOpInputs(op);
@@ -309,6 +337,11 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto keepdims = BOOST_GET_CONST(int64_t, op->GetAttr("keepdims"));
       popart::TensorId result =
           builder_->aiOnnxOpset11().reducemean(inputs, axes, keepdims);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Pow") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      popart::TensorId result = builder_->aiOnnxOpset11().pow(inputs);
       tensors_.emplace(outputs[0], result);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented("Unimplemented op type %s.",

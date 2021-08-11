@@ -32,6 +32,8 @@ popart::DataType VarType2PopartType(proto::VarType::Type type) {
       return popart::DataType::INT64;
     case proto::VarType::BOOL:
       return popart::DataType::BOOL;
+    case proto::VarType::FP64:
+      return popart::DataType::DOUBLE;
     case proto::VarType::FP32:
       return popart::DataType::FLOAT;
     case proto::VarType::FP16:
@@ -47,6 +49,40 @@ popart::DataType VarType2PopartType(proto::VarType::Type type) {
           "Unsupported Paddle var type."));
   }
 }
+
+popart::DataType OnnxDtype2PopartType(int type) {
+  auto dtype = static_cast<ONNXDataType>(type);
+  switch (dtype) {
+    case ONNXDataType::BOOL:
+      return popart::DataType::BOOL;
+    case ONNXDataType::INT16:
+      return popart::DataType::INT16;
+    case ONNXDataType::INT32:
+      return popart::DataType::INT32;
+    case ONNXDataType::INT64:
+      return popart::DataType::INT64;
+    case ONNXDataType::FLOAT16:
+      return popart::DataType::FLOAT16;
+    case ONNXDataType::FLOAT:
+      return popart::DataType::FLOAT;
+    case ONNXDataType::DOUBLE:
+      return popart::DataType::DOUBLE;
+    case ONNXDataType::UINT8:
+      return popart::DataType::UINT8;
+    case ONNXDataType::INT8:
+      return popart::DataType::INT8;
+    case ONNXDataType::BFLOAT16:
+      return popart::DataType::BFLOAT16;
+    case ONNXDataType::COMPLEX64:
+      return popart::DataType::COMPLEX64;
+    case ONNXDataType::COMPLEX128:
+      return popart::DataType::COMPLEX128;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported ONNX data type: %d.", dtype));
+  }
+}
+
 // count num should > 0
 bool GetBoolEnv(std::string str) {
   char *str_val = getenv(str.c_str());

@@ -26,7 +26,30 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
+// onnx dtype
+// https://github.com/onnx/onnx/blob/master/onnx/onnx-ml.proto3
+enum ONNXDataType : int {
+  UNDEFINED = 0,
+  FLOAT = 1,
+  UINT8 = 2,
+  INT8 = 3,
+  UINT16 = 4,
+  INT16 = 5,
+  INT32 = 6,
+  INT64 = 7,
+  STRING = 8,
+  BOOL = 9,
+  FLOAT16 = 10,
+  DOUBLE = 11,
+  UINT32 = 12,
+  UINT64 = 13,
+  COMPLEX64 = 14,
+  COMPLEX128 = 15,
+  BFLOAT16 = 16
+};
+
 popart::DataType VarType2PopartType(proto::VarType::Type type);
+popart::DataType OnnxDtype2PopartType(int type);
 bool GetBoolEnv(std::string str);
 
 template <typename T>

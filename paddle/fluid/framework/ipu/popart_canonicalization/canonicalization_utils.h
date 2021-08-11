@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/ipu/ipu_utils.h"
 
 namespace paddle {
 namespace framework {

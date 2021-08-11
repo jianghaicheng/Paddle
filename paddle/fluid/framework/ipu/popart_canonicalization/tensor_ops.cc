@@ -23,18 +23,43 @@ namespace {
 ir::Node *fill_constant_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
   auto op_desc = std::make_unique<framework::OpDesc>();
-  op_desc->SetType("ConstantOfShape");
-
+  op_desc->SetType("Constant");
+  if (!op->Input("ShapeTensor").empty()) {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("op fill_constant with ShapeTensor"));
+  }
   std::vector<std::string> outputs;
   outputs.push_back(op->Output("Out").front());
   op_desc->SetOutput("__outputs__", outputs);
 
-  auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
-  op_desc->SetAttr("shape", shape);
   auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
   auto dtype = ConvertDataType(dtype_);
   op_desc->SetAttr("dtype", dtype);
-  auto value = BOOST_GET_CONST(float, op->GetAttr("value"));
+  auto dims = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
+  op_desc->SetAttr("dims", dims);
+  auto value_ = BOOST_GET_CONST(float, op->GetAttr("value"));
+  size_t size = 1;
+  for (auto &dim : dims) {
+    size *= dim;
+  }
+  Attribute value;
+  switch (dtype_) {
+    case proto::VarType::FP32:
+      value = std::vector<float>(size, value_);
+      break;
+    case proto::VarType::FP64:
+      value = std::vector<double>(size, value_);
+      break;
+    case proto::VarType::INT32:
+      value = std::vector<int>(size, value_);
+      break;
+    case proto::VarType::INT64:
+      value = std::vector<int64_t>(size, value_);
+      break;
+    default:
+      PADDLE_THROW(
+          platform::errors::Unimplemented("fill_constant dtype: %d", dtype_));
+  }
   op_desc->SetAttr("value", value);
 
   op_desc->Flush();
