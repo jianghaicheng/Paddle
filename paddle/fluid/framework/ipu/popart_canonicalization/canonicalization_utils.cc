@@ -18,7 +18,6 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
-
 // This avoids the static initialisation order fiasco,
 std::unordered_map<std::string, SymbolHandler> &SymbolHandlers() {
   static std::unordered_map<std::string, SymbolHandler> symbol_handlers;
@@ -78,6 +77,17 @@ void MoveNodeOutputs(ir::Node *node, ir::Node *new_node) {
 void ConnectNodes(ir::Node *first_node, ir::Node *next_node) {
   first_node->outputs.push_back(next_node);
   next_node->inputs.push_back(first_node);
+}
+
+void CopyOpAttr(std::string attr_name, OpDesc *op, OpDesc *new_op,
+                bool override) {
+  if (new_op->HasAttr(attr_name) && !override) {
+    return;
+  }
+  if (op->HasAttr(attr_name)) {
+    new_op->SetAttr(attr_name, op->GetAttr(attr_name));
+    new_op->Flush();
+  }
 }
 
 int ConvertDataType(int type) {

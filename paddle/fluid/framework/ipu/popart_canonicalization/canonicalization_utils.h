@@ -18,10 +18,10 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/ipu/ipu_utils.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/framework/ipu/ipu_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -42,6 +42,8 @@ SymbolHandler GetHandler(const std::string &);
 void MoveNodeInputs(ir::Node *node, ir::Node *new_node);
 void MoveNodeOutputs(ir::Node *node, ir::Node *new_node);
 void ConnectNodes(ir::Node *first_node, ir::Node *next_node);
+void CopyOpAttr(std::string attr_name, OpDesc *op, OpDesc *new_op,
+                bool override = false);
 
 int ConvertDataType(int);
 

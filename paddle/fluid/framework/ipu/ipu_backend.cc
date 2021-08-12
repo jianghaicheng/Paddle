@@ -327,6 +327,11 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       popart::TensorId result = builder_->aiOnnxOpset11().conv(
           inputs, dilations, group, {}, pads, strides);
       tensors_.emplace(outputs[0], result);
+    } else if (op_type == "MatMul") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      popart::TensorId result = builder_->aiOnnxOpset11().matmul(inputs);
+      tensors_.emplace(outputs[0], result);
     } else if (op_type == "ReduceMean") {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");
@@ -338,10 +343,88 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       popart::TensorId result =
           builder_->aiOnnxOpset11().reducemean(inputs, axes, keepdims);
       tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Softmax") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto axis = BOOST_GET_CONST(int64_t, op->GetAttr("axis"));
+      popart::TensorId result = builder_->aiOnnxOpset11().softmax(inputs, axis);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Sum") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      popart::TensorId result = builder_->aiOnnxOpset11().sum(inputs);
+      tensors_.emplace(outputs[0], result);
     } else if (op_type == "Pow") {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");
       popart::TensorId result = builder_->aiOnnxOpset11().pow(inputs);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Relu") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto result = builder_->aiOnnxOpset11().relu(inputs);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "BatchNormalization") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      // num_outputs training mode 5, inference mode 1
+      auto num_outputs = ipu_build_strategy_->is_training_ ? 5 : 1;
+      auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
+      auto momentum = BOOST_GET_CONST(float, op->GetAttr("momentum"));
+      auto result = builder_->aiOnnxOpset11().batchnormalization(
+          inputs, num_outputs, epsilon, momentum);
+      for (int i = 0; i < num_outputs; i++) {
+        tensors_.emplace(outputs[i], result[i]);
+      }
+    } else if (op_type == "GroupNorm") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
+      auto groups = BOOST_GET_CONST(int64_t, op->GetAttr("groups"));
+      std::vector<popart::TensorId> result =
+          builder_->aiGraphcoreOpset1().groupnormalization(inputs, groups,
+                                                           epsilon);
+      // Y
+      tensors_.emplace(outputs[0], result[0]);
+      // Mean
+      tensors_.emplace(outputs[1], result[1]);
+      // Variance
+      tensors_.emplace(outputs[2], result[2]);
+    } else if (op_type == "MaxPool") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      // popart have only one output.
+      auto kernel_shape =
+          BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("kernel_shape"));
+      auto ceil_mode = BOOST_GET_CONST(bool, op->GetAttr("ceil_mode"));
+
+      auto paddings =
+          BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("paddings"));
+      auto storage_order = BOOST_GET_CONST(int, op->GetAttr("storage_order"));
+      auto strides =
+          BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("strides"));
+      auto result = builder_->aiOnnxOpset11().maxpool(inputs, 1, kernel_shape,
+                                                      ceil_mode, {}, paddings,
+                                                      storage_order, strides);
+      tensors_.emplace(outputs[0], result[0]);
+    } else if (op_type == "AveragePool") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      // popart have only one output.
+      auto kernel_shape =
+          BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("kernel_shape"));
+      auto ceil_mode = BOOST_GET_CONST(bool, op->GetAttr("ceil_mode"));
+
+      auto paddings =
+          BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("paddings"));
+      auto strides =
+          BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("strides"));
+      auto count_include_pad =
+          BOOST_GET_CONST(int, op->GetAttr("count_include_pad"));
+      auto result = builder_->aiOnnxOpset11().averagepool(
+          inputs, kernel_shape, ceil_mode, count_include_pad, paddings,
+          strides);
+
       tensors_.emplace(outputs[0], result);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented("Unimplemented op type %s.",

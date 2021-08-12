@@ -53,6 +53,9 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
       if (new_node->outputs.empty()) {
         ipu::MoveNodeOutputs(node, new_node);
       }
+      if (!new_node->Op()->HasAttr("ipu_index")) {
+        ipu::CopyOpAttr("ipu_index", node->Op(), new_node->Op());
+      }
       graph->RemoveNode(node);
     }
   }

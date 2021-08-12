@@ -266,7 +266,7 @@ bool AnalysisPredictor::CreateExecutor() {
     }
   } else if (config_.use_ipu()){
 #ifdef PADDLE_WITH_IPU
-      place_ = paddle::platform::IPUPlace();
+      place_ = paddle::platform::IPUPlace(config_.ipu_device_id());
 #else
       PADDLE_THROW(platform::errors::Unavailable(
           "You tried to use IPU forward propagation (inference without lite "
@@ -557,6 +557,7 @@ void AnalysisPredictor::PrepareArgument() {
 
 #ifdef PADDLE_WITH_IPU
     argument_.SetUseIpu(config_.use_ipu_);
+    argument_.SetIPUDeviceId(config_.ipu_device_id());
 #endif
 
   if (config_.use_mkldnn_) {

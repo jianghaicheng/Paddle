@@ -36,6 +36,9 @@ PassStrategy *AnalysisConfig::pass_builder() const {
       pass_builder_.reset(new GpuPassStrategy);
     } else if (use_xpu_) {
       pass_builder_.reset(new XpuPassStrategy);
+    } else if (use_ipu_) {
+      LOG(INFO) << "Create IPU IR passes";
+      pass_builder_.reset(new IpuPassStrategy);
     } else {
       LOG(INFO) << "Create CPU IR passes";
       pass_builder_.reset(new CpuPassStrategy);
@@ -110,8 +113,9 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
   Update();
 }
 
-void AnalysisConfig::EnableIpu() {
+void AnalysisConfig::EnableIpu(int device_id) {
   use_ipu_ = true;
+  ipu_device_id_ = device_id;
   Update();
 }
 
@@ -200,6 +204,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // ipu related
   CP_MEMBER(use_ipu_);
+  CP_MEMBER(ipu_device_id_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_, false,
@@ -387,7 +392,8 @@ void AnalysisConfig::Update() {
   if (info == serialized_info_cache_) return;
 
   // Transfer pass_builder and copy the existing compatible passes.
-  if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu()))) {
+  if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
+      ((use_ipu() ^ pass_builder_->use_ipu()))) {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy);
 
@@ -524,8 +530,8 @@ void AnalysisConfig::Update() {
   if (use_ipu_) {
 #ifndef PADDLE_WITH_IPU
     PADDLE_THROW(platform::errors::Unavailable(
-                          "You tried to enable the ipu "
-                          "but did not have the option -DWITH_IPU compiled."));
+        "You tried to enable the ipu "
+        "but did not have the option -DWITH_IPU compiled."));
 #endif
   }
 
@@ -596,6 +602,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << thread_local_stream_;
 
   ss << use_ipu_;
+  ss << ipu_device_id_;
 
   return ss.str();
 }

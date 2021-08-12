@@ -106,9 +106,63 @@ ir::Node *pow_handler(ir::Graph *graph, ir::Node *node) {
   return node_pow;
 }
 
+ir::Node *mul_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  auto op_desc = std::make_unique<framework::OpDesc>();
+  op_desc->SetType("MatMul");
+
+  std::vector<std::string> inputs;
+  inputs.push_back(op->Input("X").front());
+  inputs.push_back(op->Input("Y").front());
+  op_desc->SetInput("__inputs__", inputs);
+  std::vector<std::string> outputs;
+  outputs.push_back(op->Output("Out").front());
+  op_desc->SetOutput("__outputs__", outputs);
+
+  op_desc->Flush();
+  return graph->CreateOpNode(op_desc.get());
+}
+
+ir::Node *sum_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  auto op_desc = std::make_unique<framework::OpDesc>();
+  op_desc->SetType("Sum");
+
+  op_desc->SetInput("__inputs__", op->Input("X"));
+  std::vector<std::string> outputs;
+  outputs.push_back(op->Output("Out").front());
+  op_desc->SetOutput("__outputs__", outputs);
+
+  op_desc->Flush();
+  return graph->CreateOpNode(op_desc.get());
+}
+
+ir::Node *softmax_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  auto op_desc = std::make_unique<framework::OpDesc>();
+  op_desc->SetType("Softmax");
+
+  std::vector<std::string> inputs;
+  inputs.push_back(op->Input("X").front());
+  op_desc->SetInput("__inputs__", inputs);
+  std::vector<std::string> outputs;
+  outputs.push_back(op->Output("Out").front());
+  op_desc->SetOutput("__outputs__", outputs);
+
+  auto axis_ = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  auto axis = int64_t{axis_};
+  op_desc->SetAttr("axis", axis);
+
+  op_desc->Flush();
+  return graph->CreateOpNode(op_desc.get());
+}
+
 REGISTER_HANDLER(elementwise_add, elementwise_add_handler);
 REGISTER_HANDLER(reduce_mean, reduce_mean_handler);
 REGISTER_HANDLER(pow, pow_handler);
+REGISTER_HANDLER(mul, mul_handler);
+REGISTER_HANDLER(sum, sum_handler);
+REGISTER_HANDLER(softmax, softmax_handler);
 
 }  // namespace
 }  // namespace ipu
