@@ -53,16 +53,6 @@ ernie_config = {
 }
 
 
-@contextmanager
-def ipu_shard(index):
-    yield
-    main_prog = paddle.static.default_main_program()
-    for op in main_prog.global_block().ops:
-        if not op.desc.has_attr("ipu_index"):
-            # Access to a protected member _set_attr of a client class
-            op.desc._set_attr("ipu_index", index)
-
-
 def gelu(x):
     """Gaussian Error Linear Unit.
 
@@ -506,11 +496,11 @@ class ErnieModel(object):
         self.src_ids = src_ids
         self.sentence_ids = sentence_ids
 
-        with ipu_shard(0):
+        with fluid.ipu_shard(0):
             self.position_ids = self._build_position_ids()  # position_ids
             self.input_mask = self._build_input_mask()  # input mask
 
-        with ipu_shard(1):
+        with fluid.ipu_shard(1):
             self._build_model()
 
     def _build_model(self, emb=None):
@@ -771,7 +761,7 @@ if __name__ == "__main__":
     ernie = ErnieModel(src_ids, sent_ids, ernie_config)
     fetch_node = ernie.get_sequence_output()
     if args.is_training:
-        with ipu_shard(2):
+        with fluid.ipu_shard(2):
             _, mean_mask_lm_loss = ernie.get_lm_output(mask_label, mask_pos)
             fetch_node = mean_mask_lm_loss
             adam = paddle.optimizer.Adam(learning_rate=1e-2)
@@ -839,6 +829,9 @@ if __name__ == "__main__":
     if args.export_ipu_idx:
         op_ipu_idx_list = []
         for op in main_prog.global_block().ops:
+            if op._is_backward_op():
+                continue
+
             op_ipu_idx_pair = [op.desc.type()]
             if op.desc.has_attr("ipu_index"):
                 op_ipu_idx_pair.append(op.desc.attr("ipu_index"))

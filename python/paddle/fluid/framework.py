@@ -46,6 +46,7 @@ __all__ = [
     'default_main_program',
     'program_guard',
     'name_scope',
+    'ipu_shard',
     'cuda_places',
     'cpu_places',
     'xpu_places',
@@ -71,6 +72,20 @@ _dygraph_tracer_ = None
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
+
+global_ipu_index = 0
+ipu_index_attr_name = 'ipu_index'
+
+
+@signature_safe_contextmanager
+def ipu_shard(ipu_index):
+    global global_ipu_index
+    prev_ipu_index = global_ipu_index
+    global_ipu_index = ipu_index
+    try:
+        yield
+    finally:
+        global_ipu_index = prev_ipu_index
 
 
 def require_version(min_version, max_version=None):
@@ -2436,6 +2451,10 @@ class Operator(object):
                         continue
                     attr_val = op_attrs[attr_name]
                     self._update_desc_attr(attr_name, attr_val)
+
+            # proto.attrs doesn't include ipu_index
+            if core.is_compiled_with_ipu():
+                self._update_desc_attr(ipu_index_attr_name, global_ipu_index)
 
             self.desc.check_attrs()
             if self._has_kernel(type):
@@ -6233,7 +6252,8 @@ def _get_paddle_place(place):
     if place is None:
         return place
     if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
-                          core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace, core.IPUPlace)):
+                          core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace,
+                          core.IPUPlace)):
         return place
 
     if not isinstance(place, str):
