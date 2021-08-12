@@ -32,11 +32,15 @@ class TestIpuShard(unittest.TestCase):
         b = a + 2  # scale : scale * x + bias, ipu_index : 0
 
         with paddle.fluid.ipu_shard(1):
-            c = b + 1  # scale, ipu_index : 1
+            c = b + 1               # scale, ipu_index : 1
             with paddle.fluid.ipu_shard(2):
-                d = c * 2  # scale, ipu_index : 2
+                d = c * 2           # scale, ipu_index : 2
             with paddle.fluid.ipu_shard(3):
-                e = d + 3  # cast + scale, ipu_index : 3
+                e = d + 3           # scale, ipu_index : 3
+                with paddle.fluid.ipu_shard(1):
+                    e = e + 3       # scale, ipu_index : 1
+                    with paddle.fluid.ipu_shard(2):
+                        e = e + 3   # scale, ipu_index : 2
 
         with paddle.fluid.ipu_shard(1):
             f = paddle.tensor.pow(e, 2.0)  # pow, ipu_index : 1
@@ -55,7 +59,7 @@ class TestIpuShard(unittest.TestCase):
 
     def test_ipu_shard(self):
         ipu_index_list = self._test()
-        expected_ipu_index_list = [0, 1, 2, 3, 1, 2, 0]
+        expected_ipu_index_list = [0, 1, 2, 3, 1, 2, 1, 2, 0]
         self.assertTrue(
             np.allclose(
                 ipu_index_list, expected_ipu_index_list, atol=0))
