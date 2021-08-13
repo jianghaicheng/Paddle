@@ -1,5 +1,6 @@
 set(POPART_CANONICALIZATION_SRC
     "popart_canonicalization/canonicalization_utils.cc"
+    "popart_canonicalization/op_builder.cc"
     "popart_canonicalization/activation_ops.cc"
     "popart_canonicalization/logic_ops.cc"
     "popart_canonicalization/math_ops.cc"
