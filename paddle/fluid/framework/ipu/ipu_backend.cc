@@ -138,7 +138,7 @@ void IpuBackend::Prepare() {
       platform::errors::Unavailable("IPU device isn't attached, please call "
                                     "IpuBackend::AttachDevice(id) first."));
 
-  if (ipu_build_strategy_ != nullptr && ipu_build_strategy_->is_training_) {
+  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training_) {
     VLOG(1) << "Creating TrainingSession from Onnx Model...";
     auto popart_optimizer = GetPopartOptimizer();
     auto it = tensors_.find(optimizer_.loss_);
@@ -368,7 +368,7 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");
       // num_outputs training mode 5, inference mode 1
-      auto num_outputs = ipu_build_strategy_->is_training_ ? 5 : 1;
+      auto num_outputs = ipu_strategy_->is_training_ ? 5 : 1;
       auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
       auto momentum = BOOST_GET_CONST(float, op->GetAttr("momentum"));
       auto result = builder_->aiOnnxOpset11().batchnormalization(

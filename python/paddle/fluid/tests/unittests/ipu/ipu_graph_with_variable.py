@@ -23,7 +23,7 @@ x = paddle.static.data(name='x', shape=[3, 4], dtype='float32')
 y = paddle.static.nn.fc(x=x, size=2, name='y')
 
 # 运行期：先运行一次startup program初始化网络参数，然后调用飞桨的Executor和CompiledProgram API运行网络。
-place = paddle.IPUPlace()  # 使用何种设备运行网络，IPUPlace表示使用IPU运行
+place = paddle.IPUPlace(0)  # 使用何种设备运行网络，IPUPlace表示使用IPU运行
 executor = paddle.static.Executor(place)  # 创建执行器
 compiled_program = paddle.static.CompiledProgram(
     paddle.static.default_startup_program())

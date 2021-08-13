@@ -489,14 +489,14 @@ class IpuCompiler(object):
     Args:
       program(framework.Program): This argument is the Program being executed.
       scope: This argument is the scope which contains model parameters.
-      ipu_build_strategy: This argument is used to build the program with the
+      ipu_strategy: This argument is used to build the program with the
           specified options, such as operators' replacement, dtype, etc.
 
     Returns:
       framework.Program
     """
 
-    def __init__(self, program, scope=None, ipu_build_strategy=None):
+    def __init__(self, program, scope=None, ipu_strategy=None):
         if not isinstance(program, framework.Program):
             raise TypeError(
                 "The type of program is wrong, expected Program, but got %s" %
@@ -513,14 +513,14 @@ class IpuCompiler(object):
         else:
             self._scope = paddle.static.global_scope()
 
-        if ipu_build_strategy is not None:
-            self._ipu_build_strategy = ipu_build_strategy
+        if ipu_strategy is not None:
+            self._ipu_strategy = ipu_strategy
         else:
-            self._ipu_build_strategy = get_ipu_build_strategy()
+            self._ipu_strategy = get_ipu_strategy()
 
         self._backend = core.IpuBackend()
         self._backend.set_scope(self._scope)
-        self._backend.set_ipu_build_strategy(self._ipu_build_strategy)
+        self._backend.set_ipu_strategy(self._ipu_strategy)
         self._graph_passes = [
             "optimizer_extract_pass", "forward_graph_extract_pass",
             "popart_canonicalization_pass"
@@ -550,17 +550,17 @@ class IpuCompiler(object):
         return program
 
 
-def get_ipu_build_strategy():
+def get_ipu_strategy():
     """
-    Create and return IpuBuildStrategy instance. We get IpuBuildStrategy from
-    python side, and the set by IpuBackend.set_ipu_build_strategy.
+    Create and return IpuStrategy instance. We get IpuStrategy from
+    python side, and the set by IpuBackend.set_ipu_strategy.
     """
     if not core.is_compiled_with_ipu():
         raise ValueError(
-            "Can't get ipu_build_strategy, since PaddlePaddle is not compiled" \
+            "Can't get ipu_strategy, since PaddlePaddle is not compiled" \
             " with IPU"
         )
 
-    ipu_build_strategy = core.IpuBuildStrategy()
+    ipu_strategy = core.IpuStrategy()
 
-    return ipu_build_strategy
+    return ipu_strategy

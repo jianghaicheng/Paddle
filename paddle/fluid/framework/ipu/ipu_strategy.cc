@@ -12,34 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/fluid/framework/ipu/ipu_strategy.h"
+#include "paddle/fluid/framework/ir/ipu/ipu_graph_builder_pass.h"
 
-#include <memory>
-#include <string>
-#include <unordered_set>
-#include <utility>
-#include <vector>
-
-#include <popart/sessionoptions.hpp>
-
-#include "boost/optional.hpp"
-#include "paddle/fluid/framework/ir/pass_builder.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
+#include <glog/logging.h>
+#include "paddle/fluid/framework/ir/graph_printer.h"
 
 namespace paddle {
 namespace framework {
-
-namespace ipu {
-
-struct IpuBuildStrategy {
-  bool is_training_ = true;
-  popart::SessionOptions popart_options_;
-};
-
-}  // namespace ipu
-
-}  // namespace framework
-}  // namespace paddle
+namespace ipu {}
+}
+}

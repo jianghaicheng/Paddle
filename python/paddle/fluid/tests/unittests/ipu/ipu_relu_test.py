@@ -52,12 +52,12 @@ class TestRelu(unittest.TestCase):
         if run_ipu:
             feed_list = [image.name]
             fetch_list = [out.name]
-            ipu_build_strategy = compiler.get_ipu_build_strategy()
-            ipu_build_strategy.is_training = False
+            ipu_strategy = compiler.get_ipu_strategy()
+            ipu_strategy.is_training = False
             print(main_prog)
             program = compiler.IpuCompiler(
-                main_prog, ipu_build_strategy=ipu_build_strategy).compile(
-                    feed_list, fetch_list)
+                main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
+                                                              fetch_list)
             print(program)
         else:
             program = main_prog
