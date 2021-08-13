@@ -120,11 +120,17 @@ std::unique_ptr<popart::Optimizer> IpuBackend::GetPopartOptimizer() {
 }
 
 void IpuBackend::Prepare() {
-  VLOG(1) << "Save Model to file paddle_model.onnx ...\n";
-  builder_->saveModelProto("paddle_model.onnx");
-
   VLOG(1) << "Get ModelProto ...\n";
   auto proto = builder_->getModelProto();
+
+  // for onnx graph debug
+  // std::ofstream onnxfile("paddle_model_no_check.onnx",
+  // std::ios_base::binary);
+  // onnxfile.write(proto.data(), proto.size());
+  // onnxfile.close();
+
+  VLOG(1) << "Save Model to file paddle_model.onnx ...\n";
+  builder_->saveModelProto("paddle_model.onnx");
 
   VLOG(1) << "Constructing DataFlow\n";
   std::vector<popart::TensorId> anchor_ids;
@@ -342,6 +348,11 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto keepdims = BOOST_GET_CONST(int64_t, op->GetAttr("keepdims"));
       popart::TensorId result =
           builder_->aiOnnxOpset11().reducemean(inputs, axes, keepdims);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Reshape") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      popart::TensorId result = builder_->aiOnnxOpset11().reshape(inputs);
       tensors_.emplace(outputs[0], result);
     } else if (op_type == "Softmax") {
       auto inputs = GetOpInputs(op);

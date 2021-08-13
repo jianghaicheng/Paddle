@@ -27,16 +27,17 @@ ir::Node *MakeOpNode(ir::Graph *graph, const std::string &type,
                      const std::vector<ir::Node *> &inputs,
                      const std::vector<ir::Node *> &outputs);
 
+Node *CreateBaseOp(ir::Graph *graph, const std::string &type,
+                   const std::vector<ir::Node *> &inputs,
+                   const std::vector<ir::Node *> &outputs,
+                   const AttributeMap &attrs = {});
+
 // TODO(alleng) make template
 AttributeMap MakeConstAttributeMap(float v, std::vector<int64_t> dims,
                                    int dtype);
 ir::Node *CreateConst(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
                       const std::vector<ir::Node *> &outputs,
                       const AttributeMap &attrs);
-
-ir::Node *CreatePow(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
-                    const std::vector<ir::Node *> &outputs,
-                    const AttributeMap &attrs);
 
 }  // namespace ipu
 }  // namespace framework

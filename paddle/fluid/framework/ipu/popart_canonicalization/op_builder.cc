@@ -70,6 +70,17 @@ ir::Node *MakeOpNode(ir::Graph *graph, const std::string &type,
   return op;
 }
 
+Node *CreateBaseOp(ir::Graph *graph, const std::string &type,
+                   const std::vector<ir::Node *> &inputs,
+                   const std::vector<ir::Node *> &outputs,
+                   const AttributeMap &attrs) {
+  auto node = MakeOpNode(graph, type, inputs, outputs);
+  if (!attrs.empty()) {
+    node->Op()->SetAttrMap(attrs);
+  }
+  return node;
+}
+
 AttributeMap MakeConstAttributeMap(float v, std::vector<int64_t> dims,
                                    int dtype) {
   size_t size = 1;
@@ -85,16 +96,7 @@ AttributeMap MakeConstAttributeMap(float v, std::vector<int64_t> dims,
 ir::Node *CreateConst(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
                       const std::vector<ir::Node *> &outputs,
                       const AttributeMap &attrs) {
-  auto node = MakeOpNode(graph, "Constant", {}, {});
-  node->Op()->SetAttrMap(attrs);
-  return node;
-}
-
-ir::Node *CreatePow(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
-                    const std::vector<ir::Node *> &outputs,
-                    const AttributeMap &attrs) {
-  auto node = MakeOpNode(graph, "Pow", inputs, outputs);
-  return node;
+  return CreateBaseOp(graph, "Constant", inputs, outputs, attrs);
 }
 
 }  // namespace ipu

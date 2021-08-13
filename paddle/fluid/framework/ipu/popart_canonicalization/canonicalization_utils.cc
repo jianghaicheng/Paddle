@@ -63,7 +63,6 @@ void ReplaceNodeInputs(ir::Node *node, ir::Node *new_node) {
   if (node->inputs.empty()) {
     return;
   }
-  new_node->inputs = node->inputs;
   for (auto *node_in : node->inputs) {
     for (size_t i = 0; i < node_in->outputs.size(); ++i) {
       if (node_in->outputs[i] == node) {
@@ -150,6 +149,16 @@ const int ConvertDataType(const int &type) {
       PADDLE_THROW(
           platform::errors::Unimplemented("Unsupported data type: %d.", dtype));
   }
+}
+
+Node *GetInputNode(const std::string &name, const Node *node) {
+  auto node_name = node->Op()->Input(name).front();
+  for (auto *n : node->inputs) {
+    if (n->Name() == node_name) {
+      return n;
+    }
+  }
+  return nullptr;
 }
 
 }  // namespace ipu

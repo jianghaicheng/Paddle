@@ -23,6 +23,10 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
+// TODO(alleng) remove ir::
+using ir::Graph;
+using ir::Node;
+
 #define REGISTER_HANDLER(name, func) \
   static bool __UNUSED_##name =      \
       paddle::framework::ipu::RegisterHandler(#name, func)
@@ -46,6 +50,8 @@ void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
                 bool override = false);
 
 const int ConvertDataType(const int &type);
+
+Node *GetInputNode(const std::string &name, const Node *node);
 
 }  // namespace ipu
 }  // namespace framework

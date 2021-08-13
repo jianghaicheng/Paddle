@@ -21,23 +21,6 @@ namespace framework {
 namespace ipu {
 namespace {
 
-ir::Node *elementwise_add_handler(ir::Graph *graph, ir::Node *node) {
-  auto *op = node->Op();
-  auto op_desc = std::make_unique<framework::OpDesc>();
-  op_desc->SetType("Add");
-
-  std::vector<std::string> inputs;
-  inputs.push_back(op->Input("X").front());
-  inputs.push_back(op->Input("Y").front());
-  op_desc->SetInput("__inputs__", inputs);
-  std::vector<std::string> outputs;
-  outputs.push_back(op->Output("Out").front());
-  op_desc->SetOutput("__outputs__", outputs);
-
-  op_desc->Flush();
-  return graph->CreateOpNode(op_desc.get());
-}
-
 ir::Node *reduce_mean_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
   auto op_desc = std::make_unique<framework::OpDesc>();
@@ -68,12 +51,10 @@ ir::Node *pow_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
   auto value_ = BOOST_GET_CONST(float, op->GetAttr("factor"));
   auto attrs = MakeConstAttributeMap(value_, {1}, ONNXDataType::FLOAT);
-  auto new_node_const = CreateConst(graph, {node}, {}, attrs);
-  ReplaceNodeOutputs(node, new_node_const);
-
-  auto new_node_pow =
-      CreatePow(graph, {node->inputs[0], new_node_const->outputs[0]},
-                {node->outputs[0]}, {});
+  auto new_node_const = CreateConst(graph, {}, {}, attrs);
+  auto new_node_pow = CreateBaseOp(
+      graph, "Pow", {GetInputNode("X", node), new_node_const->outputs[0]},
+      {node->outputs[0]});
   ReplaceNodeInputs(node, new_node_pow);
   return new_node_pow;
 }
@@ -129,7 +110,6 @@ ir::Node *softmax_handler(ir::Graph *graph, ir::Node *node) {
   return graph->CreateOpNode(op_desc.get());
 }
 
-REGISTER_HANDLER(elementwise_add, elementwise_add_handler);
 REGISTER_HANDLER(reduce_mean, reduce_mean_handler);
 REGISTER_HANDLER(pow, pow_handler);
 REGISTER_HANDLER(mul, mul_handler);

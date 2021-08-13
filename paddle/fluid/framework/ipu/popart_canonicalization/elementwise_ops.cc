@@ -1,0 +1,109 @@
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
+#include "paddle/fluid/framework/ipu/popart_canonicalization/op_builder.h"
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace framework {
+namespace ipu {
+namespace {
+
+ir::Node *elementwise_op_handler(ir::Graph *graph, ir::Node *node,
+                                 const std::string &type) {
+  auto *op = node->Op();
+  auto x_shape = op->Block()->FindVar(op->Input("X").front())->GetShape();
+  int64_t x_rank = x_shape.size();
+  auto y_shape = op->Block()->FindVar(op->Input("Y").front())->GetShape();
+  int64_t y_rank = y_shape.size();
+
+  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  if (axis == -1 || axis == x_rank - 1 || x_rank == y_rank) {
+    auto new_node = CreateBaseOp(
+        graph, type, {GetInputNode("X", node), GetInputNode("Y", node)},
+        node->outputs);
+    return new_node;
+  } else {
+    auto y_new_shape = std::vector<int64_t>(x_rank, 1);
+    for (int i = axis; i < axis + y_rank; ++i) {
+      y_new_shape[i] = y_shape[i - axis];
+    }
+    auto attrs = AttributeMap{
+        {"value", y_new_shape},
+        {"dims", std::vector<int64_t>{x_rank}},
+        {"dtype", ONNXDataType::INT64},
+    };
+    // constant
+    auto new_node_const = CreateConst(graph, {}, {}, attrs);
+    // reshape
+    auto new_node_reshape =
+        CreateBaseOp(graph, "Reshape",
+                     {GetInputNode("Y", node), new_node_const->outputs[0]}, {});
+    ReplaceNodeInputs(node, new_node_reshape);
+    // elementwise_op
+    auto new_node = CreateBaseOp(
+        graph, type, {GetInputNode("X", node), new_node_reshape->outputs[0]},
+        {node->outputs[0]});
+    ReplaceNodeInputs(node, new_node);
+    ReplaceNodeOutputs(node, new_node);
+    return new_node;
+  }
+}
+
+ir::Node *elementwise_add_handler(ir::Graph *graph, ir::Node *node) {
+  return elementwise_op_handler(graph, node, "Add");
+}
+
+ir::Node *elementwise_sub_handler(ir::Graph *graph, ir::Node *node) {
+  return elementwise_op_handler(graph, node, "Sub");
+}
+
+ir::Node *elementwise_div_handler(ir::Graph *graph, ir::Node *node) {
+  return elementwise_op_handler(graph, node, "Div");
+}
+
+ir::Node *elementwise_mul_handler(ir::Graph *graph, ir::Node *node) {
+  return elementwise_op_handler(graph, node, "Mul");
+}
+
+ir::Node *elementwise_min_handler(ir::Graph *graph, ir::Node *node) {
+  return elementwise_op_handler(graph, node, "Min");
+}
+
+ir::Node *elementwise_max_handler(ir::Graph *graph, ir::Node *node) {
+  return elementwise_op_handler(graph, node, "Max");
+}
+
+ir::Node *elementwise_pow_handler(ir::Graph *graph, ir::Node *node) {
+  return elementwise_op_handler(graph, node, "Pow");
+}
+
+ir::Node *elementwise_mod_handler(ir::Graph *graph, ir::Node *node) {
+  return elementwise_op_handler(graph, node, "Mod");
+}
+
+REGISTER_HANDLER(elementwise_add, elementwise_add_handler);
+REGISTER_HANDLER(elementwise_sub, elementwise_sub_handler);
+REGISTER_HANDLER(elementwise_div, elementwise_div_handler);
+REGISTER_HANDLER(elementwise_mul, elementwise_mul_handler);
+REGISTER_HANDLER(elementwise_min, elementwise_min_handler);
+REGISTER_HANDLER(elementwise_max, elementwise_max_handler);
+REGISTER_HANDLER(elementwise_pow, elementwise_pow_handler);
+REGISTER_HANDLER(elementwise_mod, elementwise_mod_handler);
+
+}  // namespace
+}  // namespace ipu
+}  // namespace framework
+}  // namespace paddle
