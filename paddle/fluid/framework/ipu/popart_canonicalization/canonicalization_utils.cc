@@ -59,6 +59,21 @@ void MoveNodeInputs(ir::Node *node, ir::Node *new_node) {
   }
 }
 
+void ReplaceNodeInputs(ir::Node *node, ir::Node *new_node) {
+  if (node->inputs.empty()) {
+    return;
+  }
+  new_node->inputs = node->inputs;
+  for (auto *node_in : node->inputs) {
+    for (size_t i = 0; i < node_in->outputs.size(); ++i) {
+      if (node_in->outputs[i] == node) {
+        node_in->outputs[i] = new_node;
+        break;
+      }
+    }
+  }
+}
+
 void MoveNodeOutputs(ir::Node *node, ir::Node *new_node) {
   if (node->outputs.empty()) {
     return;
@@ -74,12 +89,26 @@ void MoveNodeOutputs(ir::Node *node, ir::Node *new_node) {
   }
 }
 
+void ReplaceNodeOutputs(ir::Node *node, ir::Node *new_node) {
+  if (node->outputs.empty()) {
+    return;
+  }
+  for (auto *node_out : node->outputs) {
+    for (size_t i = 0; i < node_out->inputs.size(); ++i) {
+      if (node_out->inputs[i] == node) {
+        node_out->inputs[i] = new_node;
+        break;
+      }
+    }
+  }
+}
+
 void ConnectNodes(ir::Node *first_node, ir::Node *next_node) {
   first_node->outputs.push_back(next_node);
   next_node->inputs.push_back(first_node);
 }
 
-void CopyOpAttr(std::string attr_name, OpDesc *op, OpDesc *new_op,
+void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
                 bool override) {
   if (new_op->HasAttr(attr_name) && !override) {
     return;
@@ -90,7 +119,7 @@ void CopyOpAttr(std::string attr_name, OpDesc *op, OpDesc *new_op,
   }
 }
 
-int ConvertDataType(int type) {
+const int ConvertDataType(const int &type) {
   auto dtype = static_cast<proto::VarType::Type>(type);
   switch (dtype) {
     case proto::VarType::BOOL:

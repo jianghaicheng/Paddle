@@ -14,10 +14,6 @@
 
 #pragma once
 
-#include <functional>
-#include <string>
-#include <vector>
-
 #include "paddle/fluid/framework/ipu/ipu_utils.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
@@ -39,13 +35,17 @@ bool RegisterHandler(const std::string &, const SymbolHandler &);
 
 SymbolHandler GetHandler(const std::string &);
 
+// TODO(alleng) remove these func
 void MoveNodeInputs(ir::Node *node, ir::Node *new_node);
 void MoveNodeOutputs(ir::Node *node, ir::Node *new_node);
+
+void ReplaceNodeInputs(ir::Node *node, ir::Node *new_node);
+void ReplaceNodeOutputs(ir::Node *node, ir::Node *new_node);
 void ConnectNodes(ir::Node *first_node, ir::Node *next_node);
-void CopyOpAttr(std::string attr_name, OpDesc *op, OpDesc *new_op,
+void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
                 bool override = false);
 
-int ConvertDataType(int);
+const int ConvertDataType(const int &type);
 
 }  // namespace ipu
 }  // namespace framework
