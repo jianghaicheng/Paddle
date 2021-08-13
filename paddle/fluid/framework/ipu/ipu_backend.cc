@@ -530,8 +530,12 @@ void IpuBackend::AttachDevice(int id) {
 }
 
 IpuBackend::~IpuBackend() {
+  if (instance_ == nullptr) {
+    return;
+  }
+
   // detach device
-  if (curr_device_->isAttached()) {
+  if (curr_device_ != nullptr && curr_device_->isAttached()) {
     curr_device_->detach();
   }
 }
