@@ -24,7 +24,7 @@ a = paddle.static.data(name='a', shape=[1], dtype='float32')
 b = paddle.static.data(name='b', shape=[1], dtype='float32')
 c = a + b
 
-place = paddle.IPUPlace(0)
+place = paddle.IPUPlace()
 executor = paddle.static.Executor(place)
 
 print("------------------------")
@@ -40,8 +40,13 @@ print(main_prog._to_readable_code())
 
 feed_list = ['a', 'b']
 fetch_list = ['tmp_0']
-program = compiler.IpuCompiler(main_prog).compile(feed_list, fetch_list)
+# program = compiler.IpuCompiler(main_prog).compile(feed_list, fetch_list)
+ipu_strategy = compiler.get_ipu_strategy()
+ipu_strategy.is_training = False
+ipu_strategy.num_ipus = 1
 
+program = compiler.IpuCompiler(
+    main_prog, ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
 print("Program to run:")
 print(program._to_readable_code())
 

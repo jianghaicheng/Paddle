@@ -56,7 +56,7 @@ class TestPoolNet(unittest.TestCase):
         print(main_prog._to_readable_code())
 
         if run_ipu:
-            place = paddle.IPUPlace(0)
+            place = paddle.IPUPlace()
         else:
             place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)

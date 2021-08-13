@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     # switch cpu/ipu place
     if run_on_ipu:
-        place = paddle.IPUPlace(0)
+        place = paddle.IPUPlace()
     else:
         place = paddle.CPUPlace()
     executor = paddle.static.Executor(place)

@@ -43,7 +43,7 @@ class TestRelu(unittest.TestCase):
             out = paddle.nn.functional.relu(image)
 
         if run_ipu:
-            place = paddle.IPUPlace(0)
+            place = paddle.IPUPlace()
         else:
             place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)

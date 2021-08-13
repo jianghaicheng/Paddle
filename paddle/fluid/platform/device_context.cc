@@ -86,8 +86,9 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   if (it == device_contexts_.end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Place %s is not supported. Please check that your paddle compiles "
-        "with WITH_GPU, WITH_XPU, IPU or WITH_ASCEND_CL option or check that "
-        "your train process set the correct device id if you use Executor.",
+        "with WITH_GPU, WITH_XPU, WITH_IPU or WITH_ASCEND_CL option or check "
+        "that your train process set the correct device id if you use "
+        "Executor.",
         place));
   }
   return it->second.get().get();
@@ -187,17 +188,18 @@ Place CPUDeviceContext::GetPlace() const { return place_; }
 // TODO(Cheng) get current device
 IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {
   int id = place.GetDeviceId();
-  std::shared_ptr<framework::ipu::IpuBackend> ipu_backend = framework::ipu::IpuBackend::GetInstance();
+  std::shared_ptr<framework::ipu::IpuBackend> ipu_backend =
+      framework::ipu::IpuBackend::GetInstance();
   device_ = ipu_backend->GetDevice(id);
 }
 
 Place IPUDeviceContext::GetPlace() const { return place_; }
 // TODO(Cheng) need to imp
 void IPUDeviceContext::Wait() const {
-    /*! \brief  Wait for all operations completion in the stream. */
+  /*! \brief  Wait for all operations completion in the stream. */
 }
 
-IPUDeviceContext::~IPUDeviceContext(){}
+IPUDeviceContext::~IPUDeviceContext() {}
 
 #endif
 #ifdef PADDLE_WITH_XPU

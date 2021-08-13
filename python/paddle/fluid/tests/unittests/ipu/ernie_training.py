@@ -769,7 +769,7 @@ if __name__ == "__main__":
 
     # place = paddle.CPUPlace()
     if args.run_on_ipu:
-        place = paddle.IPUPlace(0)
+        place = paddle.IPUPlace()
     else:
         place = paddle.CPUPlace()
     executor = paddle.static.Executor(place)

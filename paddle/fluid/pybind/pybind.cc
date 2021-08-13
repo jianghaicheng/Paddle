@@ -1828,40 +1828,25 @@ All parameter, weight, gradient are variables in Paddle.
 
         )DOC")
       .def("__init__",
-           [](platform::IPUPlace &self, int dev_id) {
+           [](platform::IPUPlace &self) {
 #ifdef PADDLE_WITH_IPU
-             if (UNLIKELY(dev_id < 0)) {
-               LOG(ERROR) << string::Sprintf(
-                   "Invalid IPUPlace(%d), device id must be 0 or "
-                   "positive integer",
-                   dev_id);
+             if (platform::GetIPUDeviceCount() == 0) {
+               LOG(ERROR) << "Cannot use IPU because there is no IPU "
+                             "detected on your "
+                             "machine.";
                std::exit(-1);
              }
-             if (UNLIKELY(dev_id >= platform::GetIPUDeviceCount())) {
-               if (platform::GetIPUDeviceCount() == 0) {
-                 LOG(ERROR) << "Cannot use IPU because there is no IPU "
-                               "detected on your "
-                               "machine.";
-                 std::exit(-1);
-               } else {
-                 LOG(ERROR) << string::Sprintf(
-                     "Invalid IPUPlace(%d), must inside [0, %d), because IPU "
-                     "number on your machine is %d",
-                     dev_id, platform::GetIPUDeviceCount(),
-                     platform::GetIPUDeviceCount());
-                 std::exit(-1);
-               }
-             }
-             new (&self) platform::IPUPlace(dev_id);
+             // use ipu(0) to comile, while run with the number user configure
+             // in sharding and pipline.
+             new (&self) platform::IPUPlace(0);
 #else
              LOG(ERROR) << string::Sprintf(
                  "Cannot use IPU because you didn't install IPU version "
                  "PaddlePaddle.\n"
                  "If you want to use IPU, please try to install IPU version "
-                 "PaddlePaddle by: pip install paddlepaddle-ipu\n"
-                 "If you only have CPU, please change IPUPlace(%d) to be "
-                 "CPUPlace().\n",
-                 dev_id);
+                 "PaddlePaddle by: pip install paddlepaddle*\n"
+                 "If you only have CPU, please change IPUPlace to be "
+                 "CPUPlace().\n", );
              std::exit(-1);
 #endif
            })

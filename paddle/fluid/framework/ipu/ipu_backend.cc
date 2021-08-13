@@ -432,6 +432,18 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
     }
   }
 }
+// ipu_num_ must be pow(2,n);
+int IpuBackend::UpperIpuNum() {
+  PADDLE_ENFORCE_GT(ipu_strategy_->num_ipus_, 0,
+                    platform::errors::Unavailable(
+                        "The ipu num get is wrong, please make sure the "
+                        "sharding or pipline parameter is right."));
+  int i = 0;
+  while (pow(2, i) < ipu_strategy_->num_ipus_) {
+    i++;
+  }
+  return pow(2, i);
+}
 
 size_t IpuBackend::GetNumDevices() {
   // IpuModel
@@ -491,17 +503,27 @@ Device IpuBackend::GetDevice(int id) {
 }
 
 void IpuBackend::AttachDevice(int id) {
+  // trick here
+  // compile ipu is not same as the runtime ipu.
+  VLOG(1) << "comile ipu id = " << id;
   bool ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
   if (ipu_model) {
     return;
   }
   curr_device_ =
-      popart::DeviceManager::createDeviceManager().acquireDeviceById(id);
+      popart::DeviceManager::createDeviceManager().acquireAvailableDevice(
+          UpperIpuNum());
   PADDLE_ENFORCE_NOT_NULL(
-      curr_device_,
-      platform::errors::Unavailable("Can't attach IPU device id = %d.", id));
+      curr_device_, platform::errors::Unavailable(
+                        "Can't attach IPU, ipu_num = %d.", UpperIpuNum()));
 }
 
+IpuBackend::~IpuBackend() {
+  // detach device
+  if (curr_device_->isAttached()) {
+    curr_device_->detach();
+  }
+}
 bool IpuBackend::DeviceIsAttached() { return curr_device_ != nullptr; }
 
 }  // namespace ipu

@@ -53,6 +53,7 @@ struct Optimizer {
 class IpuBackend {
  public:
   IpuBackend();
+  ~IpuBackend();
 
   void Compile(ir::Graph *graph, const std::vector<std::string> &feed_list,
                const std::vector<std::string> &fetch_list);
@@ -91,6 +92,7 @@ class IpuBackend {
   void SetIpuStrategy(const IpuStrategy &strategy) {
     ipu_strategy_ = &strategy;
   }
+  int UpperIpuNum();
   size_t GetNumDevices();
   std::vector<int> GetDeviceIds();
   Device GetDevice(int id);

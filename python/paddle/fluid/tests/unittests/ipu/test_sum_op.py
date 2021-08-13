@@ -44,7 +44,7 @@ class TestSum(unittest.TestCase):
             out = paddle.fluid.layers.sum([a, b, c])
 
         if run_ipu:
-            place = paddle.IPUPlace(0)
+            place = paddle.IPUPlace()
         else:
             place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
