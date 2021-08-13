@@ -3218,11 +3218,34 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::ipu::IpuStrategy>(m, "IpuStrategy")
       .def(py::init())
       .def_property(
+          "num_ipus",
+          [](const ipu::IpuStrategy &self) { return self.num_ipus_; },
+          [](ipu::IpuStrategy &self, int num_ipus) {
+            self.num_ipus_ = num_ipus;
+          },
+          R"DOC(
+            Int type, set the number ipu we need. Default 1.
+          )DOC")
+      .def_property(
           "is_training",
           [](const ipu::IpuStrategy &self) { return self.is_training_; },
           [](ipu::IpuStrategy &self, bool is_training) {
             self.is_training_ = is_training;
-          });
+          },
+          R"DOC(
+            Bool type, True for training, False inference. Default True.
+          )DOC")
+      .def_property(
+          "enable_pipelining",
+          [](const ipu::IpuStrategy &self) {
+            return self.popart_options_.enablePipelining;
+          },
+          [](ipu::IpuStrategy &self, bool enable_pipelining) {
+            self.popart_options_.enablePipelining = enable_pipelining;
+          },
+          R"DOC(
+            Bool type, True enable pipeline, otherwise disable. Default False.
+          )DOC");
 #endif
 
   BindFleetWrapper(&m);
