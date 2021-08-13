@@ -35,6 +35,7 @@ namespace framework {
 namespace ipu {
 
 struct IpuStrategy {
+  int num_ipus_ = 1;
   bool is_training_ = true;
   popart::SessionOptions popart_options_;
 };
