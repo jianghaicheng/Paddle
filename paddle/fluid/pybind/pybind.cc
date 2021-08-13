@@ -3208,19 +3208,19 @@ All parameter, weight, gradient are variables in Paddle.
       .def("device_count", &ParallelExecutor::DeviceCount);
 
 #ifdef PADDLE_WITH_IPU
-  py::class_<framework::ipu::IpuBackend, std::shared_ptr<framework::ipu::IpuBackend>>(
-      m, "IpuBackend")
+  py::class_<framework::ipu::IpuBackend,
+             std::shared_ptr<framework::ipu::IpuBackend>>(m, "IpuBackend")
       .def(py::init(&ipu::IpuBackend::GetInstance))
       .def("set_scope", &ipu::IpuBackend::SetScope)
-      .def("set_ipu_build_strategy", &ipu::IpuBackend::SetIpuBuildStrategy);
+      .def("set_ipu_strategy", &ipu::IpuBackend::SetIpuStrategy);
 
   // TODO(xiaobingw): maybe refactor at future
-  py::class_<framework::ipu::IpuBuildStrategy>(m, "IpuBuildStrategy")
+  py::class_<framework::ipu::IpuStrategy>(m, "IpuStrategy")
       .def(py::init())
       .def_property(
           "is_training",
-          [](const ipu::IpuBuildStrategy &self) { return self.is_training_; },
-          [](ipu::IpuBuildStrategy &self, bool is_training) {
+          [](const ipu::IpuStrategy &self) { return self.is_training_; },
+          [](ipu::IpuStrategy &self, bool is_training) {
             self.is_training_ = is_training;
           });
 #endif

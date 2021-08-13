@@ -787,9 +787,9 @@ if __name__ == "__main__":
     main_prog = paddle.static.default_main_program()
 
     if args.run_on_ipu:
-        ipu_build_strategy = compiler.get_ipu_build_strategy()
+        ipu_strategy = compiler.get_ipu_strategy()
         ipu_compiler = compiler.IpuCompiler(
-            main_prog, ipu_build_strategy=ipu_build_strategy)
+            main_prog, ipu_strategy=ipu_strategy)
         program = ipu_compiler.compile(feed_list, fetch_list)
     else:
         program = main_prog
