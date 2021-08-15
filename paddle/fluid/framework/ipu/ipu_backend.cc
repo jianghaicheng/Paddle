@@ -375,6 +375,16 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto outputs = op->Output("__outputs__");
       auto result = builder_->aiOnnxOpset11().relu(inputs);
       tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Tanh") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto result = builder_->aiOnnxOpset11().tanh(inputs);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Gelu") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto result = builder_->aiGraphcoreOpset1().gelu(inputs);
+      tensors_.emplace(outputs[0], result);
     } else if (op_type == "BatchNormalization") {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
+#include "paddle/fluid/framework/ipu/popart_canonicalization/op_builder.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -20,20 +21,45 @@ namespace framework {
 namespace ipu {
 namespace {
 
-ir::Node *relu_handler(ir::Graph *graph, ir::Node *node) {
-  auto *op = node->Op();
-  auto op_desc = std::make_unique<framework::OpDesc>();
-  op_desc->SetType("Relu");
-  std::vector<std::string> inputs;
-  inputs.push_back(op->Input("X").front());
-  op_desc->SetInput("__inputs__", inputs);
-  std::vector<std::string> outputs;
-  outputs.push_back(op->Output("Out").front());
-  op_desc->SetOutput("__outputs__", outputs);
-  op_desc->Flush();
-  return graph->CreateOpNode(op_desc.get());
+ir::Node *activation_op_handler(ir::Graph *graph, ir::Node *node,
+                                const std::string &type) {
+  auto new_node =
+      CreateBaseOp(graph, type, {GetInputNode("X", node)}, node->outputs);
+  ReplaceNodeInputs(node, new_node);
+  ReplaceNodeOutputs(node, new_node);
+  return new_node;
 }
+
+ir::Node *relu_handler(ir::Graph *graph, ir::Node *node) {
+  return activation_op_handler(graph, node, "Relu");
+}
+
+ir::Node *tanh_handler(ir::Graph *graph, ir::Node *node) {
+  return activation_op_handler(graph, node, "Tanh");
+}
+
+ir::Node *log_handler(ir::Graph *graph, ir::Node *node) {
+  return activation_op_handler(graph, node, "Log");
+}
+
+ir::Node *sigmoid_handler(ir::Graph *graph, ir::Node *node) {
+  return activation_op_handler(graph, node, "Sigmoid");
+}
+
+ir::Node *sqrt_handler(ir::Graph *graph, ir::Node *node) {
+  return activation_op_handler(graph, node, "Sqrt");
+}
+
+ir::Node *gelu_handler(ir::Graph *graph, ir::Node *node) {
+  return activation_op_handler(graph, node, "Gelu");
+}
+
 REGISTER_HANDLER(relu, relu_handler);
+REGISTER_HANDLER(tanh, tanh_handler);
+REGISTER_HANDLER(log, log_handler);
+REGISTER_HANDLER(sigmoid, sigmoid_handler);
+REGISTER_HANDLER(sqrt, sqrt_handler);
+REGISTER_HANDLER(gelu, gelu_handler);
 
 }  // namespace
 }  // namespace ipu
