@@ -547,6 +547,16 @@ class IpuCompiler(object):
         convert_pass.apply(self._graph)
         program = framework.Program._construct_from_desc(desc)
 
+        if hasattr(self._program, 'lr_sheduler'):
+            # how to share var between two different block ?
+            lr_var_name = self._program.lr_sheduler._var_name
+
+            program.lr_sheduler = self._program.lr_sheduler
+            # Program.clone will clone lr_sheduler, so i set lr_var as
+            # lr_sheduler attribute
+            global_block = self._program.global_block()
+            program.lr_sheduler.lr_var = global_block.vars[lr_var_name]
+
         return program
 
 

@@ -23,6 +23,7 @@ import paddle.fluid as fluid
 
 paddle.enable_static()
 
+
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
 class TestIpuPlace(unittest.TestCase):
@@ -31,10 +32,11 @@ class TestIpuPlace(unittest.TestCase):
         self.assertGreater(num_devices, 0)
 
         for i in range(num_devices):
-            place = paddle.IPUPlace(i)
+            place = paddle.IPUPlace()
             p = fluid.core.Place()
             p.set_place(place)
             self.assertTrue(p.is_ipu_place())
+
 
 if __name__ == '__main__':
     unittest.main()

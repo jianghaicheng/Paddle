@@ -94,7 +94,7 @@ std::unique_ptr<popart::Optimizer> IpuBackend::GetPopartOptimizer() {
       platform::errors::InvalidArgument("Optimizer type have not been set."));
   if (optimizer_.type_ == "sgd") {
     auto optimizer = std::make_unique<popart::SGD>(
-        popart::OptimizerValue(GetOptimizerAttr("LearningRate"), false),
+        popart::OptimizerValue(GetLRFromScope(), false),
         popart::OptimizerValue(popart::SGD::getUnsetWeightDecay()),
         popart::OptimizerValue(popart::SGD::getUnsetMomentum()),
         popart::OptimizerValue(popart::SGD::getUnsetDampening()),
@@ -103,7 +103,7 @@ std::unique_ptr<popart::Optimizer> IpuBackend::GetPopartOptimizer() {
     return optimizer;
   } else if (optimizer_.type_ == "adam") {
     auto optimizer = std::make_unique<popart::Adam>(
-        popart::OptimizerValue(GetOptimizerAttr("LearningRate"), false),
+        popart::OptimizerValue(GetLRFromScope(), false),
         popart::OptimizerValue(popart::Adam::getUnsetWeightDecay()),
         popart::OptimizerValue(GetOptimizerAttr("beta1"), false),
         popart::OptimizerValue(GetOptimizerAttr("beta2"), false),
@@ -202,6 +202,13 @@ void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
     VLOG(1) << "Preparing Output data for tensor " << tensor_id;
     anchor_wrappers.emplace(tensor_id, std::move(data));
     popart_anchors.emplace(tensor_id, anchor_wrappers.at(tensor_id));
+  }
+
+  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training_) {
+    VLOG(1) << "Update optimizer learning rate...";
+    auto popart_optimizer = GetPopartOptimizer();
+    auto session = dynamic_cast<popart::TrainingSession*>(session_.get());
+    session->updateOptimizerFromHost(popart_optimizer.get());
   }
 
   popart::StepIO stepio(popart_inputs, popart_anchors);
@@ -453,6 +460,18 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
     }
   }
 }
+
+float IpuBackend::GetLRFromScope() {
+  auto lr_var = scope_->GetVar(optimizer_.lr_var_name_);
+  auto tensor = lr_var->Get<framework::LoDTensor>();
+
+  PADDLE_ENFORCE_EQ(tensor.type(), framework::proto::VarType::FP32,
+                    platform::errors::InvalidArgument(
+                        "LR requiree float, but got (%s).", tensor.type()));
+
+  return tensor.data<float>()[0];
+}
+
 // ipu_num_ must be pow(2,n);
 int IpuBackend::UpperIpuNum() {
   PADDLE_ENFORCE_GT(ipu_strategy_->num_ipus_, 0,

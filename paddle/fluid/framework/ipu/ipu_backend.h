@@ -46,6 +46,7 @@ using ipu::IpuStrategy;
 struct Optimizer {
   std::string type_;
   std::string loss_;
+  std::string lr_var_name_;
   // as far as we know, attr is usually float
   std::map<std::string, float> attrs_;
 };
@@ -87,7 +88,10 @@ class IpuBackend {
   // SetScope, so we can get model parameters from scope
   void SetScope(const Scope &scope) { scope_ = &scope; }
 
-  auto *GetLRFromScope(const std::string &name) { return scope_->GetVar(name); }
+  void SetLRVarName(const std::string &name) { optimizer_.lr_var_name_ = name; }
+
+  // get fixed and adjustable learning rate from scope
+  float GetLRFromScope();
 
   void SetIpuStrategy(const IpuStrategy &strategy) {
     ipu_strategy_ = &strategy;
