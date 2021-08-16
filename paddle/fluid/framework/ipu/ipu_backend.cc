@@ -418,6 +418,13 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       tensors_.emplace(outputs[1], result[1]);
       // Variance
       tensors_.emplace(outputs[2], result[2]);
+    } else if (op_type == "InstanceNorm") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
+      popart::TensorId result =
+          builder_->aiOnnxOpset11().instancenormalization(inputs, epsilon);
+      tensors_.emplace(outputs[0], result);
     } else if (op_type == "MaxPool") {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");
@@ -452,6 +459,13 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto result = builder_->aiOnnxOpset11().averagepool(
           inputs, kernel_shape, ceil_mode, count_include_pad, paddings,
           strides);
+
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Transpose") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto perm = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("axis"));
+      auto result = builder_->aiOnnxOpset11().transpose(inputs, perm);
 
       tensors_.emplace(outputs[0], result);
     } else {

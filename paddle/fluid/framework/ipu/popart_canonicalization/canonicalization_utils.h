@@ -52,6 +52,7 @@ void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
 const int ConvertDataType(const int &type);
 
 Node *GetInputNode(const std::string &name, const Node *node);
+Node *GetOutputNode(const std::string &name, const Node *node);
 
 }  // namespace ipu
 }  // namespace framework

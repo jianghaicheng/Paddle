@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
+#include "paddle/fluid/framework/ipu/popart_canonicalization/op_builder.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -114,9 +115,44 @@ ir::Node *uniform_random_handler(ir::Graph *graph, ir::Node *node) {
   return graph->CreateOpNode(op_desc.get());
 }
 
+ir::Node *transpose_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+
+  auto axis_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axis"));
+  std::vector<int64_t> axis(axis_.begin(), axis_.end());
+  auto attrs = AttributeMap{{"axis", axis}};
+
+  auto new_node_transpose =
+      CreateBaseOp(graph, "Transpose", node->inputs, node->outputs, attrs);
+  ReplaceNodeOutputs(node, new_node_transpose);
+  ReplaceNodeInputs(node, new_node_transpose);
+  return new_node_transpose;
+}
+
+ir::Node *reshape_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  // TODO(yaozhixin) : Shape and ShapeTensor as inputs
+  auto shape_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("shape"));
+  std::vector<int64_t> shape(shape_.begin(), shape_.end());
+  auto attrs = AttributeMap{
+      {"value", shape},
+      {"dims", std::vector<int64_t>{static_cast<int64_t>(shape.size())}},
+      {"dtype", ONNXDataType::INT64}};
+  auto new_node_const = CreateBaseOp(graph, "Constant", {}, {}, attrs);
+  ReplaceNodeOutputs(node, new_node_const);
+
+  auto new_node_reshape = CreateBaseOp(
+      graph, "Reshape", {GetInputNode("X", node), new_node_const->outputs[0]},
+      {GetOutputNode("Out", node)}, {});
+  ReplaceNodeInputs(node, new_node_reshape);
+  return new_node_reshape;
+}
+
 REGISTER_HANDLER(fill_constant, fill_constant_handler);
 REGISTER_HANDLER(gaussian_random, gaussian_random_handler);
 REGISTER_HANDLER(uniform_random, uniform_random_handler);
+REGISTER_HANDLER(transpose2, transpose_handler);
+REGISTER_HANDLER(reshape2, reshape_handler);
 
 }  // namespace
 }  // namespace ipu

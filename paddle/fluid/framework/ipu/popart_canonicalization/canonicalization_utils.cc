@@ -161,6 +161,16 @@ Node *GetInputNode(const std::string &name, const Node *node) {
   return nullptr;
 }
 
+Node *GetOutputNode(const std::string &name, const Node *node) {
+  auto node_name = node->Op()->Output(name).front();
+  for (auto *n : node->outputs) {
+    if (n->Name() == node_name) {
+      return n;
+    }
+  }
+  return nullptr;
+}
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle
