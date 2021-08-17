@@ -47,6 +47,7 @@ __all__ = [
     'program_guard',
     'name_scope',
     'ipu_shard',
+    'ipu_stage',
     'cuda_places',
     'cpu_places',
     'xpu_places',
@@ -73,8 +74,10 @@ _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
 
-global_ipu_index = 0
+global_ipu_index = None
+global_ipu_stage = None
 ipu_index_attr_name = 'ipu_index'
+ipu_stage_attr_name = 'ipu_stage'
 
 
 @signature_safe_contextmanager
@@ -86,6 +89,17 @@ def ipu_shard(ipu_index):
         yield
     finally:
         global_ipu_index = prev_ipu_index
+
+
+@signature_safe_contextmanager
+def ipu_stage(stage):
+    global global_ipu_stage
+    prev_ipu_stage = global_ipu_stage
+    global_ipu_stage = stage
+    try:
+        yield
+    finally:
+        global_ipu_stage = prev_ipu_stage
 
 
 def require_version(min_version, max_version=None):
@@ -2454,7 +2468,12 @@ class Operator(object):
 
             # proto.attrs doesn't include ipu_index
             if core.is_compiled_with_ipu():
-                self._update_desc_attr(ipu_index_attr_name, global_ipu_index)
+                if global_ipu_index is not None:
+                    self._update_desc_attr(ipu_index_attr_name,
+                                           global_ipu_index)
+                if global_ipu_stage is not None:
+                    self._update_desc_attr(ipu_stage_attr_name,
+                                           global_ipu_stage)
 
             self.desc.check_attrs()
             if self._has_kernel(type):
