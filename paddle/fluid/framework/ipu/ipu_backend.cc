@@ -153,11 +153,15 @@ void IpuBackend::Prepare() {
         paddle::platform::errors::InvalidArgument(
             "loss_id = %s doesn't exist in popart graph.", optimizer_.loss_));
     session_ = popart::TrainingSession::createFromOnnxModel(
-        proto, dataFlow, it->second, *popart_optimizer, curr_device_);
+        proto, dataFlow, it->second, *popart_optimizer, curr_device_,
+        popart::InputShapeInfo(), ipu_strategy_->popart_options_,
+        popart::Patterns(popart::PatternsLevel::Default));
   } else {
     VLOG(1) << "Creating InferenceSession from Onnx Model...";
-    session_ = popart::InferenceSession::createFromOnnxModel(proto, dataFlow,
-                                                             curr_device_);
+    session_ = popart::InferenceSession::createFromOnnxModel(
+        proto, dataFlow, curr_device_, popart::InputShapeInfo(),
+        ipu_strategy_->popart_options_,
+        popart::Patterns(popart::PatternsLevel::Default));
   }
   VLOG(1) << "Creating session from Onnx Model...done";
 

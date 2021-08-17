@@ -42,8 +42,7 @@ class TestConvNet(unittest.TestCase):
                 name='image', shape=[1, 3, 10, 10], dtype='float32')
             conv1 = paddle.static.nn.conv2d(
                 image, num_filters=3, filter_size=3, bias_attr=False)
-            conv2 = conv1 + conv1
-            loss = paddle.mean(conv2)
+            loss = paddle.mean(conv1)
 
             adam = paddle.optimizer.Adam(learning_rate=1e-2)
             adam.minimize(loss)

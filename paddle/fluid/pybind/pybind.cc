@@ -3230,6 +3230,25 @@ All parameter, weight, gradient are variables in Paddle.
           },
           R"DOC(
             Bool type, True enable pipeline, otherwise disable. Default False.
+          )DOC")
+      .def_property(
+          "enable_manual_shard",
+          [](const ipu::IpuStrategy &self) {
+            return self.popart_options_.virtualGraphMode ==
+                    ipu::VirtualGraphMode::Manual;
+          },
+          [](ipu::IpuStrategy &self, bool enable_ipu_shard) {
+            if (enable_ipu_shard) {
+              self.popart_options_.virtualGraphMode =
+                  ipu::VirtualGraphMode::Manual;
+            } else {
+              self.popart_options_.virtualGraphMode =
+                  ipu::VirtualGraphMode::Off;
+            }
+          },
+          R"DOC(
+            Bool type, True enable model sharding, otherwise disable. Default "
+            "False.
           )DOC");
 #endif
 
