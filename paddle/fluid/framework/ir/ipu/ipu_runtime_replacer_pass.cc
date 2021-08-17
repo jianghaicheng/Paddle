@@ -74,6 +74,20 @@ void IpuRuntimeReplacerPass::ApplyImpl(ir::Graph* graph) const {
     }
   }
 
+  // set ipu_runtime_op dtype attr
+  // TODO(alleng) support more than one output type
+  if (fetch_list.size() == 1) {
+    for (auto* node : graph->Nodes()) {
+      if (node->IsVar()) {
+        for (auto fetch : fetch_list) {
+          if (node->Name() == fetch) {
+            ipu_rt_node->Op()->SetAttr("dtype", node->Var()->GetDataType());
+          }
+        }
+      }
+    }
+  }
+
   // Remove unneeded nodes.
   std::unordered_set<const Node*> marked_nodes;
   for (auto* node : graph->Nodes()) {

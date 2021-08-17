@@ -18,6 +18,25 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
+void* PaddleIArray::data() { return const_cast<void*>(tensor_->data<void>()); }
+
+popart::DataType PaddleIArray::dataType() const {
+  return VarType2PopartType(tensor_->type());
+}
+
+std::size_t PaddleIArray::rank() const { return tensor_->dims().size(); }
+
+int64_t PaddleIArray::dim(size_t index) const {
+  return tensor_->dims().at(index);
+}
+
+std::size_t PaddleIArray::nelms() const {
+  return std::accumulate(shape_.begin(), shape_.end(), static_cast<int64_t>(1),
+                         std::multiplies<int64_t>());
+}
+
+const popart::Shape PaddleIArray::shape() const { return shape_; }
+
 popart::DataType VarType2PopartType(proto::VarType::Type type) {
   switch (type) {
     case proto::VarType::UINT8:
@@ -85,7 +104,7 @@ popart::DataType OnnxDtype2PopartType(int type) {
 
 // count num should > 0
 bool GetBoolEnv(std::string str) {
-  char *str_val = getenv(str.c_str());
+  char* str_val = getenv(str.c_str());
   if (str_val == NULL) {
     return false;
   } else {
@@ -96,6 +115,7 @@ bool GetBoolEnv(std::string str) {
     return val;
   }
 }
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

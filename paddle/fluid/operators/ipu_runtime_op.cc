@@ -25,8 +25,9 @@ class IpuRuntimeOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
+        ctx.device_context());
   }
 };
 
@@ -35,8 +36,12 @@ class IpuRuntimeOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("FeedList", "FeedList of Graph").AsDuplicable();
     AddOutput("FetchList", "FetchList of Graph").AsDuplicable();
+    AddAttr<int>("dtype",
+                 "(int, default 5 (FP32)) "
+                 "Output data type")
+        .SetDefault(framework::proto::VarType::FP32);
     AddComment(R"DOC(
-Run graph by PopART runtime. 
+Run graph by PopART runtime.
 
 )DOC");
   }
@@ -47,5 +52,14 @@ Run graph by PopART runtime.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(ipu_runtime, ops::IpuRuntimeOp, ops::IpuRuntimeOpMaker);
-REGISTER_OP_CPU_KERNEL(ipu_runtime, ops::IpuRuntimeKernel<float>)
-REGISTER_OP_IPU_KERNEL(ipu_runtime, ops::IpuRuntimeKernel<float>)
+REGISTER_OP_CPU_KERNEL(ipu_runtime, ops::IpuRuntimeKernel<float>,
+                       ops::IpuRuntimeKernel<double>,
+                       ops::IpuRuntimeKernel<int>,
+                       ops::IpuRuntimeKernel<int64_t>,
+                       ops::IpuRuntimeKernel<bool>);
+
+REGISTER_OP_IPU_KERNEL(ipu_runtime, ops::IpuRuntimeKernel<float>,
+                       ops::IpuRuntimeKernel<double>,
+                       ops::IpuRuntimeKernel<int>,
+                       ops::IpuRuntimeKernel<int64_t>,
+                       ops::IpuRuntimeKernel<bool>);

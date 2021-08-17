@@ -48,6 +48,27 @@ enum ONNXDataType : int {
   BFLOAT16 = 16
 };
 
+class PaddleIArray final : public popart::IArray {
+ public:
+  explicit PaddleIArray(Tensor *tensor) : tensor_(tensor) {
+    for (int i = 0; i < tensor->dims().size(); ++i) {
+      shape_.push_back(tensor->dims().at(i));
+    }
+  }
+
+ public:
+  void *data();
+  popart::DataType dataType() const;
+  std::size_t rank() const;
+  int64_t dim(size_t index) const;
+  std::size_t nelms() const;
+  const popart::Shape shape() const;
+
+ private:
+  const Tensor *tensor_;
+  std::vector<int64_t> shape_;
+};
+
 popart::DataType VarType2PopartType(proto::VarType::Type type);
 popart::DataType OnnxDtype2PopartType(int type);
 bool GetBoolEnv(std::string str);

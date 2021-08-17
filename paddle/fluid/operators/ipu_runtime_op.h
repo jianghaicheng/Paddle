@@ -45,7 +45,9 @@ class IpuRuntimeKernel : public framework::OpKernel<T> {
       auto* out = outputs[i];
       auto oshape = ipu_backend->GetTensorShape(output_names[i]);
       out->Resize(framework::make_ddim(oshape));
-      out->mutable_data<float>(ctx.GetPlace());
+      // TODO(alleng) support muti-output dtypes
+      // maybe get dtype from ipu_backend
+      out->mutable_data<T>(ctx.GetPlace());
     }
     ipu_backend->Run(inputs, outputs);
 #else
