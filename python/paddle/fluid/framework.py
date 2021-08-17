@@ -47,7 +47,6 @@ __all__ = [
     'program_guard',
     'name_scope',
     'ipu_shard',
-    'ipu_stage',
     'cuda_places',
     'cpu_places',
     'xpu_places',
@@ -81,24 +80,24 @@ ipu_stage_attr_name = 'ipu_stage'
 
 
 @signature_safe_contextmanager
-def ipu_shard(ipu_index):
+def ipu_shard(ipu_index=None, ipu_stage=None):
+    """
+    Set model sharding id and pipeline stage.
+
+    Args:
+        ipu_index: set device index of subgraph
+        ipu_stage: set pipeline stage of subgraph
+    """
     global global_ipu_index
+    global global_ipu_stage
     prev_ipu_index = global_ipu_index
+    prev_ipu_stage = global_ipu_stage
     global_ipu_index = ipu_index
+    global_ipu_stage = ipu_stage
     try:
         yield
     finally:
         global_ipu_index = prev_ipu_index
-
-
-@signature_safe_contextmanager
-def ipu_stage(stage):
-    global global_ipu_stage
-    prev_ipu_stage = global_ipu_stage
-    global_ipu_stage = stage
-    try:
-        yield
-    finally:
         global_ipu_stage = prev_ipu_stage
 
 

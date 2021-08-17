@@ -496,11 +496,11 @@ class ErnieModel(object):
         self.src_ids = src_ids
         self.sentence_ids = sentence_ids
 
-        with fluid.ipu_shard(0):
+        with fluid.ipu_shard(ipu_index=0):
             self.position_ids = self._build_position_ids()  # position_ids
             self.input_mask = self._build_input_mask()  # input mask
 
-        with fluid.ipu_shard(1):
+        with fluid.ipu_shard(ipu_index=1):
             self._build_model()
 
     def _build_model(self, emb=None):
@@ -761,7 +761,7 @@ if __name__ == "__main__":
     ernie = ErnieModel(src_ids, sent_ids, ernie_config)
     fetch_node = ernie.get_sequence_output()
     if args.is_training:
-        with fluid.ipu_shard(2):
+        with fluid.ipu_shard(ipu_index=2):
             _, mean_mask_lm_loss = ernie.get_lm_output(mask_label, mask_pos)
             fetch_node = mean_mask_lm_loss
             adam = paddle.optimizer.Adam(learning_rate=1e-2)
