@@ -46,6 +46,17 @@ ir::Node *reduce_mean_handler(ir::Graph *graph, ir::Node *node) {
   return graph->CreateOpNode(op_desc.get());
 }
 
+ir::Node *mean_handler(ir::Graph *graph, ir::Node *node) {
+  auto new_node = CreateBaseOp(graph, "ReduceMean", {GetInputNode("X", node)},
+                               {GetOutputNode("Out", node)},
+                               {
+                                   {"keepdims", int64_t{0}},
+                               });
+  ReplaceNodeInputs(node, new_node);
+  ReplaceNodeOutputs(node, new_node);
+  return new_node;
+}
+
 ir::Node *pow_handler(ir::Graph *graph, ir::Node *node) {
   // Op(pow) -> Op(Constant)->Var(const_out)->Op(Pow)
   auto *op = node->Op();
@@ -111,6 +122,7 @@ ir::Node *softmax_handler(ir::Graph *graph, ir::Node *node) {
 }
 
 REGISTER_HANDLER(reduce_mean, reduce_mean_handler);
+REGISTER_HANDLER(mean, mean_handler);
 REGISTER_HANDLER(pow, pow_handler);
 REGISTER_HANDLER(mul, mul_handler);
 REGISTER_HANDLER(sum, sum_handler);

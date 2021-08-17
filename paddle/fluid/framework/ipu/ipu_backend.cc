@@ -332,6 +332,11 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto outputs = op->Output("__outputs__");
       popart::TensorId result = builder_->aiOnnxOpset11().add(inputs);
       tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Mul") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      popart::TensorId result = builder_->aiOnnxOpset11().mul(inputs);
+      tensors_.emplace(outputs[0], result);
     } else if (op_type == "Conv") {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");
@@ -343,6 +348,11 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
           BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("strides"));
       popart::TensorId result = builder_->aiOnnxOpset11().conv(
           inputs, dilations, group, {}, pads, strides);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Equal") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      popart::TensorId result = builder_->aiOnnxOpset11().equal(inputs);
       tensors_.emplace(outputs[0], result);
     } else if (op_type == "MatMul") {
       auto inputs = GetOpInputs(op);
