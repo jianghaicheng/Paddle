@@ -202,6 +202,55 @@ ir::Node *lookup_table_handler(ir::Graph *graph, ir::Node *node) {
   return new_node_gather;
 }
 
+ir::Node *unsqueeze_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axes"));
+  std::vector<int64_t> axes{axes_.begin(), axes_.end()};
+  auto new_node_unsqueeze =
+      CreateBaseOp(graph, "Unsqueeze", {GetInputNode("X", node)},
+                   node->outputs, {{"axes", axes}});
+  ReplaceNodeOutputs(node, new_node_unsqueeze);
+  ReplaceNodeInputs(node, new_node_unsqueeze);
+  return new_node_unsqueeze;
+}
+
+ir::Node *concat_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  // TODO(yaozhixin): support tensor as axis
+  int64_t axis_{BOOST_GET_CONST(int, op->GetAttr("axis"))};
+
+  auto new_node_concat =
+      CreateBaseOp(graph, "Concat", node->inputs, node->outputs,
+                   {{"axis", axis_}});
+  ReplaceNodeOutputs(node, new_node_concat);
+  ReplaceNodeInputs(node, new_node_concat);
+  return new_node_concat;
+}
+
+ir::Node *stack_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  int64_t axis_{BOOST_GET_CONST(int, op->GetAttr("axis"))};
+  std::vector<int64_t> axes_{axis_};
+
+  std::vector<Node *> unsqueeze_outputs_{};
+  for (auto input : node->inputs) {
+    auto new_unsqueeze_node =
+        CreateBaseOp(graph, "Unsqueeze", {input}, {}, {{"axes", axes_}});
+    unsqueeze_outputs_.push_back(new_unsqueeze_node->outputs[0]);
+    for (size_t i = 0; i < input->outputs.size(); ++i) {
+      if (input->outputs[i] == node) {
+        input->outputs[i] = new_unsqueeze_node;
+        break;
+      }
+    }
+  }
+  auto new_node_concat =
+      CreateBaseOp(graph, "Concat", unsqueeze_outputs_,
+                   {GetOutputNode("Y", node)}, {{"axis", axis_}});
+  ReplaceNodeInputs(node, new_node_concat);
+  return new_node_concat;
+}
+
 ir::Node *shape_handler(ir::Graph *graph, ir::Node *node) {
   auto new_node = CreateBaseOp(graph, "Shape", {node->inputs}, node->outputs);
   ReplaceNodeInputs(node, new_node);
@@ -264,6 +313,9 @@ REGISTER_HANDLER(gather, gather_handler);
 REGISTER_HANDLER(squeeze2, squeeze_handler);
 REGISTER_HANDLER(cast, cast_handler);
 REGISTER_HANDLER(lookup_table, lookup_table_handler);
+REGISTER_HANDLER(unsqueeze2, unsqueeze_handler);
+REGISTER_HANDLER(concat, concat_handler);
+REGISTER_HANDLER(stack, stack_handler);
 REGISTER_HANDLER(shape, shape_handler);
 REGISTER_HANDLER(slice, slice_handler);
 

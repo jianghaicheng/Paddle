@@ -481,21 +481,24 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto outputs = op->Output("__outputs__");
       auto perm = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("axis"));
       auto result = builder_->aiOnnxOpset11().transpose(inputs, perm);
-
       tensors_.emplace(outputs[0], result);
     } else if (op_type == "Gather") {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");
       int64_t axis = 0;
       auto result = builder_->aiOnnxOpset11().gather(inputs, axis);
-
       tensors_.emplace(outputs[0], result);
     } else if (op_type == "Squeeze") {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");
       auto axes = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("axes"));
       auto result = builder_->aiOnnxOpset11().squeeze(inputs, axes);
-
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Unsqueeze") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto axes = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("axes"));
+      auto result = builder_->aiOnnxOpset11().unsqueeze(inputs, axes);
       tensors_.emplace(outputs[0], result);
     } else if (op_type == "Cast") {
       auto inputs = GetOpInputs(op);
@@ -536,7 +539,12 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
               paddle::platform::errors::Unavailable("Unsupported data type."));
       }
       auto result = builder_->aiOnnxOpset11().cast(inputs, to);
-
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Concat") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto axis = BOOST_GET_CONST(int64_t, op->GetAttr("axis"));
+      auto result = builder_->aiOnnxOpset11().concat(inputs, axis);
       tensors_.emplace(outputs[0], result);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented("Unimplemented op type %s.",
