@@ -361,6 +361,16 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       popart::TensorId result =
           builder_->aiOnnxOpset11().reducemean(inputs, axes, keepdims);
       tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Shape") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      popart::TensorId result = builder_->aiOnnxOpset11().shape(inputs);
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Slice") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      popart::TensorId result = builder_->aiOnnxOpset11().slice(inputs);
+      tensors_.emplace(outputs[0], result);
     } else if (op_type == "Reshape") {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");

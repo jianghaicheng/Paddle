@@ -32,9 +32,22 @@ Node *CreateBaseOp(ir::Graph *graph, const std::string &type,
                    const std::vector<ir::Node *> &outputs,
                    const AttributeMap &attrs = {});
 
-// TODO(alleng) make template
-AttributeMap MakeConstAttributeMap(float v, std::vector<int64_t> dims,
-                                   int dtype);
+template <typename T>
+AttributeMap MakeConstAttrMap(std::vector<T> value, std::vector<int64_t> dims,
+                              int dtype) {
+  return AttributeMap{{"value", value}, {"dims", dims}, {"dtype", dtype}};
+}
+
+template <typename T>
+AttributeMap MakeConstAttrMapFromValue(T v, std::vector<int64_t> dims,
+                                       int dtype) {
+  size_t size = 1;
+  for (auto &dim : dims) {
+    size *= dim;
+  }
+  return MakeConstAttrMap<T>(std::vector<T>(size, v), dims, dtype);
+}
+
 ir::Node *CreateConst(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
                       const std::vector<ir::Node *> &outputs,
                       const AttributeMap &attrs);

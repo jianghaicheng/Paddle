@@ -61,7 +61,8 @@ ir::Node *pow_handler(ir::Graph *graph, ir::Node *node) {
   // Op(pow) -> Op(Constant)->Var(const_out)->Op(Pow)
   auto *op = node->Op();
   auto value_ = BOOST_GET_CONST(float, op->GetAttr("factor"));
-  auto attrs = MakeConstAttributeMap(value_, {1}, ONNXDataType::FLOAT);
+  auto attrs =
+      MakeConstAttrMapFromValue<float>(value_, {1}, ONNXDataType::FLOAT);
   auto new_node_const = CreateConst(graph, {}, {}, attrs);
   auto new_node_pow = CreateBaseOp(
       graph, "Pow", {GetInputNode("X", node), new_node_const->outputs[0]},

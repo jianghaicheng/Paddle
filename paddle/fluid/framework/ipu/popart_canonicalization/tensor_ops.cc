@@ -202,6 +202,59 @@ ir::Node *lookup_table_handler(ir::Graph *graph, ir::Node *node) {
   return new_node_gather;
 }
 
+ir::Node *shape_handler(ir::Graph *graph, ir::Node *node) {
+  auto new_node = CreateBaseOp(graph, "Shape", {node->inputs}, node->outputs);
+  ReplaceNodeInputs(node, new_node);
+  ReplaceNodeOutputs(node, new_node);
+  return new_node;
+}
+
+ir::Node *slice_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  Node *starts = nullptr;
+  if (op->HasInput("StartsTensor") && !op->Input("StartsTensor").empty()) {
+    starts = GetInputNode("StartsTensor", node);
+  } else {
+    auto starts_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("starts"));
+    auto dim = int64_t(starts_.size());
+    auto attr = MakeConstAttrMap<int>(starts_, {dim}, ONNXDataType::INT32);
+    starts = CreateConst(graph, {}, {}, attr);
+  }
+  Node *ends = nullptr;
+  if (op->HasInput("EndsTensor") && !op->Input("EndsTensor").empty()) {
+    ends = GetInputNode("EndsTensor", node);
+  } else {
+    auto ends_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ends"));
+    auto dim = int64_t(ends_.size());
+    auto attr = MakeConstAttrMap<int>(ends_, {dim}, ONNXDataType::INT32);
+    ends = CreateConst(graph, {}, {}, attr);
+  }
+  Node *axes = nullptr;
+  {
+    auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axes"));
+    auto dim = int64_t(axes_.size());
+    auto attr = MakeConstAttrMap<int>(axes_, {dim}, ONNXDataType::INT32);
+    axes = CreateConst(graph, {}, {}, attr);
+  }
+  Node *steps = nullptr;
+  {
+    auto size =
+        BOOST_GET_CONST(std::vector<int64_t>, ends->Op()->GetAttr("dims"))
+            .front();
+    auto steps_ = std::vector<int>(size, 1);
+    auto dim = int64_t(size);
+    auto attr = MakeConstAttrMap<int>(steps_, {dim}, ONNXDataType::INT32);
+    steps = CreateConst(graph, {}, {}, attr);
+  }
+  auto new_node = CreateBaseOp(
+      graph, "Slice", {GetInputNode("Input", node), starts->outputs[0],
+                       ends->outputs[0], axes->outputs[0], steps->outputs[0]},
+      node->outputs);
+  ReplaceNodeInputs(node, new_node);
+  ReplaceNodeOutputs(node, new_node);
+  return new_node;
+}
+
 REGISTER_HANDLER(fill_constant, fill_constant_handler);
 REGISTER_HANDLER(gaussian_random, gaussian_random_handler);
 REGISTER_HANDLER(uniform_random, uniform_random_handler);
@@ -211,6 +264,8 @@ REGISTER_HANDLER(gather, gather_handler);
 REGISTER_HANDLER(squeeze2, squeeze_handler);
 REGISTER_HANDLER(cast, cast_handler);
 REGISTER_HANDLER(lookup_table, lookup_table_handler);
+REGISTER_HANDLER(shape, shape_handler);
+REGISTER_HANDLER(slice, slice_handler);
 
 }  // namespace
 }  // namespace ipu
