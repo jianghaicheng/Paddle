@@ -473,6 +473,61 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto result = builder_->aiOnnxOpset11().transpose(inputs, perm);
 
       tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Gather") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      int64_t axis = 0;
+      auto result = builder_->aiOnnxOpset11().gather(inputs, axis);
+
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Squeeze") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto axes = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("axes"));
+      auto result = builder_->aiOnnxOpset11().squeeze(inputs, axes);
+
+      tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Cast") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      // TODO(yaozhxin): support np.dtype and core.VarDesc.VarType
+      auto to_ = BOOST_GET_CONST(int, op->GetAttr("to"));
+      std::string to = "";
+      switch (to_) {
+        case proto::VarType::UINT8:
+          to = "UINT8";
+          break;
+        case proto::VarType::INT8:
+          to = "INT8";
+          break;
+        case proto::VarType::INT16:
+          to = "INT16";
+          break;
+        case proto::VarType::INT32:
+          to = "INT32";
+          break;
+        case proto::VarType::INT64:
+          to = "INT64";
+          break;
+        case proto::VarType::BOOL:
+          to = "BOOL";
+          break;
+        case proto::VarType::FP64:
+          to = "DOUBLE";
+          break;
+        case proto::VarType::FP32:
+          to = "FLOAT";
+          break;
+        case proto::VarType::FP16:
+          to = "FLOAT16";
+          break;
+        default:
+          PADDLE_THROW(
+              paddle::platform::errors::Unavailable("Unsupported data type."));
+      }
+      auto result = builder_->aiOnnxOpset11().cast(inputs, to);
+
+      tensors_.emplace(outputs[0], result);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented("Unimplemented op type %s.",
                                                    op_type));

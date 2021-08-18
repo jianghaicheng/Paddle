@@ -148,11 +148,69 @@ ir::Node *reshape_handler(ir::Graph *graph, ir::Node *node) {
   return new_node_reshape;
 }
 
+ir::Node *gather_handler(ir::Graph *graph, ir::Node *node) {
+  auto new_node_gather = CreateBaseOp(
+      graph, "Gather", {GetInputNode("X", node), GetInputNode("Index", node)},
+      {GetOutputNode("Out", node)}, {});
+  ReplaceNodeOutputs(node, new_node_gather);
+  ReplaceNodeInputs(node, new_node_gather);
+  return new_node_gather;
+}
+
+ir::Node *squeeze_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axes"));
+  auto input_shape_ = op->Block()->FindVar(op->Input("X")[0])->GetShape();
+
+  std::vector<int64_t> axes{axes_.begin(), axes_.end()};
+  if (axes_.empty()) {
+    for (int i = 0; i < input_shape_.size(); i++) {
+      if (input_shape_[i] == 1) {
+        axes.push_back(i);
+      }
+    }
+  }
+  auto new_node_squeeze =
+      CreateBaseOp(graph, "Squeeze", {GetInputNode("X", node)},
+                   {GetOutputNode("Out", node)}, {{"axes", axes}});
+  ReplaceNodeOutputs(node, new_node_squeeze);
+  ReplaceNodeInputs(node, new_node_squeeze);
+  return new_node_squeeze;
+}
+
+ir::Node *cast_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  auto to_ = BOOST_GET_CONST(int, op->GetAttr("out_dtype"));
+  auto new_node_cast =
+      CreateBaseOp(graph, "Cast", {GetInputNode("X", node)},
+                   {GetOutputNode("Out", node)}, {{"to", to_}});
+  ReplaceNodeOutputs(node, new_node_cast);
+  ReplaceNodeInputs(node, new_node_cast);
+  return new_node_cast;
+}
+
+ir::Node *lookup_table_handler(ir::Graph *graph, ir::Node *node) {
+  auto new_node_squeeze =
+      CreateBaseOp(graph, "Squeeze", {GetInputNode("Ids", node)}, {},
+                   {{"axes", std::vector<int64_t>{-1}}});
+  ReplaceNodeOutputs(node, new_node_squeeze);
+
+  auto new_node_gather = CreateBaseOp(
+      graph, "Gather", {GetInputNode("W", node), new_node_squeeze->outputs[0]},
+      {GetOutputNode("Out", node)}, {});
+  ReplaceNodeInputs(node, new_node_gather);
+  return new_node_gather;
+}
+
 REGISTER_HANDLER(fill_constant, fill_constant_handler);
 REGISTER_HANDLER(gaussian_random, gaussian_random_handler);
 REGISTER_HANDLER(uniform_random, uniform_random_handler);
 REGISTER_HANDLER(transpose2, transpose_handler);
 REGISTER_HANDLER(reshape2, reshape_handler);
+REGISTER_HANDLER(gather, gather_handler);
+REGISTER_HANDLER(squeeze2, squeeze_handler);
+REGISTER_HANDLER(cast, cast_handler);
+REGISTER_HANDLER(lookup_table, lookup_table_handler);
 
 }  // namespace
 }  // namespace ipu

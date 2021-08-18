@@ -56,10 +56,12 @@ REGISTER_OP_CPU_KERNEL(ipu_runtime, ops::IpuRuntimeKernel<float>,
                        ops::IpuRuntimeKernel<double>,
                        ops::IpuRuntimeKernel<int>,
                        ops::IpuRuntimeKernel<int64_t>,
-                       ops::IpuRuntimeKernel<bool>);
+                       ops::IpuRuntimeKernel<bool>,
+                       ops::IpuRuntimeKernel<paddle::platform::float16>);
 
 REGISTER_OP_IPU_KERNEL(ipu_runtime, ops::IpuRuntimeKernel<float>,
                        ops::IpuRuntimeKernel<double>,
                        ops::IpuRuntimeKernel<int>,
                        ops::IpuRuntimeKernel<int64_t>,
-                       ops::IpuRuntimeKernel<bool>);
+                       ops::IpuRuntimeKernel<bool>,
+                       ops::IpuRuntimeKernel<paddle::platform::float16>);
