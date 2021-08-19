@@ -514,6 +514,11 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto axis = BOOST_GET_CONST(int64_t, op->GetAttr("axis"));
       auto result = builder_->aiOnnxOpset11().concat(inputs, axis);
       tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Identity") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto result = builder_->aiOnnxOpset11().identity(inputs);
+      tensors_.emplace(outputs[0], result);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented("Unimplemented op type %s.",
                                                    op_type));

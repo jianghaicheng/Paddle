@@ -122,12 +122,65 @@ ir::Node *softmax_handler(ir::Graph *graph, ir::Node *node) {
   return graph->CreateOpNode(op_desc.get());
 }
 
+ir::Node *scale_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  auto scale_ = BOOST_GET_CONST(float, op->GetAttr("scale"));
+  auto bias_ = BOOST_GET_CONST(float, op->GetAttr("bias"));
+  auto bias_after_scale_ =
+      BOOST_GET_CONST(bool, op->GetAttr("bias_after_scale"));
+  auto data_type_ = op->Block()->FindVar(op->Input("X")[0])->GetDataType();
+
+  // TODO(yaozhixin): support tensor as scale input
+  if (abs(scale_ - 1.0) < 1e-06 && abs(bias_ - 0.0) < 1e-06) {
+    auto new_node_identity = CreateBaseOp(
+        graph, "Identity", {GetInputNode("X", node)}, node->outputs, {});
+    ReplaceNodeInputs(node, new_node_identity);
+    ReplaceNodeOutputs(node, new_node_identity);
+    return new_node_identity;
+  } else {
+    auto new_node_bias =
+        CreateConst(graph, {}, {}, {{"value", std::vector<float>{bias_}},
+                                    {"dims", std::vector<int64_t>{1}},
+                                    {"dtype", ONNXDataType::FLOAT}});
+    auto new_node_scale =
+        CreateConst(graph, {}, {}, {{"value", std::vector<float>{scale_}},
+                                    {"dims", std::vector<int64_t>{1}},
+                                    {"dtype", ONNXDataType::FLOAT}});
+    // convert to float32
+    auto new_node_cast = CreateCast(graph, {GetInputNode("X", node)}, {},
+                                    static_cast<int>(proto::VarType::FP32));
+    ReplaceNodeInputs(node, new_node_cast);
+
+    ir::Node *result = nullptr;
+    if (bias_after_scale_) {
+      auto new_node_mul = CreateBaseOp(
+          graph, "Mul", {new_node_cast->outputs[0], new_node_scale->outputs[0]},
+          {}, {});
+      result = CreateBaseOp(
+          graph, "Add", {new_node_mul->outputs[0], new_node_bias->outputs[0]},
+          {}, {});
+    } else {
+      auto new_node_add = CreateBaseOp(
+          graph, "Add", {new_node_cast->outputs[0], new_node_bias->outputs[0]},
+          {}, {});
+      result = CreateBaseOp(
+          graph, "Mul", {new_node_add->outputs[0], new_node_scale->outputs[0]},
+          {}, {});
+    }
+    auto result_after_cast = CreateCast(graph, result->outputs, node->outputs,
+                                        static_cast<int>(data_type_));
+    ReplaceNodeOutputs(node, result_after_cast);
+    return result_after_cast;
+  }
+}
+
 REGISTER_HANDLER(reduce_mean, reduce_mean_handler);
 REGISTER_HANDLER(mean, mean_handler);
 REGISTER_HANDLER(pow, pow_handler);
 REGISTER_HANDLER(mul, mul_handler);
 REGISTER_HANDLER(sum, sum_handler);
 REGISTER_HANDLER(softmax, softmax_handler);
+REGISTER_HANDLER(scale, scale_handler);
 
 }  // namespace
 }  // namespace ipu
