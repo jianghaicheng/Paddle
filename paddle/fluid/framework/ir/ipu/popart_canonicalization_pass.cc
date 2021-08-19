@@ -31,6 +31,12 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
+  // // graph_viz_pass
+  // auto graph_viz_pass = PassRegistry::Instance().Get("graph_viz_pass");
+  // graph_viz_pass->Set("graph_viz_path",
+  //                     new std::string("/home/Paddle/demos/before_pass.dot"));
+  // graph_viz_pass->Apply(graph);
+
   auto nodes = graph->Nodes();
   for (auto* node : nodes) {
     if (!node->IsOp()) {
@@ -64,6 +70,12 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
     }
   }
 
+  // // graph_viz_pass
+  // graph_viz_pass->Erase("graph_viz_path");
+  // graph_viz_pass->Set("graph_viz_path",
+  //                     new std::string("/home/Paddle/demos/after_pass.dot"));
+  // graph_viz_pass->Apply(graph);
+
   VLOG(10) << "Post Graph: ";
   VLOG(10) << DebugString(graph);
   VLOG(10) << "leave PopartCanonicalizationPass::ApplyImpl";
@@ -75,3 +87,5 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(popart_canonicalization_pass,
               paddle::framework::ir::PopartCanonicalizationPass);
+
+// USE_PASS(graph_viz_pass);

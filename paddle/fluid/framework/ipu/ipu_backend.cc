@@ -371,6 +371,11 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto outputs = op->Output("__outputs__");
       popart::TensorId result = builder_->aiOnnxOpset11().slice(inputs);
       tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Tile") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      popart::TensorId result = builder_->aiOnnxOpset11().tile(inputs);
+      tensors_.emplace(outputs[0], result);
     } else if (op_type == "Reshape") {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");
@@ -447,7 +452,6 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto kernel_shape =
           BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("kernel_shape"));
       auto ceil_mode = BOOST_GET_CONST(bool, op->GetAttr("ceil_mode"));
-
       auto paddings =
           BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("paddings"));
       auto storage_order = BOOST_GET_CONST(int, op->GetAttr("storage_order"));
@@ -464,7 +468,6 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto kernel_shape =
           BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("kernel_shape"));
       auto ceil_mode = BOOST_GET_CONST(bool, op->GetAttr("ceil_mode"));
-
       auto paddings =
           BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("paddings"));
       auto strides =
@@ -474,7 +477,6 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto result = builder_->aiOnnxOpset11().averagepool(
           inputs, kernel_shape, ceil_mode, count_include_pad, paddings,
           strides);
-
       tensors_.emplace(outputs[0], result);
     } else if (op_type == "Transpose") {
       auto inputs = GetOpInputs(op);
@@ -503,41 +505,7 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
     } else if (op_type == "Cast") {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");
-      // TODO(yaozhxin): support np.dtype and core.VarDesc.VarType
-      auto to_ = BOOST_GET_CONST(int, op->GetAttr("to"));
-      std::string to = "";
-      switch (to_) {
-        case proto::VarType::UINT8:
-          to = "UINT8";
-          break;
-        case proto::VarType::INT8:
-          to = "INT8";
-          break;
-        case proto::VarType::INT16:
-          to = "INT16";
-          break;
-        case proto::VarType::INT32:
-          to = "INT32";
-          break;
-        case proto::VarType::INT64:
-          to = "INT64";
-          break;
-        case proto::VarType::BOOL:
-          to = "BOOL";
-          break;
-        case proto::VarType::FP64:
-          to = "DOUBLE";
-          break;
-        case proto::VarType::FP32:
-          to = "FLOAT";
-          break;
-        case proto::VarType::FP16:
-          to = "FLOAT16";
-          break;
-        default:
-          PADDLE_THROW(
-              paddle::platform::errors::Unavailable("Unsupported data type."));
-      }
+      auto to = BOOST_GET_CONST(std::string, op->GetAttr("to"));
       auto result = builder_->aiOnnxOpset11().cast(inputs, to);
       tensors_.emplace(outputs[0], result);
     } else if (op_type == "Concat") {

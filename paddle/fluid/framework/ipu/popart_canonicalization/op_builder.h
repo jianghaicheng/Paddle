@@ -52,6 +52,10 @@ ir::Node *CreateConst(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
                       const std::vector<ir::Node *> &outputs,
                       const AttributeMap &attrs);
 
+// otype is proto::VarType::Type
+ir::Node *CreateCast(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+                     const std::vector<ir::Node *> &outputs, const int &otype);
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

@@ -34,7 +34,7 @@ ir::Node *fill_constant_handler(ir::Graph *graph, ir::Node *node) {
   op_desc->SetOutput("__outputs__", outputs);
 
   auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
-  auto dtype = ConvertDataType(dtype_);
+  auto dtype = VarType2OnnxDtype(dtype_);
   op_desc->SetAttr("dtype", dtype);
   auto dims = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
   op_desc->SetAttr("dims", dims);
@@ -79,7 +79,7 @@ ir::Node *gaussian_random_handler(ir::Graph *graph, ir::Node *node) {
   auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
   op_desc->SetAttr("shape", shape);
   auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
-  auto dtype = ConvertDataType(dtype_);
+  auto dtype = VarType2OnnxDtype(dtype_);
   op_desc->SetAttr("dtype", dtype);
 
   auto mean = BOOST_GET_CONST(float, op->GetAttr("mean"));
@@ -104,7 +104,7 @@ ir::Node *uniform_random_handler(ir::Graph *graph, ir::Node *node) {
   auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
   op_desc->SetAttr("shape", shape);
   auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
-  auto dtype = ConvertDataType(dtype_);
+  auto dtype = VarType2OnnxDtype(dtype_);
   op_desc->SetAttr("dtype", dtype);
   auto max = BOOST_GET_CONST(float, op->GetAttr("max"));
   op_desc->SetAttr("high", max);
@@ -180,10 +180,8 @@ ir::Node *squeeze_handler(ir::Graph *graph, ir::Node *node) {
 
 ir::Node *cast_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
-  auto to_ = BOOST_GET_CONST(int, op->GetAttr("out_dtype"));
-  auto new_node_cast =
-      CreateBaseOp(graph, "Cast", {GetInputNode("X", node)},
-                   {GetOutputNode("Out", node)}, {{"to", to_}});
+  auto otype = BOOST_GET_CONST(int, op->GetAttr("out_dtype"));
+  auto new_node_cast = CreateCast(graph, node->inputs, node->outputs, otype);
   ReplaceNodeOutputs(node, new_node_cast);
   ReplaceNodeInputs(node, new_node_cast);
   return new_node_cast;
@@ -207,8 +205,8 @@ ir::Node *unsqueeze_handler(ir::Graph *graph, ir::Node *node) {
   auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axes"));
   std::vector<int64_t> axes{axes_.begin(), axes_.end()};
   auto new_node_unsqueeze =
-      CreateBaseOp(graph, "Unsqueeze", {GetInputNode("X", node)},
-                   node->outputs, {{"axes", axes}});
+      CreateBaseOp(graph, "Unsqueeze", {GetInputNode("X", node)}, node->outputs,
+                   {{"axes", axes}});
   ReplaceNodeOutputs(node, new_node_unsqueeze);
   ReplaceNodeInputs(node, new_node_unsqueeze);
   return new_node_unsqueeze;
@@ -219,9 +217,8 @@ ir::Node *concat_handler(ir::Graph *graph, ir::Node *node) {
   // TODO(yaozhixin): support tensor as axis
   int64_t axis_{BOOST_GET_CONST(int, op->GetAttr("axis"))};
 
-  auto new_node_concat =
-      CreateBaseOp(graph, "Concat", node->inputs, node->outputs,
-                   {{"axis", axis_}});
+  auto new_node_concat = CreateBaseOp(graph, "Concat", node->inputs,
+                                      node->outputs, {{"axis", axis_}});
   ReplaceNodeOutputs(node, new_node_concat);
   ReplaceNodeInputs(node, new_node_concat);
   return new_node_concat;
@@ -304,6 +301,40 @@ ir::Node *slice_handler(ir::Graph *graph, ir::Node *node) {
   return new_node;
 }
 
+ir::Node *expand_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  // TODO(alleng) work with expand_times_tensor
+  if (op->HasInput("expand_times_tensor") &&
+      !op->Input("expand_times_tensor").empty()) {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("Expand op with expand_times_tensor"));
+  }
+
+  Node *expand_times = nullptr;
+  if (op->HasInput("ExpandTimes") && !op->Input("ExpandTimes").empty()) {
+    // cast to int64
+    // TODO(alleng) using cast will fail at runtime
+    expand_times = CreateCast(graph, {GetInputNode("ExpandTimes", node)}, {},
+                              proto::VarType::INT64);
+    DisConnectNodes(GetInputNode("ExpandTimes", node), node);
+  } else {
+    auto expand_times_i32 =
+        BOOST_GET_CONST(std::vector<int>, op->GetAttr("expand_times"));
+    auto expand_times_ =
+        std::vector<int64_t>{expand_times_i32.begin(), expand_times_i32.end()};
+    auto dim = int64_t(expand_times_.size());
+    auto attr =
+        MakeConstAttrMap<int64_t>(expand_times_, {dim}, ONNXDataType::INT64);
+    expand_times = CreateConst(graph, {}, {}, attr);
+  }
+  auto new_node = CreateBaseOp(
+      graph, "Tile", {GetInputNode("X", node), expand_times->outputs[0]},
+      node->outputs);
+  ReplaceNodeInputs(node, new_node);
+  ReplaceNodeOutputs(node, new_node);
+  return new_node;
+}
+
 REGISTER_HANDLER(fill_constant, fill_constant_handler);
 REGISTER_HANDLER(gaussian_random, gaussian_random_handler);
 REGISTER_HANDLER(uniform_random, uniform_random_handler);
@@ -318,6 +349,7 @@ REGISTER_HANDLER(concat, concat_handler);
 REGISTER_HANDLER(stack, stack_handler);
 REGISTER_HANDLER(shape, shape_handler);
 REGISTER_HANDLER(slice, slice_handler);
+REGISTER_HANDLER(expand, expand_handler);
 
 }  // namespace
 }  // namespace ipu

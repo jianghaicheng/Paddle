@@ -87,6 +87,12 @@ ir::Node *CreateConst(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
   return CreateBaseOp(graph, "Constant", inputs, outputs, attrs);
 }
 
+ir::Node *CreateCast(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+                     const std::vector<ir::Node *> &outputs, const int &otype) {
+  auto to = VarType2PopStr(otype);
+  return CreateBaseOp(graph, "Cast", inputs, outputs, {{"to", to}});
+}
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

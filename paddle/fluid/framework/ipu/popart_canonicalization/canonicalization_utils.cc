@@ -107,6 +107,16 @@ void ConnectNodes(ir::Node *first_node, ir::Node *next_node) {
   next_node->inputs.push_back(first_node);
 }
 
+void DisConnectNodes(Node *first_node, Node *next_node) {
+  auto rm_by_value = [&](std::vector<Node *> &vec, Node *n) {
+    vec.erase(std::remove(vec.begin(), vec.end(), n), vec.end());
+  };
+  rm_by_value(first_node->outputs, next_node);
+  rm_by_value(next_node->inputs, first_node);
+  rm_by_value(first_node->inputs, next_node);
+  rm_by_value(next_node->outputs, first_node);
+}
+
 void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
                 bool override) {
   if (new_op->HasAttr(attr_name) && !override) {
@@ -118,7 +128,7 @@ void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
   }
 }
 
-const int ConvertDataType(const int &type) {
+const int VarType2OnnxDtype(const int &type) {
   auto dtype = static_cast<proto::VarType::Type>(type);
   switch (dtype) {
     case proto::VarType::BOOL:
@@ -148,6 +158,33 @@ const int ConvertDataType(const int &type) {
     default:
       PADDLE_THROW(
           platform::errors::Unimplemented("Unsupported data type: %d.", dtype));
+  }
+}
+
+const std::string VarType2PopStr(const int &type) {
+  auto dtype = static_cast<proto::VarType::Type>(type);
+  switch (dtype) {
+    case proto::VarType::UINT8:
+      return "UINT8";
+    case proto::VarType::INT8:
+      return "INT8";
+    case proto::VarType::INT16:
+      return "INT16";
+    case proto::VarType::INT32:
+      return "INT32";
+    case proto::VarType::INT64:
+      return "INT64";
+    case proto::VarType::BOOL:
+      return "BOOL";
+    case proto::VarType::FP64:
+      return "DOUBLE";
+    case proto::VarType::FP32:
+      return "FLOAT";
+    case proto::VarType::FP16:
+      return "FLOAT16";
+    default:
+      PADDLE_THROW(
+          paddle::platform::errors::Unavailable("Unsupported data type."));
   }
 }
 

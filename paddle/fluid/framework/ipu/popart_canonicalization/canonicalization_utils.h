@@ -46,10 +46,12 @@ void MoveNodeOutputs(ir::Node *node, ir::Node *new_node);
 void ReplaceNodeInputs(ir::Node *node, ir::Node *new_node);
 void ReplaceNodeOutputs(ir::Node *node, ir::Node *new_node);
 void ConnectNodes(ir::Node *first_node, ir::Node *next_node);
+void DisConnectNodes(Node *first_node, Node *next_node);
 void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
                 bool override = false);
 
-const int ConvertDataType(const int &type);
+const int VarType2OnnxDtype(const int &type);
+const std::string VarType2PopStr(const int &type);
 
 Node *GetInputNode(const std::string &name, const Node *node);
 Node *GetOutputNode(const std::string &name, const Node *node);
