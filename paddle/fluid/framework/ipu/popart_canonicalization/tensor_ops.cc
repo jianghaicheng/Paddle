@@ -25,7 +25,7 @@ ir::Node *fill_constant_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
   auto op_desc = std::make_unique<framework::OpDesc>();
   op_desc->SetType("Constant");
-  if (!op->Input("ShapeTensor").empty()) {
+  if (op->HasInput("ShapeTensor") && !op->Input("ShapeTensor").empty()) {
     PADDLE_THROW(
         platform::errors::Unimplemented("op fill_constant with ShapeTensor"));
   }
