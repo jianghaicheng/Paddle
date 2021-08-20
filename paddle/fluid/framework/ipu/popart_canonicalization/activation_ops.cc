@@ -25,8 +25,6 @@ ir::Node *activation_op_handler(ir::Graph *graph, ir::Node *node,
                                 const std::string &type) {
   auto new_node =
       CreateBaseOp(graph, type, {GetInputNode("X", node)}, node->outputs);
-  ReplaceNodeInputs(node, new_node);
-  ReplaceNodeOutputs(node, new_node);
   return new_node;
 }
 

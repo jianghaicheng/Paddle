@@ -51,13 +51,10 @@ ir::Node *elementwise_op_handler(ir::Graph *graph, ir::Node *node,
     auto new_node_reshape =
         CreateBaseOp(graph, "Reshape",
                      {GetInputNode("Y", node), new_node_const->outputs[0]}, {});
-    ReplaceNodeInputs(node, new_node_reshape);
     // elementwise_op
     auto new_node = CreateBaseOp(
         graph, type, {GetInputNode("X", node), new_node_reshape->outputs[0]},
-        {node->outputs[0]});
-    ReplaceNodeInputs(node, new_node);
-    ReplaceNodeOutputs(node, new_node);
+        node->outputs);
     return new_node;
   }
 }

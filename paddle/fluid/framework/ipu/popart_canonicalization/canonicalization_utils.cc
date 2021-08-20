@@ -59,39 +59,11 @@ void MoveNodeInputs(ir::Node *node, ir::Node *new_node) {
   }
 }
 
-void ReplaceNodeInputs(ir::Node *node, ir::Node *new_node) {
-  if (node->inputs.empty()) {
-    return;
-  }
-  for (auto *node_in : node->inputs) {
-    for (size_t i = 0; i < node_in->outputs.size(); ++i) {
-      if (node_in->outputs[i] == node) {
-        node_in->outputs[i] = new_node;
-        break;
-      }
-    }
-  }
-}
-
 void MoveNodeOutputs(ir::Node *node, ir::Node *new_node) {
   if (node->outputs.empty()) {
     return;
   }
   new_node->outputs = node->outputs;
-  for (auto *node_out : node->outputs) {
-    for (size_t i = 0; i < node_out->inputs.size(); ++i) {
-      if (node_out->inputs[i] == node) {
-        node_out->inputs[i] = new_node;
-        break;
-      }
-    }
-  }
-}
-
-void ReplaceNodeOutputs(ir::Node *node, ir::Node *new_node) {
-  if (node->outputs.empty()) {
-    return;
-  }
   for (auto *node_out : node->outputs) {
     for (size_t i = 0; i < node_out->inputs.size(); ++i) {
       if (node_out->inputs[i] == node) {
@@ -115,6 +87,18 @@ void DisConnectNodes(Node *first_node, Node *next_node) {
   rm_by_value(next_node->inputs, first_node);
   rm_by_value(first_node->inputs, next_node);
   rm_by_value(next_node->outputs, first_node);
+}
+
+void ClearNode(Node *node) {
+  auto rm_by_value = [&](std::vector<Node *> &vec, Node *n) {
+    vec.erase(std::remove(vec.begin(), vec.end(), n), vec.end());
+  };
+  for (auto *node_in : node->inputs) {
+    rm_by_value(node_in->outputs, node);
+  }
+  for (auto *node_out : node->outputs) {
+    rm_by_value(node_out->inputs, node);
+  }
 }
 
 void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,

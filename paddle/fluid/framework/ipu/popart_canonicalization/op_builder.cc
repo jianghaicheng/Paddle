@@ -93,6 +93,17 @@ ir::Node *CreateCast(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
   return CreateBaseOp(graph, "Cast", inputs, outputs, {{"to", to}});
 }
 
+ir::Node *CreateGemm(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+                     const std::vector<ir::Node *> &outputs, int64_t transA,
+                     int64_t transB, float alpha, float beta) {
+  return CreateBaseOp(graph, "Gemm", inputs, outputs, {
+                                                          {"alpha", alpha},
+                                                          {"beta", beta},
+                                                          {"transA", transA},
+                                                          {"transB", transB},
+                                                      });
+}
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

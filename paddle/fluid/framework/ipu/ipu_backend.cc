@@ -328,6 +328,16 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
       auto outputs = op->Output("__outputs__");
       popart::TensorId result = builder_->aiOnnxOpset11().mul(inputs);
       tensors_.emplace(outputs[0], result);
+    } else if (op_type == "Gemm") {
+      auto inputs = GetOpInputs(op);
+      auto outputs = op->Output("__outputs__");
+      auto alpha = BOOST_GET_CONST(float, op->GetAttr("alpha"));
+      auto beta = BOOST_GET_CONST(float, op->GetAttr("beta"));
+      auto transA = BOOST_GET_CONST(int64_t, op->GetAttr("transA"));
+      auto transB = BOOST_GET_CONST(int64_t, op->GetAttr("transB"));
+      popart::TensorId result =
+          builder_->aiOnnxOpset11().gemm(inputs, alpha, beta, transA, transB);
+      tensors_.emplace(outputs[0], result);
     } else if (op_type == "Conv") {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");
@@ -481,7 +491,7 @@ void IpuBackend::LowerBody(const ir::Graph* graph) {
     } else if (op_type == "Transpose") {
       auto inputs = GetOpInputs(op);
       auto outputs = op->Output("__outputs__");
-      auto perm = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("axis"));
+      auto perm = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("perm"));
       auto result = builder_->aiOnnxOpset11().transpose(inputs, perm);
       tensors_.emplace(outputs[0], result);
     } else if (op_type == "Gather") {

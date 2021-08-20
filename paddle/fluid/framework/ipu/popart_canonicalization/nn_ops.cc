@@ -57,7 +57,10 @@ ir::Node *conv2d_handler(ir::Graph *graph, ir::Node *node) {
   op_desc->SetAttr("strides", stride);
 
   op_desc->Flush();
-  return graph->CreateOpNode(op_desc.get());
+  auto new_node = graph->CreateOpNode(op_desc.get());
+  MoveNodeInputs(node, new_node);
+  MoveNodeOutputs(node, new_node);
+  return new_node;
 }
 
 ir::Node *batch_norm_handler(ir::Graph *graph, ir::Node *node) {
@@ -87,8 +90,12 @@ ir::Node *batch_norm_handler(ir::Graph *graph, ir::Node *node) {
   // op->GetAttr("data_layout"));
   // op_desc->SetAttr("num_outputs", static_cast<int>(1));
   op_desc->Flush();
-  return graph->CreateOpNode(op_desc.get());
+  auto new_node = graph->CreateOpNode(op_desc.get());
+  MoveNodeInputs(node, new_node);
+  MoveNodeOutputs(node, new_node);
+  return new_node;
 }
+
 ir::Node *pool2d_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
   auto op_desc = std::make_unique<framework::OpDesc>();
@@ -128,7 +135,10 @@ ir::Node *pool2d_handler(ir::Graph *graph, ir::Node *node) {
   op_desc->SetAttr("storage_order", 0);
 
   op_desc->Flush();
-  return graph->CreateOpNode(op_desc.get());
+  auto new_node = graph->CreateOpNode(op_desc.get());
+  MoveNodeInputs(node, new_node);
+  MoveNodeOutputs(node, new_node);
+  return new_node;
 }
 
 ir::Node *group_norm_handler(ir::Graph *graph, ir::Node *node) {
@@ -147,8 +157,6 @@ ir::Node *group_norm_handler(ir::Graph *graph, ir::Node *node) {
                                       GetOutputNode("Variance", node)};
   auto new_node_groupnorm =
       CreateBaseOp(graph, "GroupNorm", inputs_, outputs_, attrs_);
-  ReplaceNodeOutputs(node, new_node_groupnorm);
-  ReplaceNodeInputs(node, new_node_groupnorm);
   return new_node_groupnorm;
 }
 
@@ -165,8 +173,6 @@ ir::Node *instance_norm_handler(ir::Graph *graph, ir::Node *node) {
 
   auto new_node_instancenorm =
       CreateBaseOp(graph, "InstanceNorm", inputs_, outputs_, attrs_);
-  ReplaceNodeOutputs(node, new_node_instancenorm);
-  ReplaceNodeInputs(node, new_node_instancenorm);
   return new_node_instancenorm;
 }
 
@@ -192,7 +198,6 @@ ir::Node *layer_norm_handler(ir::Graph *graph, ir::Node *node) {
   auto new_node_reshape1 = CreateBaseOp(
       graph, "Reshape", {GetInputNode("X", node), reshape1_const->outputs[0]},
       {}, {});
-  ReplaceNodeOutputs(node, new_node_reshape1);
 
   auto epsilon_ = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
   int64_t groups_ = 1;
@@ -215,7 +220,6 @@ ir::Node *layer_norm_handler(ir::Graph *graph, ir::Node *node) {
       CreateBaseOp(graph, "Reshape",
                    {new_node_groupnorm->outputs[0], reshape2_const->outputs[0]},
                    {GetOutputNode("Y", node)}, {});
-  ReplaceNodeInputs(node, new_node_reshape2);
   return new_node_reshape2;
 }
 

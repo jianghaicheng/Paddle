@@ -64,7 +64,10 @@ ir::Node *fill_constant_handler(ir::Graph *graph, ir::Node *node) {
   op_desc->SetAttr("value", value);
 
   op_desc->Flush();
-  return graph->CreateOpNode(op_desc.get());
+  auto new_node = graph->CreateOpNode(op_desc.get());
+  MoveNodeInputs(node, new_node);
+  MoveNodeOutputs(node, new_node);
+  return new_node;
 }
 
 ir::Node *gaussian_random_handler(ir::Graph *graph, ir::Node *node) {
@@ -89,7 +92,10 @@ ir::Node *gaussian_random_handler(ir::Graph *graph, ir::Node *node) {
   // seed TODO
 
   op_desc->Flush();
-  return graph->CreateOpNode(op_desc.get());
+  auto new_node = graph->CreateOpNode(op_desc.get());
+  MoveNodeInputs(node, new_node);
+  MoveNodeOutputs(node, new_node);
+  return new_node;
 }
 
 ir::Node *uniform_random_handler(ir::Graph *graph, ir::Node *node) {
@@ -112,20 +118,21 @@ ir::Node *uniform_random_handler(ir::Graph *graph, ir::Node *node) {
   op_desc->SetAttr("low", min);
   // seed
   op_desc->Flush();
-  return graph->CreateOpNode(op_desc.get());
+  auto new_node = graph->CreateOpNode(op_desc.get());
+  MoveNodeInputs(node, new_node);
+  MoveNodeOutputs(node, new_node);
+  return new_node;
 }
 
 ir::Node *transpose_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
 
   auto axis_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axis"));
-  std::vector<int64_t> axis(axis_.begin(), axis_.end());
-  auto attrs = AttributeMap{{"axis", axis}};
+  std::vector<int64_t> perm(axis_.begin(), axis_.end());
+  auto attrs = AttributeMap{{"perm", perm}};
 
   auto new_node_transpose =
       CreateBaseOp(graph, "Transpose", node->inputs, node->outputs, attrs);
-  ReplaceNodeOutputs(node, new_node_transpose);
-  ReplaceNodeInputs(node, new_node_transpose);
   return new_node_transpose;
 }
 
@@ -139,12 +146,10 @@ ir::Node *reshape_handler(ir::Graph *graph, ir::Node *node) {
       {"dims", std::vector<int64_t>{static_cast<int64_t>(shape.size())}},
       {"dtype", ONNXDataType::INT64}};
   auto new_node_const = CreateBaseOp(graph, "Constant", {}, {}, attrs);
-  ReplaceNodeOutputs(node, new_node_const);
 
   auto new_node_reshape = CreateBaseOp(
       graph, "Reshape", {GetInputNode("X", node), new_node_const->outputs[0]},
       {GetOutputNode("Out", node)}, {});
-  ReplaceNodeInputs(node, new_node_reshape);
   return new_node_reshape;
 }
 
@@ -152,8 +157,6 @@ ir::Node *gather_handler(ir::Graph *graph, ir::Node *node) {
   auto new_node_gather = CreateBaseOp(
       graph, "Gather", {GetInputNode("X", node), GetInputNode("Index", node)},
       {GetOutputNode("Out", node)}, {});
-  ReplaceNodeOutputs(node, new_node_gather);
-  ReplaceNodeInputs(node, new_node_gather);
   return new_node_gather;
 }
 
@@ -173,8 +176,7 @@ ir::Node *squeeze_handler(ir::Graph *graph, ir::Node *node) {
   auto new_node_squeeze =
       CreateBaseOp(graph, "Squeeze", {GetInputNode("X", node)},
                    {GetOutputNode("Out", node)}, {{"axes", axes}});
-  ReplaceNodeOutputs(node, new_node_squeeze);
-  ReplaceNodeInputs(node, new_node_squeeze);
+
   return new_node_squeeze;
 }
 
@@ -182,8 +184,6 @@ ir::Node *cast_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
   auto otype = BOOST_GET_CONST(int, op->GetAttr("out_dtype"));
   auto new_node_cast = CreateCast(graph, node->inputs, node->outputs, otype);
-  ReplaceNodeOutputs(node, new_node_cast);
-  ReplaceNodeInputs(node, new_node_cast);
   return new_node_cast;
 }
 
@@ -191,12 +191,10 @@ ir::Node *lookup_table_handler(ir::Graph *graph, ir::Node *node) {
   auto new_node_squeeze =
       CreateBaseOp(graph, "Squeeze", {GetInputNode("Ids", node)}, {},
                    {{"axes", std::vector<int64_t>{-1}}});
-  ReplaceNodeOutputs(node, new_node_squeeze);
 
   auto new_node_gather = CreateBaseOp(
       graph, "Gather", {GetInputNode("W", node), new_node_squeeze->outputs[0]},
       {GetOutputNode("Out", node)}, {});
-  ReplaceNodeInputs(node, new_node_gather);
   return new_node_gather;
 }
 
@@ -207,8 +205,7 @@ ir::Node *unsqueeze_handler(ir::Graph *graph, ir::Node *node) {
   auto new_node_unsqueeze =
       CreateBaseOp(graph, "Unsqueeze", {GetInputNode("X", node)}, node->outputs,
                    {{"axes", axes}});
-  ReplaceNodeOutputs(node, new_node_unsqueeze);
-  ReplaceNodeInputs(node, new_node_unsqueeze);
+
   return new_node_unsqueeze;
 }
 
@@ -219,8 +216,6 @@ ir::Node *concat_handler(ir::Graph *graph, ir::Node *node) {
 
   auto new_node_concat = CreateBaseOp(graph, "Concat", node->inputs,
                                       node->outputs, {{"axis", axis_}});
-  ReplaceNodeOutputs(node, new_node_concat);
-  ReplaceNodeInputs(node, new_node_concat);
   return new_node_concat;
 }
 
@@ -244,14 +239,11 @@ ir::Node *stack_handler(ir::Graph *graph, ir::Node *node) {
   auto new_node_concat =
       CreateBaseOp(graph, "Concat", unsqueeze_outputs_,
                    {GetOutputNode("Y", node)}, {{"axis", axis_}});
-  ReplaceNodeInputs(node, new_node_concat);
   return new_node_concat;
 }
 
 ir::Node *shape_handler(ir::Graph *graph, ir::Node *node) {
-  auto new_node = CreateBaseOp(graph, "Shape", {node->inputs}, node->outputs);
-  ReplaceNodeInputs(node, new_node);
-  ReplaceNodeOutputs(node, new_node);
+  auto new_node = CreateBaseOp(graph, "Shape", node->inputs, node->outputs);
   return new_node;
 }
 
@@ -296,8 +288,6 @@ ir::Node *slice_handler(ir::Graph *graph, ir::Node *node) {
       graph, "Slice", {GetInputNode("Input", node), starts->outputs[0],
                        ends->outputs[0], axes->outputs[0], steps->outputs[0]},
       node->outputs);
-  ReplaceNodeInputs(node, new_node);
-  ReplaceNodeOutputs(node, new_node);
   return new_node;
 }
 
@@ -316,7 +306,6 @@ ir::Node *expand_handler(ir::Graph *graph, ir::Node *node) {
     // TODO(alleng) using cast will fail at runtime
     expand_times = CreateCast(graph, {GetInputNode("ExpandTimes", node)}, {},
                               proto::VarType::INT64);
-    DisConnectNodes(GetInputNode("ExpandTimes", node), node);
   } else {
     auto expand_times_i32 =
         BOOST_GET_CONST(std::vector<int>, op->GetAttr("expand_times"));
@@ -330,8 +319,6 @@ ir::Node *expand_handler(ir::Graph *graph, ir::Node *node) {
   auto new_node = CreateBaseOp(
       graph, "Tile", {GetInputNode("X", node), expand_times->outputs[0]},
       node->outputs);
-  ReplaceNodeInputs(node, new_node);
-  ReplaceNodeOutputs(node, new_node);
   return new_node;
 }
 

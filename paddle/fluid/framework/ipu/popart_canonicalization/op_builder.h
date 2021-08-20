@@ -56,6 +56,10 @@ ir::Node *CreateConst(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
 ir::Node *CreateCast(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
                      const std::vector<ir::Node *> &outputs, const int &otype);
 
+ir::Node *CreateGemm(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+                     const std::vector<ir::Node *> &outputs, int64_t transA = 0,
+                     int64_t transB = 0, float alpha = 1.0f, float beta = 1.0f);
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

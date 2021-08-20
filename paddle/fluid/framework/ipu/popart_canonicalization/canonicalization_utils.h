@@ -43,10 +43,9 @@ SymbolHandler GetHandler(const std::string &);
 void MoveNodeInputs(ir::Node *node, ir::Node *new_node);
 void MoveNodeOutputs(ir::Node *node, ir::Node *new_node);
 
-void ReplaceNodeInputs(ir::Node *node, ir::Node *new_node);
-void ReplaceNodeOutputs(ir::Node *node, ir::Node *new_node);
 void ConnectNodes(ir::Node *first_node, ir::Node *next_node);
 void DisConnectNodes(Node *first_node, Node *next_node);
+void ClearNode(Node *node);
 void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
                 bool override = false);
 

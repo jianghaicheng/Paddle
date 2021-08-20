@@ -48,17 +48,11 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
     ir::Node* new_node = nullptr;
     ipu::SymbolHandler handler = ipu::GetHandler(op_type);
     if (handler) {
-      VLOG(10) << "Raw Paddle Node:";
-      VLOG(10) << node->Op()->Proto()->DebugString();
+      VLOG(11) << "Raw Paddle Node:";
+      VLOG(11) << node->Op()->Proto()->DebugString();
       new_node = handler(graph, node);
-      VLOG(10) << "Post Popart Node:";
-      VLOG(10) << new_node->Op()->Proto()->DebugString();
-      if (new_node->inputs.empty()) {
-        ipu::MoveNodeInputs(node, new_node);
-      }
-      if (new_node->outputs.empty()) {
-        ipu::MoveNodeOutputs(node, new_node);
-      }
+      VLOG(11) << "Post Popart Node:";
+      VLOG(11) << new_node->Op()->Proto()->DebugString();
       if (!new_node->Op()->HasAttr("ipu_index")) {
         ipu::CopyOpAttr("ipu_index", node->Op(), new_node->Op());
       }
@@ -66,6 +60,7 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
         ipu::CopyOpAttr("ipu_stage", node->Op(), new_node->Op());
       }
 
+      ipu::ClearNode(node);
       graph->RemoveNode(node);
     }
   }

@@ -25,8 +25,6 @@ ir::Node *equal_handler(ir::Graph *graph, ir::Node *node) {
   auto new_node = CreateBaseOp(
       graph, "Equal", {GetInputNode("X", node), GetInputNode("Y", node)},
       node->outputs);
-  ReplaceNodeInputs(node, new_node);
-  ReplaceNodeOutputs(node, new_node);
   return new_node;
 }
 
