@@ -65,6 +65,20 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
                           platform::errors::PreconditionNotMet(
                               "The scope ptr should not be nullptr."));
   argument->main_graph().SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
+
+  // ipu related
+  if (argument->use_ipu()) {
+#ifdef PADDLE_WITH_IPU
+    argument->main_graph().SetNotOwned("num_ipus", &argument->ipu_device_num());
+    argument->main_graph().SetNotOwned("enable_pipeline",
+                                       &argument->ipu_enable_pipeline());
+    argument->main_graph().SetNotOwned("enable_sharding",
+                                       &argument->ipu_enable_sharding());
+#else
+    PADDLE_THROW(
+        platform::errors::Unimplemented("Please compile with WITH_IPU"));
+#endif
+  }
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(

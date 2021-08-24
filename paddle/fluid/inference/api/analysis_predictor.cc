@@ -266,11 +266,10 @@ bool AnalysisPredictor::CreateExecutor() {
     }
   } else if (config_.use_ipu()){
 #ifdef PADDLE_WITH_IPU
-      place_ = paddle::platform::IPUPlace(config_.ipu_device_id());
+      place_ = paddle::platform::IPUPlace();
 #else
       PADDLE_THROW(platform::errors::Unavailable(
-          "You tried to use IPU forward propagation (inference without lite "
-          "engine), but Paddle was not compiled "
+          "You tried to use IPU forward propagation, but Paddle was not compiled "
           "with WITH_IPU."));
 #endif
   } else {
@@ -556,8 +555,12 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
 #ifdef PADDLE_WITH_IPU
+  if (config_.use_ipu()) {
     argument_.SetUseIpu(config_.use_ipu_);
-    argument_.SetIPUDeviceId(config_.ipu_device_id());
+    argument_.SetIpuDeviceNum(config_.ipu_device_num());
+    argument_.SetIpuEnablePipeline(config_.ipu_enable_pipeline_);
+    argument_.SetIpuEnableSharding(config_.ipu_enable_sharding_);
+  }
 #endif
 
   if (config_.use_mkldnn_) {
