@@ -79,3 +79,13 @@
     popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data); \
     tensors_.emplace(outputs[0], result);                                      \
   }
+
+#define NllLoss                                                               \
+  [&](OpDesc *op_desc) {                                                      \
+    auto inputs = GetOpInputs(op_desc);                                       \
+    auto outputs = op_desc->Output("__outputs__");                            \
+    auto ignoreIndex = BOOST_GET_CONST(int, op_desc->GetAttr("ignoreIndex")); \
+    auto result = builder_->aiGraphcoreOpset1().nllloss(                      \
+        inputs, popart::ReductionType::NoReduction, ignoreIndex);             \
+    tensors_.emplace(outputs[0], result);                                     \
+  }

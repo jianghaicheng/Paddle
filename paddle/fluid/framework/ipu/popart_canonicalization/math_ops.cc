@@ -161,6 +161,20 @@ ir::Node *scale_handler(ir::Graph *graph, ir::Node *node) {
   }
 }
 
+ir::Node *cross_entropy2_handler(ir::Graph *graph, ir::Node *node) {
+  auto *op = node->Op();
+  auto ignoreIndex = BOOST_GET_CONST(int, op->GetAttr("ignore_index"));
+  auto new_cast = CreateCast(graph, {GetInputNode("Label", node)}, {},
+                             proto::VarType::INT32);
+  auto new_node = CreateBaseOp(graph, "popart_nllloss",
+                               {GetInputNode("X", node), new_cast->outputs[0]},
+                               {GetOutputNode("Y", node)},
+                               {
+                                   {"ignoreIndex", ignoreIndex},
+                               });
+  return new_node;
+}
+
 REGISTER_HANDLER(reduce_mean, reduce_mean_handler);
 REGISTER_HANDLER(mean, mean_handler);
 REGISTER_HANDLER(pow, pow_handler);
@@ -169,6 +183,7 @@ REGISTER_HANDLER(matmul, matmul_handler);
 REGISTER_HANDLER(sum, sum_handler);
 REGISTER_HANDLER(softmax, softmax_handler);
 REGISTER_HANDLER(scale, scale_handler);
+REGISTER_HANDLER(cross_entropy2, cross_entropy2_handler);
 
 }  // namespace
 }  // namespace ipu

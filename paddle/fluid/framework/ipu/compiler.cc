@@ -188,6 +188,7 @@ void Compiler::RegisterOpFunc() {
   name_function_.emplace("popart_reducemean", ReduceMeanHandler);
   name_function_.emplace("popart_batchnormalization", BatchNormHandler);
   name_function_.emplace("popart_constant", Constant);
+  name_function_.emplace("popart_nllloss", NllLoss);
 }
 
 void Compiler::LowerBody(const ir::Graph* graph) {

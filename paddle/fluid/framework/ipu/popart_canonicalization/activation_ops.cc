@@ -52,12 +52,21 @@ ir::Node *gelu_handler(ir::Graph *graph, ir::Node *node) {
   return activation_op_handler(graph, node, "popart_gelu");
 }
 
+ir::Node *log_softmax_handler(ir::Graph *graph, ir::Node *node) {
+  auto axis_ = BOOST_GET_CONST(int, node->Op()->GetAttr("axis"));
+  return CreateBaseOp(graph, "popart_logsoftmax", node->inputs, node->outputs,
+                      {
+                          {"axis", int64_t{axis_}},
+                      });
+}
+
 REGISTER_HANDLER(relu, relu_handler);
 REGISTER_HANDLER(tanh, tanh_handler);
 REGISTER_HANDLER(log, log_handler);
 REGISTER_HANDLER(sigmoid, sigmoid_handler);
 REGISTER_HANDLER(sqrt, sqrt_handler);
 REGISTER_HANDLER(gelu, gelu_handler);
+REGISTER_HANDLER(log_softmax, log_softmax_handler);
 
 }  // namespace
 }  // namespace ipu

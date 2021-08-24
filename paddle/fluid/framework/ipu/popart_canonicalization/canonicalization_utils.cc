@@ -112,7 +112,7 @@ void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
   }
 }
 
-const int VarType2OnnxDtype(const int &type) {
+const int VarType2OnnxDtype(const int type) {
   auto dtype = static_cast<proto::VarType::Type>(type);
   switch (dtype) {
     case proto::VarType::BOOL:
@@ -145,7 +145,7 @@ const int VarType2OnnxDtype(const int &type) {
   }
 }
 
-const std::string VarType2PopStr(const int &type) {
+const std::string VarType2PopStr(const int type) {
   auto dtype = static_cast<proto::VarType::Type>(type);
   switch (dtype) {
     case proto::VarType::UINT8:
@@ -172,8 +172,8 @@ const std::string VarType2PopStr(const int &type) {
   }
 }
 
-Node *GetInputNode(const std::string &name, const Node *node) {
-  auto node_name = node->Op()->Input(name).front();
+Node *GetInputNode(const std::string &name, const Node *node, const int id) {
+  auto node_name = node->Op()->Input(name).at(id);
   for (auto *n : node->inputs) {
     if (n->Name() == node_name) {
       return n;
@@ -182,14 +182,26 @@ Node *GetInputNode(const std::string &name, const Node *node) {
   return nullptr;
 }
 
-Node *GetOutputNode(const std::string &name, const Node *node) {
-  auto node_name = node->Op()->Output(name).front();
+Node *GetOutputNode(const std::string &name, const Node *node, const int id) {
+  auto node_name = node->Op()->Output(name).at(id);
   for (auto *n : node->outputs) {
     if (n->Name() == node_name) {
       return n;
     }
   }
   return nullptr;
+}
+
+std::vector<int64_t> GetInputNodeShape(const std::string &name,
+                                       const Node *op_node, const int id) {
+  auto input_node = GetInputNode(name, op_node, id);
+  return op_node->Op()->Block()->FindVar(input_node->Name())->GetShape();
+}
+
+std::vector<int64_t> GetOutputNodeShape(const std::string &name,
+                                        const Node *op_node, const int id) {
+  auto output_node = GetOutputNode(name, op_node, id);
+  return op_node->Op()->Block()->FindVar(output_node->Name())->GetShape();
 }
 
 }  // namespace ipu

@@ -54,11 +54,15 @@ ir::Node *CreateConst(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
 
 // otype is proto::VarType::Type
 ir::Node *CreateCast(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
-                     const std::vector<ir::Node *> &outputs, const int &otype);
+                     const std::vector<ir::Node *> &outputs, const int otype);
 
 ir::Node *CreateGemm(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
                      const std::vector<ir::Node *> &outputs, int64_t transA = 0,
                      int64_t transB = 0, float alpha = 1.0f, float beta = 1.0f);
+
+ir::Node *CreateReshape(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+                        const std::vector<ir::Node *> &outputs,
+                        const std::vector<int64_t> &oshape);
 
 }  // namespace ipu
 }  // namespace framework

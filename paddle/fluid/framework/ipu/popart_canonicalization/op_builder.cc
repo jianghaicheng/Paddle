@@ -105,6 +105,20 @@ ir::Node *CreateGemm(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
                       });
 }
 
+ir::Node *CreateReshape(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+                        const std::vector<ir::Node *> &outputs,
+                        const std::vector<int64_t> &oshape) {
+  auto attr = AttributeMap{
+      {"value", oshape},
+      {"dims", std::vector<int64_t>{static_cast<int64_t>(oshape.size())}},
+      {"dtype", ONNXDataType::INT64}};
+  auto new_node_const = CreateBaseOp(graph, "popart_constant", {}, {}, attr);
+  auto new_node_reshape =
+      CreateBaseOp(graph, "popart_reshape",
+                   {inputs[0], new_node_const->outputs[0]}, outputs);
+  return new_node_reshape;
+}
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle
