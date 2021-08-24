@@ -24,7 +24,7 @@ namespace {
 ir::Node *conv2d_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
   auto op_desc = std::make_unique<framework::OpDesc>();
-  op_desc->SetType("Conv");
+  op_desc->SetType("popart_conv");
 
   std::vector<std::string> inputs;
   inputs.push_back(op->Input("Input").front());
@@ -66,7 +66,7 @@ ir::Node *conv2d_handler(ir::Graph *graph, ir::Node *node) {
 ir::Node *batch_norm_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
   auto op_desc = std::make_unique<framework::OpDesc>();
-  op_desc->SetType("BatchNormalization");
+  op_desc->SetType("popart_batchnormalization");
   std::vector<std::string> inputs;
   inputs.push_back(op->Input("X").front());
   inputs.push_back(op->Input("Scale").front());
@@ -88,7 +88,7 @@ ir::Node *batch_norm_handler(ir::Graph *graph, ir::Node *node) {
   op_desc->SetAttr("epsilon", BOOST_GET_CONST(float, op->GetAttr("epsilon")));
   // op_desc->SetAttr("data_layout", BOOST_GET_CONST(string,
   // op->GetAttr("data_layout"));
-  // op_desc->SetAttr("num_outputs", static_cast<int>(1));
+  op_desc->SetAttr("num_outputs", static_cast<int>(1));
   op_desc->Flush();
   auto new_node = graph->CreateOpNode(op_desc.get());
   MoveNodeInputs(node, new_node);
@@ -101,9 +101,9 @@ ir::Node *pool2d_handler(ir::Graph *graph, ir::Node *node) {
   auto op_desc = std::make_unique<framework::OpDesc>();
   auto pool_type = BOOST_GET_CONST(std::string, op->GetAttr("pooling_type"));
   if (pool_type == "max") {
-    op_desc->SetType("MaxPool");
+    op_desc->SetType("popart_maxpool");
   } else if (pool_type == "avg") {
-    op_desc->SetType("AveragePool");
+    op_desc->SetType("popart_averagepool");
   }
   std::vector<std::string> inputs;
   inputs.push_back(op->Input("X").front());
@@ -113,10 +113,11 @@ ir::Node *pool2d_handler(ir::Graph *graph, ir::Node *node) {
   op_desc->SetOutput("__outputs__", outputs);
   auto ksize = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
 
+  op_desc->SetAttr("num_outputs", int64_t(1));
   std::vector<int64_t> kenel_shape_int64{ksize.begin(), ksize.end()};
   op_desc->SetAttr("kernel_shape", kenel_shape_int64);
   auto ceil_mode = BOOST_GET_CONST(bool, op->GetAttr("ceil_mode"));
-  op_desc->SetAttr("ceil_mode", ceil_mode);
+  op_desc->SetAttr("ceil_mode", int64_t(ceil_mode ? 1 : 0));
 
   // op_desc->SetAttr("dilations", {});
   auto pads = BOOST_GET_CONST(std::vector<int>, op->GetAttr("paddings"));
@@ -125,14 +126,14 @@ ir::Node *pool2d_handler(ir::Graph *graph, ir::Node *node) {
     paddings_int64.push_back(paddings_int64[0]);
     paddings_int64.push_back(paddings_int64[1]);
   }
-  op_desc->SetAttr("paddings", paddings_int64);
+  op_desc->SetAttr("pads", paddings_int64);
 
   auto strides = BOOST_GET_CONST(std::vector<int>, op->GetAttr("strides"));
   std::vector<int64_t> strides_int64{strides.begin(), strides.end()};
 
   op_desc->SetAttr("strides", strides_int64);
-  op_desc->SetAttr("count_include_pad", 0);
-  op_desc->SetAttr("storage_order", 0);
+  op_desc->SetAttr("count_include_pad", int64_t(0));
+  op_desc->SetAttr("storage_order", int64_t(0));
 
   op_desc->Flush();
   auto new_node = graph->CreateOpNode(op_desc.get());
@@ -147,7 +148,7 @@ ir::Node *group_norm_handler(ir::Graph *graph, ir::Node *node) {
   auto epsilon_ = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
   auto groups_ = BOOST_GET_CONST(int, op->GetAttr("groups"));
   auto groups = int64_t{groups_};
-  auto attrs_ = AttributeMap{{"epsilon", epsilon_}, {"groups", groups}};
+  auto attrs_ = AttributeMap{{"epsilon", epsilon_}, {"num_groups", groups}};
 
   std::vector<ir::Node *> inputs_ = {GetInputNode("X", node),
                                      GetInputNode("Scale", node),
@@ -155,8 +156,8 @@ ir::Node *group_norm_handler(ir::Graph *graph, ir::Node *node) {
   std::vector<ir::Node *> outputs_ = {GetOutputNode("Y", node),
                                       GetOutputNode("Mean", node),
                                       GetOutputNode("Variance", node)};
-  auto new_node_groupnorm =
-      CreateBaseOp(graph, "GroupNorm", inputs_, outputs_, attrs_);
+  auto new_node_groupnorm = CreateBaseOp(graph, "popart_groupnormalization",
+                                         inputs_, outputs_, attrs_);
   return new_node_groupnorm;
 }
 
@@ -171,8 +172,8 @@ ir::Node *instance_norm_handler(ir::Graph *graph, ir::Node *node) {
                                      GetInputNode("Bias", node)};
   std::vector<ir::Node *> outputs_ = {GetOutputNode("Y", node)};
 
-  auto new_node_instancenorm =
-      CreateBaseOp(graph, "InstanceNorm", inputs_, outputs_, attrs_);
+  auto new_node_instancenorm = CreateBaseOp(
+      graph, "popart_instancenormalization", inputs_, outputs_, attrs_);
   return new_node_instancenorm;
 }
 
@@ -194,18 +195,18 @@ ir::Node *layer_norm_handler(ir::Graph *graph, ir::Node *node) {
       {"value", norm_shape_},
       {"dims", std::vector<int64_t>{static_cast<int64_t>(norm_shape_.size())}},
       {"dtype", ONNXDataType::INT64}};
-  auto reshape1_const = CreateBaseOp(graph, "Constant", {}, {}, attrs1);
+  auto reshape1_const = CreateBaseOp(graph, "popart_constant", {}, {}, attrs1);
   auto new_node_reshape1 = CreateBaseOp(
-      graph, "Reshape", {GetInputNode("X", node), reshape1_const->outputs[0]},
-      {}, {});
+      graph, "popart_reshape",
+      {GetInputNode("X", node), reshape1_const->outputs[0]}, {}, {});
 
   auto epsilon_ = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
   int64_t groups_ = 1;
   auto groupnorm_attrs_ =
-      AttributeMap{{"epsilon", epsilon_}, {"groups", groups_}};
+      AttributeMap{{"epsilon", epsilon_}, {"num_groups", groups_}};
   auto out_Y_ = MakeVarNode(graph);
   auto new_node_groupnorm = CreateBaseOp(
-      graph, "GroupNorm",
+      graph, "popart_groupnormalization",
       {new_node_reshape1->outputs[0], GetInputNode("Scale", node),
        GetInputNode("Bias", node)},
       {out_Y_, GetOutputNode("Mean", node), GetOutputNode("Variance", node)},
@@ -215,9 +216,9 @@ ir::Node *layer_norm_handler(ir::Graph *graph, ir::Node *node) {
       {"value", input_shape_},
       {"dims", std::vector<int64_t>{static_cast<int64_t>(input_shape_.size())}},
       {"dtype", ONNXDataType::INT64}};
-  auto reshape2_const = CreateBaseOp(graph, "Constant", {}, {}, attrs2);
+  auto reshape2_const = CreateBaseOp(graph, "popart_constant", {}, {}, attrs2);
   auto new_node_reshape2 =
-      CreateBaseOp(graph, "Reshape",
+      CreateBaseOp(graph, "popart_reshape",
                    {new_node_groupnorm->outputs[0], reshape2_const->outputs[0]},
                    {GetOutputNode("Y", node)}, {});
   return new_node_reshape2;

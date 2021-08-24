@@ -24,7 +24,7 @@ namespace {
 ir::Node *fill_constant_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
   auto op_desc = std::make_unique<framework::OpDesc>();
-  op_desc->SetType("Constant");
+  op_desc->SetType("popart_constant");
   if (op->HasInput("ShapeTensor") && !op->Input("ShapeTensor").empty()) {
     PADDLE_THROW(
         platform::errors::Unimplemented("op fill_constant with ShapeTensor"));
@@ -73,7 +73,7 @@ ir::Node *fill_constant_handler(ir::Graph *graph, ir::Node *node) {
 ir::Node *gaussian_random_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
   auto op_desc = std::make_unique<framework::OpDesc>();
-  op_desc->SetType("RandomNormal");
+  op_desc->SetType("popart_randomnormal");
 
   std::vector<std::string> outputs;
   outputs.push_back(op->Output("Out").front());
@@ -101,7 +101,7 @@ ir::Node *gaussian_random_handler(ir::Graph *graph, ir::Node *node) {
 ir::Node *uniform_random_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
   auto op_desc = std::make_unique<framework::OpDesc>();
-  op_desc->SetType("RandomUniform");
+  op_desc->SetType("popart_randomuniform");
 
   std::vector<std::string> outputs;
   outputs.push_back(op->Output("Out").front());
@@ -131,8 +131,8 @@ ir::Node *transpose_handler(ir::Graph *graph, ir::Node *node) {
   std::vector<int64_t> perm(axis_.begin(), axis_.end());
   auto attrs = AttributeMap{{"perm", perm}};
 
-  auto new_node_transpose =
-      CreateBaseOp(graph, "Transpose", node->inputs, node->outputs, attrs);
+  auto new_node_transpose = CreateBaseOp(graph, "popart_transpose",
+                                         node->inputs, node->outputs, attrs);
   return new_node_transpose;
 }
 
@@ -145,18 +145,20 @@ ir::Node *reshape_handler(ir::Graph *graph, ir::Node *node) {
       {"value", shape},
       {"dims", std::vector<int64_t>{static_cast<int64_t>(shape.size())}},
       {"dtype", ONNXDataType::INT64}};
-  auto new_node_const = CreateBaseOp(graph, "Constant", {}, {}, attrs);
+  auto new_node_const = CreateBaseOp(graph, "popart_constant", {}, {}, attrs);
 
-  auto new_node_reshape = CreateBaseOp(
-      graph, "Reshape", {GetInputNode("X", node), new_node_const->outputs[0]},
-      {GetOutputNode("Out", node)}, {});
+  auto new_node_reshape =
+      CreateBaseOp(graph, "popart_reshape",
+                   {GetInputNode("X", node), new_node_const->outputs[0]},
+                   {GetOutputNode("Out", node)}, {});
   return new_node_reshape;
 }
 
 ir::Node *gather_handler(ir::Graph *graph, ir::Node *node) {
-  auto new_node_gather = CreateBaseOp(
-      graph, "Gather", {GetInputNode("X", node), GetInputNode("Index", node)},
-      {GetOutputNode("Out", node)}, {});
+  auto new_node_gather =
+      CreateBaseOp(graph, "popart_gather",
+                   {GetInputNode("X", node), GetInputNode("Index", node)},
+                   {GetOutputNode("Out", node)}, {});
   return new_node_gather;
 }
 
@@ -174,7 +176,7 @@ ir::Node *squeeze_handler(ir::Graph *graph, ir::Node *node) {
     }
   }
   auto new_node_squeeze =
-      CreateBaseOp(graph, "Squeeze", {GetInputNode("X", node)},
+      CreateBaseOp(graph, "popart_squeeze", {GetInputNode("X", node)},
                    {GetOutputNode("Out", node)}, {{"axes", axes}});
 
   return new_node_squeeze;
@@ -189,12 +191,13 @@ ir::Node *cast_handler(ir::Graph *graph, ir::Node *node) {
 
 ir::Node *lookup_table_handler(ir::Graph *graph, ir::Node *node) {
   auto new_node_squeeze =
-      CreateBaseOp(graph, "Squeeze", {GetInputNode("Ids", node)}, {},
+      CreateBaseOp(graph, "popart_squeeze", {GetInputNode("Ids", node)}, {},
                    {{"axes", std::vector<int64_t>{-1}}});
 
-  auto new_node_gather = CreateBaseOp(
-      graph, "Gather", {GetInputNode("W", node), new_node_squeeze->outputs[0]},
-      {GetOutputNode("Out", node)}, {});
+  auto new_node_gather =
+      CreateBaseOp(graph, "popart_gather",
+                   {GetInputNode("W", node), new_node_squeeze->outputs[0]},
+                   {GetOutputNode("Out", node)}, {});
   return new_node_gather;
 }
 
@@ -203,8 +206,8 @@ ir::Node *unsqueeze_handler(ir::Graph *graph, ir::Node *node) {
   auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axes"));
   std::vector<int64_t> axes{axes_.begin(), axes_.end()};
   auto new_node_unsqueeze =
-      CreateBaseOp(graph, "Unsqueeze", {GetInputNode("X", node)}, node->outputs,
-                   {{"axes", axes}});
+      CreateBaseOp(graph, "popart_unsqueeze", {GetInputNode("X", node)},
+                   node->outputs, {{"axes", axes}});
 
   return new_node_unsqueeze;
 }
@@ -214,7 +217,7 @@ ir::Node *concat_handler(ir::Graph *graph, ir::Node *node) {
   // TODO(yaozhixin): support tensor as axis
   int64_t axis_{BOOST_GET_CONST(int, op->GetAttr("axis"))};
 
-  auto new_node_concat = CreateBaseOp(graph, "Concat", node->inputs,
+  auto new_node_concat = CreateBaseOp(graph, "popart_concat", node->inputs,
                                       node->outputs, {{"axis", axis_}});
   return new_node_concat;
 }
@@ -227,7 +230,7 @@ ir::Node *stack_handler(ir::Graph *graph, ir::Node *node) {
   std::vector<Node *> unsqueeze_outputs_{};
   for (auto input : node->inputs) {
     auto new_unsqueeze_node =
-        CreateBaseOp(graph, "Unsqueeze", {input}, {}, {{"axes", axes_}});
+        CreateBaseOp(graph, "popart_unsqueeze", {input}, {}, {{"axes", axes_}});
     unsqueeze_outputs_.push_back(new_unsqueeze_node->outputs[0]);
     for (size_t i = 0; i < input->outputs.size(); ++i) {
       if (input->outputs[i] == node) {
@@ -237,13 +240,14 @@ ir::Node *stack_handler(ir::Graph *graph, ir::Node *node) {
     }
   }
   auto new_node_concat =
-      CreateBaseOp(graph, "Concat", unsqueeze_outputs_,
+      CreateBaseOp(graph, "popart_concat", unsqueeze_outputs_,
                    {GetOutputNode("Y", node)}, {{"axis", axis_}});
   return new_node_concat;
 }
 
 ir::Node *shape_handler(ir::Graph *graph, ir::Node *node) {
-  auto new_node = CreateBaseOp(graph, "Shape", node->inputs, node->outputs);
+  auto new_node =
+      CreateBaseOp(graph, "popart_shape", node->inputs, node->outputs);
   return new_node;
 }
 
@@ -284,10 +288,11 @@ ir::Node *slice_handler(ir::Graph *graph, ir::Node *node) {
     auto attr = MakeConstAttrMap<int>(steps_, {dim}, ONNXDataType::INT32);
     steps = CreateConst(graph, {}, {}, attr);
   }
-  auto new_node = CreateBaseOp(
-      graph, "Slice", {GetInputNode("Input", node), starts->outputs[0],
-                       ends->outputs[0], axes->outputs[0], steps->outputs[0]},
-      node->outputs);
+  auto new_node =
+      CreateBaseOp(graph, "popart_slice",
+                   {GetInputNode("Input", node), starts->outputs[0],
+                    ends->outputs[0], axes->outputs[0], steps->outputs[0]},
+                   node->outputs);
   return new_node;
 }
 
@@ -317,7 +322,7 @@ ir::Node *expand_handler(ir::Graph *graph, ir::Node *node) {
     expand_times = CreateConst(graph, {}, {}, attr);
   }
   auto new_node = CreateBaseOp(
-      graph, "Tile", {GetInputNode("X", node), expand_times->outputs[0]},
+      graph, "popart_tile", {GetInputNode("X", node), expand_times->outputs[0]},
       node->outputs);
   return new_node;
 }

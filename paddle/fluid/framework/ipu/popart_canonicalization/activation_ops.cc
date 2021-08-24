@@ -29,27 +29,27 @@ ir::Node *activation_op_handler(ir::Graph *graph, ir::Node *node,
 }
 
 ir::Node *relu_handler(ir::Graph *graph, ir::Node *node) {
-  return activation_op_handler(graph, node, "Relu");
+  return activation_op_handler(graph, node, "popart_relu");
 }
 
 ir::Node *tanh_handler(ir::Graph *graph, ir::Node *node) {
-  return activation_op_handler(graph, node, "Tanh");
+  return activation_op_handler(graph, node, "popart_tanh");
 }
 
 ir::Node *log_handler(ir::Graph *graph, ir::Node *node) {
-  return activation_op_handler(graph, node, "Log");
+  return activation_op_handler(graph, node, "popart_log");
 }
 
 ir::Node *sigmoid_handler(ir::Graph *graph, ir::Node *node) {
-  return activation_op_handler(graph, node, "Sigmoid");
+  return activation_op_handler(graph, node, "popart_sigmoid");
 }
 
 ir::Node *sqrt_handler(ir::Graph *graph, ir::Node *node) {
-  return activation_op_handler(graph, node, "Sqrt");
+  return activation_op_handler(graph, node, "popart_sqrt");
 }
 
 ir::Node *gelu_handler(ir::Graph *graph, ir::Node *node) {
-  return activation_op_handler(graph, node, "Gelu");
+  return activation_op_handler(graph, node, "popart_gelu");
 }
 
 REGISTER_HANDLER(relu, relu_handler);

@@ -24,7 +24,7 @@ namespace {
 ir::Node *reduce_mean_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
   auto op_desc = std::make_unique<framework::OpDesc>();
-  op_desc->SetType("ReduceMean");
+  op_desc->SetType("popart_reducemean");
 
   std::vector<std::string> inputs;
   inputs.push_back(op->Input("X").front());
@@ -50,11 +50,12 @@ ir::Node *reduce_mean_handler(ir::Graph *graph, ir::Node *node) {
 }
 
 ir::Node *mean_handler(ir::Graph *graph, ir::Node *node) {
-  auto new_node = CreateBaseOp(graph, "ReduceMean", {GetInputNode("X", node)},
-                               {GetOutputNode("Out", node)},
-                               {
-                                   {"keepdims", int64_t{0}},
-                               });
+  auto new_node =
+      CreateBaseOp(graph, "popart_reducemean", {GetInputNode("X", node)},
+                   {GetOutputNode("Out", node)},
+                   {
+                       {"keepdims", int64_t{0}},
+                   });
   return new_node;
 }
 
@@ -66,8 +67,8 @@ ir::Node *pow_handler(ir::Graph *graph, ir::Node *node) {
       MakeConstAttrMapFromValue<float>(value_, {1}, ONNXDataType::FLOAT);
   auto new_node_const = CreateConst(graph, {}, {}, attrs);
   auto new_node_pow = CreateBaseOp(
-      graph, "Pow", {GetInputNode("X", node), new_node_const->outputs[0]},
-      node->outputs);
+      graph, "popart_pow",
+      {GetInputNode("X", node), new_node_const->outputs[0]}, node->outputs);
   return new_node_pow;
 }
 
@@ -80,8 +81,8 @@ ir::Node *mul_handler(ir::Graph *graph, ir::Node *node) {
         "mul with x_num_col_dims or y_num_col_dims != 1"));
   }
   auto new_node = CreateBaseOp(
-      graph, "MatMul", {GetInputNode("X", node), GetInputNode("Y", node)},
-      node->outputs);
+      graph, "popart_matmul",
+      {GetInputNode("X", node), GetInputNode("Y", node)}, node->outputs);
   return new_node;
 }
 
@@ -96,7 +97,8 @@ ir::Node *matmul_handler(ir::Graph *graph, ir::Node *node) {
 }
 
 ir::Node *sum_handler(ir::Graph *graph, ir::Node *node) {
-  auto new_node = CreateBaseOp(graph, "Sum", node->inputs, node->outputs);
+  auto new_node =
+      CreateBaseOp(graph, "popart_sum", node->inputs, node->outputs);
   return new_node;
 }
 
@@ -104,10 +106,10 @@ ir::Node *softmax_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
   auto axis_ = BOOST_GET_CONST(int, op->GetAttr("axis"));
   auto axis = int64_t{axis_};
-  auto new_node = CreateBaseOp(graph, "Softmax", node->inputs, node->outputs,
-                               {
-                                   {"axis", axis},
-                               });
+  auto new_node = CreateBaseOp(graph, "popart_softmax", node->inputs,
+                               node->outputs, {
+                                                  {"axis", axis},
+                                              });
   return new_node;
 }
 
@@ -122,7 +124,7 @@ ir::Node *scale_handler(ir::Graph *graph, ir::Node *node) {
   // TODO(yaozhixin): support tensor as scale input
   if (abs(scale_ - 1.0) < 1e-06 && abs(bias_ - 0.0) < 1e-06) {
     auto new_node_identity = CreateBaseOp(
-        graph, "Identity", {GetInputNode("X", node)}, node->outputs, {});
+        graph, "popart_identity", {GetInputNode("X", node)}, node->outputs, {});
     return new_node_identity;
   } else {
     auto new_node_bias =
@@ -140,18 +142,18 @@ ir::Node *scale_handler(ir::Graph *graph, ir::Node *node) {
     ir::Node *result = nullptr;
     if (bias_after_scale_) {
       auto new_node_mul = CreateBaseOp(
-          graph, "Mul", {new_node_cast->outputs[0], new_node_scale->outputs[0]},
-          {}, {});
+          graph, "popart_mul",
+          {new_node_cast->outputs[0], new_node_scale->outputs[0]}, {}, {});
       result = CreateBaseOp(
-          graph, "Add", {new_node_mul->outputs[0], new_node_bias->outputs[0]},
-          {}, {});
+          graph, "popart_add",
+          {new_node_mul->outputs[0], new_node_bias->outputs[0]}, {}, {});
     } else {
       auto new_node_add = CreateBaseOp(
-          graph, "Add", {new_node_cast->outputs[0], new_node_bias->outputs[0]},
-          {}, {});
+          graph, "popart_add",
+          {new_node_cast->outputs[0], new_node_bias->outputs[0]}, {}, {});
       result = CreateBaseOp(
-          graph, "Mul", {new_node_add->outputs[0], new_node_scale->outputs[0]},
-          {}, {});
+          graph, "popart_mul",
+          {new_node_add->outputs[0], new_node_scale->outputs[0]}, {}, {});
     }
     auto result_after_cast = CreateCast(graph, result->outputs, node->outputs,
                                         static_cast<int>(data_type_));

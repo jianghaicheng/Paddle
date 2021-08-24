@@ -31,9 +31,9 @@ limitations under the License. */
 #include <popart/tensorinfo.hpp>
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/ipu/compiler.h"
 #include "paddle/fluid/framework/ipu/device.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
-#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -82,7 +82,7 @@ class IpuBackend {
   std::unique_ptr<popart::Optimizer> GetPopartOptimizer();
 
   std::vector<int64_t> GetTensorShape(const std::string &var_name) {
-    return builder_->getTensorShape(tensors_[var_name]);
+    return compiler_->GetTensorShape(var_name);
   }
 
   // SetScope, so we can get model parameters from scope
@@ -122,15 +122,10 @@ class IpuBackend {
   const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
 
-  std::vector<popart::TensorId> inputs_;
-  std::vector<popart::TensorId> outputs_;
-  std::map<std::string, popart::TensorId> tensors_;
-
-  std::unique_ptr<popart::Builder> builder_;
   std::unique_ptr<popart::Session> session_;
   std::shared_ptr<popart::DeviceInfo> curr_device_;
-
   static std::shared_ptr<IpuBackend> instance_;
+  std::shared_ptr<Compiler> compiler_;
 };
 
 }  // namespace ipu

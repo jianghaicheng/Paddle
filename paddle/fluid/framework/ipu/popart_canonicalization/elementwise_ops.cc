@@ -49,7 +49,7 @@ ir::Node *elementwise_op_handler(ir::Graph *graph, ir::Node *node,
     auto new_node_const = CreateConst(graph, {}, {}, attrs);
     // reshape
     auto new_node_reshape =
-        CreateBaseOp(graph, "Reshape",
+        CreateBaseOp(graph, "popart_reshape",
                      {GetInputNode("Y", node), new_node_const->outputs[0]}, {});
     // elementwise_op
     auto new_node = CreateBaseOp(
@@ -60,35 +60,35 @@ ir::Node *elementwise_op_handler(ir::Graph *graph, ir::Node *node,
 }
 
 ir::Node *elementwise_add_handler(ir::Graph *graph, ir::Node *node) {
-  return elementwise_op_handler(graph, node, "Add");
+  return elementwise_op_handler(graph, node, "popart_add");
 }
 
 ir::Node *elementwise_sub_handler(ir::Graph *graph, ir::Node *node) {
-  return elementwise_op_handler(graph, node, "Sub");
+  return elementwise_op_handler(graph, node, "popart_sub");
 }
 
 ir::Node *elementwise_div_handler(ir::Graph *graph, ir::Node *node) {
-  return elementwise_op_handler(graph, node, "Div");
+  return elementwise_op_handler(graph, node, "popart_div");
 }
 
 ir::Node *elementwise_mul_handler(ir::Graph *graph, ir::Node *node) {
-  return elementwise_op_handler(graph, node, "Mul");
+  return elementwise_op_handler(graph, node, "popart_mul");
 }
 
 ir::Node *elementwise_min_handler(ir::Graph *graph, ir::Node *node) {
-  return elementwise_op_handler(graph, node, "Min");
+  return elementwise_op_handler(graph, node, "popart_min");
 }
 
 ir::Node *elementwise_max_handler(ir::Graph *graph, ir::Node *node) {
-  return elementwise_op_handler(graph, node, "Max");
+  return elementwise_op_handler(graph, node, "popart_max");
 }
 
 ir::Node *elementwise_pow_handler(ir::Graph *graph, ir::Node *node) {
-  return elementwise_op_handler(graph, node, "Pow");
+  return elementwise_op_handler(graph, node, "popart_pow");
 }
 
 ir::Node *elementwise_mod_handler(ir::Graph *graph, ir::Node *node) {
-  return elementwise_op_handler(graph, node, "Mod");
+  return elementwise_op_handler(graph, node, "popart_mod");
 }
 
 REGISTER_HANDLER(elementwise_add, elementwise_add_handler);

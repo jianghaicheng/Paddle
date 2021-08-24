@@ -84,24 +84,25 @@ Node *CreateBaseOp(ir::Graph *graph, const std::string &type,
 ir::Node *CreateConst(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
                       const std::vector<ir::Node *> &outputs,
                       const AttributeMap &attrs) {
-  return CreateBaseOp(graph, "Constant", inputs, outputs, attrs);
+  return CreateBaseOp(graph, "popart_constant", inputs, outputs, attrs);
 }
 
 ir::Node *CreateCast(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
                      const std::vector<ir::Node *> &outputs, const int &otype) {
   auto to = VarType2PopStr(otype);
-  return CreateBaseOp(graph, "Cast", inputs, outputs, {{"to", to}});
+  return CreateBaseOp(graph, "popart_cast", inputs, outputs, {{"to", to}});
 }
 
 ir::Node *CreateGemm(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
                      const std::vector<ir::Node *> &outputs, int64_t transA,
                      int64_t transB, float alpha, float beta) {
-  return CreateBaseOp(graph, "Gemm", inputs, outputs, {
-                                                          {"alpha", alpha},
-                                                          {"beta", beta},
-                                                          {"transA", transA},
-                                                          {"transB", transB},
-                                                      });
+  return CreateBaseOp(graph, "popart_gemm", inputs, outputs,
+                      {
+                          {"alpha", alpha},
+                          {"beta", beta},
+                          {"transA", transA},
+                          {"transB", transB},
+                      });
 }
 
 }  // namespace ipu
