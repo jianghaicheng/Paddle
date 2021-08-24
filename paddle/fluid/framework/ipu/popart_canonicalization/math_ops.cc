@@ -61,13 +61,35 @@ ir::Node *mul_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
   auto x_num_col_dims = BOOST_GET_CONST(int, op->GetAttr("x_num_col_dims"));
   auto y_num_col_dims = BOOST_GET_CONST(int, op->GetAttr("y_num_col_dims"));
-  if (x_num_col_dims != 1 || y_num_col_dims != 1) {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "mul with x_num_col_dims or y_num_col_dims != 1"));
+  auto x_shape_ = op->Block()->FindVar(op->Input("X")[0])->GetShape();
+  auto y_shape_ = op->Block()->FindVar(op->Input("Y")[0])->GetShape();
+
+  // build the shape for reshape
+  std::vector<int64_t> reshape_shape_{};
+  for (int left = 0; left < x_num_col_dims; left++) {
+    reshape_shape_.push_back(int64_t(x_shape_[left]));
   }
-  return CreateBaseOp(graph, "popart_matmul",
-                      {GetInputNode("X", node), GetInputNode("Y", node)},
-                      node->outputs);
+  for (int right = y_num_col_dims; right < y_shape_.size(); right++) {
+    reshape_shape_.push_back(int64_t(y_shape_[right]));
+  }
+  auto x_flatten =
+      CreateBaseOp(graph, "popart_flatten", {GetInputNode("X", node)}, {},
+                   {{"axis", int64_t(x_num_col_dims)}});
+  auto y_flatten =
+      CreateBaseOp(graph, "popart_flatten", {GetInputNode("Y", node)}, {},
+                   {{"axis", int64_t(y_num_col_dims)}});
+  auto matmul =
+      CreateBaseOp(graph, "popart_matmul",
+                   {x_flatten->outputs[0], y_flatten->outputs[0]}, {}, {});
+
+  auto reshape_const = CreateConst(
+      graph, {}, {},
+      {{"value", reshape_shape_},
+       {"dims", std::vector<int64_t>{int64_t(reshape_shape_.size())}},
+       {"dtype", ONNXDataType::INT64}});
+  return CreateBaseOp(graph, "popart_reshape",
+                              {matmul->outputs[0], reshape_const->outputs[0]},
+                              node->outputs, {});
 }
 
 ir::Node *matmul_handler(ir::Graph *graph, ir::Node *node) {

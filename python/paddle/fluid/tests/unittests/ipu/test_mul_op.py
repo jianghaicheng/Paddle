@@ -36,10 +36,13 @@ class TestMul(unittest.TestCase):
 
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.fluid.layers.fill_constant(
-                shape=[10, 10], dtype='float32', value=0.5)
+                shape=[1, 300, 768], dtype='float32', value=0.5)
+            #    shape=[10, 10], dtype='float32', value=0.5)
             b = paddle.fluid.layers.fill_constant(
-                shape=[10, 20], dtype='float32', value=3.1415926)
-            out = paddle.fluid.layers.mul(a, b)
+                shape=[768, 768], dtype='float32', value=3.1415926)
+            #    shape=[10, 20], dtype='float32', value=3.1415926)
+            out = paddle.fluid.layers.mul(a, b, x_num_col_dims = 2, y_num_col_dims = 1)
+            #out = paddle.fluid.layers.mul(a, b)
 
         if run_ipu:
             place = paddle.IPUPlace()
