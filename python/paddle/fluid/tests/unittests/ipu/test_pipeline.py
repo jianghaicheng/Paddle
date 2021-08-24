@@ -31,21 +31,21 @@ class TestIpuShard(unittest.TestCase):
         a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
         b = a + 2  # scale : scale * x + bias, ipu_stage : no
 
-        with paddle.fluid.ipu_stage(ipu_stage=1):
+        with paddle.fluid.ipu_shard(ipu_stage=1):
             c = b + 1  # scale, ipu_stage : 1
-            with paddle.fluid.ipu_stage(ipu_stage=2):
+            with paddle.fluid.ipu_shard(ipu_stage=2):
                 d = c * 2  # scale, ipu_stage : 2
-            with paddle.fluid.ipu_stage(ipu_stage=3):
+            with paddle.fluid.ipu_shard(ipu_stage=3):
                 e = d + 3  # scale, ipu_stage : 3
-                with paddle.fluid.ipu_stage(ipu_stage=1):
+                with paddle.fluid.ipu_shard(ipu_stage=1):
                     e = e + 3  # scale, ipu_stage : 1
-                    with paddle.fluid.ipu_stage(ipu_stage=2):
+                    with paddle.fluid.ipu_shard(ipu_stage=2):
                         e = e + 3  # scale, ipu_stage : 2
 
-        with paddle.fluid.ipu_stage(ipu_stage=1):
+        with paddle.fluid.ipu_shard(ipu_stage=1):
             f = paddle.tensor.pow(e, 2.0)  # pow, ipu_stage : 1
 
-        with paddle.fluid.ipu_stage(ipu_stage=2):
+        with paddle.fluid.ipu_shard(ipu_stage=2):
             g = f - 1  # scale, ipu_stage : 2
 
         h = g + 1  # scale, ipu_stage : no
