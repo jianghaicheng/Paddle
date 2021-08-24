@@ -23,21 +23,13 @@ namespace {
 
 ir::Node *fill_constant_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
-  auto op_desc = std::make_unique<framework::OpDesc>();
-  op_desc->SetType("popart_constant");
   if (op->HasInput("ShapeTensor") && !op->Input("ShapeTensor").empty()) {
     PADDLE_THROW(
         platform::errors::Unimplemented("op fill_constant with ShapeTensor"));
   }
-  std::vector<std::string> outputs;
-  outputs.push_back(op->Output("Out").front());
-  op_desc->SetOutput("__outputs__", outputs);
-
   auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
   auto dtype = VarType2OnnxDtype(dtype_);
-  op_desc->SetAttr("dtype", dtype);
   auto dims = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
-  op_desc->SetAttr("dims", dims);
   auto value_ = BOOST_GET_CONST(float, op->GetAttr("value"));
   size_t size = 1;
   for (auto &dim : dims) {
@@ -61,67 +53,50 @@ ir::Node *fill_constant_handler(ir::Graph *graph, ir::Node *node) {
       PADDLE_THROW(
           platform::errors::Unimplemented("fill_constant dtype: %d", dtype_));
   }
-  op_desc->SetAttr("value", value);
-
-  op_desc->Flush();
-  auto new_node = graph->CreateOpNode(op_desc.get());
-  MoveNodeInputs(node, new_node);
-  MoveNodeOutputs(node, new_node);
-  return new_node;
+  return CreateConst(graph, node->inputs, node->outputs,
+                     AttributeMap{
+                         {"value", value}, {"dims", dims}, {"dtype", dtype},
+                     });
 }
 
 ir::Node *gaussian_random_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
-  auto op_desc = std::make_unique<framework::OpDesc>();
-  op_desc->SetType("popart_randomnormal");
-
-  std::vector<std::string> outputs;
-  outputs.push_back(op->Output("Out").front());
-  op_desc->SetOutput("__outputs__", outputs);
-
   auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
-  op_desc->SetAttr("shape", shape);
   auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
   auto dtype = VarType2OnnxDtype(dtype_);
-  op_desc->SetAttr("dtype", dtype);
-
   auto mean = BOOST_GET_CONST(float, op->GetAttr("mean"));
-  op_desc->SetAttr("mean", mean);
-  auto std = BOOST_GET_CONST(float, op->GetAttr("std"));
-  op_desc->SetAttr("scale", std);
-  // seed TODO
-
-  op_desc->Flush();
-  auto new_node = graph->CreateOpNode(op_desc.get());
-  MoveNodeInputs(node, new_node);
-  MoveNodeOutputs(node, new_node);
-  return new_node;
+  auto scale = BOOST_GET_CONST(float, op->GetAttr("std"));
+  // TODO(alleng) seed not work
+  auto seed_ = BOOST_GET_CONST(int, op->GetAttr("seed"));
+  auto seed = static_cast<float>(seed_);
+  return CreateBaseOp(graph, "popart_randomnormal", node->inputs, node->outputs,
+                      {
+                          {"shape", shape},
+                          {"dtype", dtype},
+                          {"mean", mean},
+                          {"scale", scale},
+                          {"seed", seed},
+                      });
 }
 
 ir::Node *uniform_random_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
-  auto op_desc = std::make_unique<framework::OpDesc>();
-  op_desc->SetType("popart_randomuniform");
-
-  std::vector<std::string> outputs;
-  outputs.push_back(op->Output("Out").front());
-  op_desc->SetOutput("__outputs__", outputs);
-
   auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
-  op_desc->SetAttr("shape", shape);
   auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
   auto dtype = VarType2OnnxDtype(dtype_);
-  op_desc->SetAttr("dtype", dtype);
-  auto max = BOOST_GET_CONST(float, op->GetAttr("max"));
-  op_desc->SetAttr("high", max);
-  auto min = BOOST_GET_CONST(float, op->GetAttr("min"));
-  op_desc->SetAttr("low", min);
-  // seed
-  op_desc->Flush();
-  auto new_node = graph->CreateOpNode(op_desc.get());
-  MoveNodeInputs(node, new_node);
-  MoveNodeOutputs(node, new_node);
-  return new_node;
+  auto high = BOOST_GET_CONST(float, op->GetAttr("max"));
+  auto low = BOOST_GET_CONST(float, op->GetAttr("min"));
+  // TODO(alleng) seed not work
+  auto seed_ = BOOST_GET_CONST(int, op->GetAttr("seed"));
+  auto seed = static_cast<float>(seed_);
+  return CreateBaseOp(graph, "popart_randomuniform", node->inputs,
+                      node->outputs, {
+                                         {"shape", shape},
+                                         {"dtype", dtype},
+                                         {"high", high},
+                                         {"low", low},
+                                         {"seed", seed},
+                                     });
 }
 
 ir::Node *transpose_handler(ir::Graph *graph, ir::Node *node) {

@@ -44,36 +44,6 @@ SymbolHandler GetHandler(const std::string &kind) {
   return {};
 }
 
-void MoveNodeInputs(ir::Node *node, ir::Node *new_node) {
-  if (node->inputs.empty()) {
-    return;
-  }
-  new_node->inputs = node->inputs;
-  for (auto *node_in : node->inputs) {
-    for (size_t i = 0; i < node_in->outputs.size(); ++i) {
-      if (node_in->outputs[i] == node) {
-        node_in->outputs[i] = new_node;
-        break;
-      }
-    }
-  }
-}
-
-void MoveNodeOutputs(ir::Node *node, ir::Node *new_node) {
-  if (node->outputs.empty()) {
-    return;
-  }
-  new_node->outputs = node->outputs;
-  for (auto *node_out : node->outputs) {
-    for (size_t i = 0; i < node_out->inputs.size(); ++i) {
-      if (node_out->inputs[i] == node) {
-        node_out->inputs[i] = new_node;
-        break;
-      }
-    }
-  }
-}
-
 void ConnectNodes(ir::Node *first_node, ir::Node *next_node) {
   first_node->outputs.push_back(next_node);
   next_node->inputs.push_back(first_node);

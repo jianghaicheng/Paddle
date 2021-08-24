@@ -64,6 +64,14 @@ ir::Node *CreateReshape(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
                         const std::vector<ir::Node *> &outputs,
                         const std::vector<int64_t> &oshape);
 
+ir::Node *CreateConv(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+                     const std::vector<ir::Node *> &outputs,
+                     const std::vector<int64_t> &dilations = {1, 1},
+                     int64_t group = 1,
+                     const std::vector<int64_t> &kernel_shape = {},
+                     const std::vector<int64_t> &pads = {0, 0, 0, 0},
+                     const std::vector<int64_t> &strides = {1, 1});
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

@@ -88,7 +88,7 @@ ir::Node *CreateConst(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
 }
 
 ir::Node *CreateCast(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
-                     const std::vector<ir::Node *> &outputs, const int &otype) {
+                     const std::vector<ir::Node *> &outputs, const int otype) {
   auto to = VarType2PopStr(otype);
   return CreateBaseOp(graph, "popart_cast", inputs, outputs, {{"to", to}});
 }
@@ -117,6 +117,20 @@ ir::Node *CreateReshape(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
       CreateBaseOp(graph, "popart_reshape",
                    {inputs[0], new_node_const->outputs[0]}, outputs);
   return new_node_reshape;
+}
+
+ir::Node *CreateConv(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+                     const std::vector<ir::Node *> &outputs,
+                     const std::vector<int64_t> &dilations, int64_t group,
+                     const std::vector<int64_t> &kernel_shape,
+                     const std::vector<int64_t> &pads,
+                     const std::vector<int64_t> &strides) {
+  auto attrs = AttributeMap{
+      {"dilations", dilations},       {"group", group},
+      {"kernel_shape", kernel_shape}, {"pads", pads},
+      {"strides", strides},
+  };
+  return CreateBaseOp(graph, "popart_conv", inputs, outputs, attrs);
 }
 
 }  // namespace ipu

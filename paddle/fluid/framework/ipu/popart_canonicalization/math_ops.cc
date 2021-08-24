@@ -23,40 +23,26 @@ namespace {
 
 ir::Node *reduce_mean_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
-  auto op_desc = std::make_unique<framework::OpDesc>();
-  op_desc->SetType("popart_reducemean");
-
-  std::vector<std::string> inputs;
-  inputs.push_back(op->Input("X").front());
-  op_desc->SetInput("__inputs__", inputs);
-  std::vector<std::string> outputs;
-  outputs.push_back(op->Output("Out").front());
-  op_desc->SetOutput("__outputs__", outputs);
+  auto attrs = AttributeMap{};
   auto reduce_all = BOOST_GET_CONST(bool, op->GetAttr("reduce_all"));
   if (!reduce_all) {
     auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dim"));
     auto axes = std::vector<int64_t>{axes_.begin(), axes_.end()};
-    op_desc->SetAttr("axes", axes);
+    attrs.emplace("axes", axes);
   }
   auto keepdims_ = BOOST_GET_CONST(bool, op->GetAttr("keep_dim"));
   auto keepdims = int64_t{keepdims_};
-  op_desc->SetAttr("keepdims", keepdims);
-
-  op_desc->Flush();
-  auto new_node = graph->CreateOpNode(op_desc.get());
-  MoveNodeInputs(node, new_node);
-  MoveNodeOutputs(node, new_node);
-  return new_node;
+  attrs.emplace("keepdims", keepdims);
+  return CreateBaseOp(graph, "popart_reducemean", node->inputs, node->outputs,
+                      attrs);
 }
 
 ir::Node *mean_handler(ir::Graph *graph, ir::Node *node) {
-  auto new_node =
-      CreateBaseOp(graph, "popart_reducemean", {GetInputNode("X", node)},
-                   {GetOutputNode("Out", node)},
-                   {
-                       {"keepdims", int64_t{0}},
-                   });
-  return new_node;
+  return CreateBaseOp(graph, "popart_reducemean", {GetInputNode("X", node)},
+                      {GetOutputNode("Out", node)},
+                      {
+                          {"keepdims", int64_t{0}},
+                      });
 }
 
 ir::Node *pow_handler(ir::Graph *graph, ir::Node *node) {
@@ -66,10 +52,9 @@ ir::Node *pow_handler(ir::Graph *graph, ir::Node *node) {
   auto attrs =
       MakeConstAttrMapFromValue<float>(value_, {1}, ONNXDataType::FLOAT);
   auto new_node_const = CreateConst(graph, {}, {}, attrs);
-  auto new_node_pow = CreateBaseOp(
-      graph, "popart_pow",
-      {GetInputNode("X", node), new_node_const->outputs[0]}, node->outputs);
-  return new_node_pow;
+  return CreateBaseOp(graph, "popart_pow",
+                      {GetInputNode("X", node), new_node_const->outputs[0]},
+                      node->outputs);
 }
 
 ir::Node *mul_handler(ir::Graph *graph, ir::Node *node) {
@@ -80,10 +65,9 @@ ir::Node *mul_handler(ir::Graph *graph, ir::Node *node) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "mul with x_num_col_dims or y_num_col_dims != 1"));
   }
-  auto new_node = CreateBaseOp(
-      graph, "popart_matmul",
-      {GetInputNode("X", node), GetInputNode("Y", node)}, node->outputs);
-  return new_node;
+  return CreateBaseOp(graph, "popart_matmul",
+                      {GetInputNode("X", node), GetInputNode("Y", node)},
+                      node->outputs);
 }
 
 ir::Node *matmul_handler(ir::Graph *graph, ir::Node *node) {
@@ -91,26 +75,22 @@ ir::Node *matmul_handler(ir::Graph *graph, ir::Node *node) {
   auto transpose_x = BOOST_GET_CONST(bool, op->GetAttr("transpose_X"));
   auto transpose_y = BOOST_GET_CONST(bool, op->GetAttr("transpose_Y"));
   auto alpha = BOOST_GET_CONST(float, op->GetAttr("alpha"));
-  auto new_node = CreateGemm(graph, node->inputs, node->outputs, transpose_x,
-                             transpose_y, alpha);
-  return new_node;
+  return CreateGemm(graph, node->inputs, node->outputs, transpose_x,
+                    transpose_y, alpha);
 }
 
 ir::Node *sum_handler(ir::Graph *graph, ir::Node *node) {
-  auto new_node =
-      CreateBaseOp(graph, "popart_sum", node->inputs, node->outputs);
-  return new_node;
+  return CreateBaseOp(graph, "popart_sum", node->inputs, node->outputs);
 }
 
 ir::Node *softmax_handler(ir::Graph *graph, ir::Node *node) {
   auto *op = node->Op();
   auto axis_ = BOOST_GET_CONST(int, op->GetAttr("axis"));
   auto axis = int64_t{axis_};
-  auto new_node = CreateBaseOp(graph, "popart_softmax", node->inputs,
-                               node->outputs, {
-                                                  {"axis", axis},
-                                              });
-  return new_node;
+  return CreateBaseOp(graph, "popart_softmax", node->inputs, node->outputs,
+                      {
+                          {"axis", axis},
+                      });
 }
 
 ir::Node *scale_handler(ir::Graph *graph, ir::Node *node) {
@@ -166,13 +146,12 @@ ir::Node *cross_entropy2_handler(ir::Graph *graph, ir::Node *node) {
   auto ignoreIndex = BOOST_GET_CONST(int, op->GetAttr("ignore_index"));
   auto new_cast = CreateCast(graph, {GetInputNode("Label", node)}, {},
                              proto::VarType::INT32);
-  auto new_node = CreateBaseOp(graph, "popart_nllloss",
-                               {GetInputNode("X", node), new_cast->outputs[0]},
-                               {GetOutputNode("Y", node)},
-                               {
-                                   {"ignoreIndex", ignoreIndex},
-                               });
-  return new_node;
+  return CreateBaseOp(graph, "popart_nllloss",
+                      {GetInputNode("X", node), new_cast->outputs[0]},
+                      {GetOutputNode("Y", node)},
+                      {
+                          {"ignoreIndex", ignoreIndex},
+                      });
 }
 
 REGISTER_HANDLER(reduce_mean, reduce_mean_handler);
