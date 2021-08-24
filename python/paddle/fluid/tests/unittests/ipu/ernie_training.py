@@ -28,6 +28,7 @@ import paddle.fluid.compiler as compiler
 paddle.enable_static()
 
 SEED = 2021
+INT_DTYPE = None
 
 # ernie related block
 ernie_config = {
@@ -462,7 +463,7 @@ def encoder(enc_input,
 
 
 class ErnieModel(object):
-    def __init__(self, src_ids, sentence_ids, config):
+    def __init__(self, src_ids, sent_ids, pos_ids, input_mask, config):
 
         self._emb_size = config['emb_size'] if config[
             'emb_mapping_in'] else config['hidden_size']
@@ -494,11 +495,16 @@ class ErnieModel(object):
             scale=config['initializer_range'])
 
         self.src_ids = src_ids
-        self.sentence_ids = sentence_ids
-
-        with fluid.ipu_shard(ipu_index=0):
-            self.position_ids = self._build_position_ids()  # position_ids
-            self.input_mask = self._build_input_mask()  # input mask
+        self.sent_ids = sent_ids
+        self.posi_ids = pos_ids
+        self.input_mask = input_mask
+        '''
+        _build_position_ids: range op doesn't support
+        _build_input_mask: logic_not op doesn't support
+        '''
+        #with fluid.ipu_shard(ipu_index=0):
+        #    self.position_ids = self._build_position_ids()  # position_ids
+        #    self.input_mask = self._build_input_mask()  # input mask
 
         with fluid.ipu_shard(ipu_index=1):
             self._build_model()
@@ -514,14 +520,14 @@ class ErnieModel(object):
             is_sparse=False)
 
         self.position_emb_out = fluid.layers.embedding(
-            input=self.position_ids,
+            input=self.posi_ids,
             size=[self._max_position_seq_len, self._emb_size],
             dtype=self._emb_dtype,
             param_attr=fluid.ParamAttr(
                 name=self._pos_emb_name, initializer=self._param_initializer))
 
         self.sent_emb_out = fluid.layers.embedding(
-            self.sentence_ids,
+            self.sent_ids,
             size=[self._sent_types, self._emb_size],
             dtype=self._emb_dtype,
             param_attr=fluid.ParamAttr(
@@ -585,12 +591,12 @@ class ErnieModel(object):
                 0, d_seqlen, 1, dtype='int32'), [1, d_seqlen, 1],
             inplace=True)
         position_ids = fluid.layers.expand(position_ids, [d_batch, 1, 1])
-        position_ids = fluid.layers.cast(position_ids, 'int64')
+        position_ids = fluid.layers.cast(position_ids, INT_DTYPE)
         position_ids.stop_gradient = True
         return position_ids
 
     def _build_input_mask(self):
-        zero = fluid.layers.fill_constant([1], dtype='int64', value=0)
+        zero = fluid.layers.fill_constant([1], dtype=INT_DTYPE, value=0)
         input_mask = fluid.layers.logical_not(
             fluid.layers.equal(self.src_ids, zero))  # assume pad id == 0
         input_mask = fluid.layers.cast(input_mask, 'float32')
@@ -625,8 +631,10 @@ class ErnieModel(object):
             bias_attr="next_sent_fc.b_0")
         next_sent_fc_out = fluid.layers.reshape(
             next_sent_fc_out, [-1, 33], inplace=True)
-        next_sent_loss, next_sent_softmax = fluid.layers.softmax_with_cross_entropy(
-            logits=next_sent_fc_out, label=labels, return_softmax=True)
+        #next_sent_loss, next_sent_softmax = fluid.layers.softmax_with_cross_entropy(
+        #    logits=next_sent_fc_out, label=labels, return_softmax=True)
+        next_sent_softmax = fluid.layers.softmax(next_sent_fc_out)
+        next_sent_loss = fluid.layers.cross_entropy(next_sent_softmax, labels)
         next_sent_acc = fluid.layers.accuracy(
             input=next_sent_softmax, label=labels)
         mean_next_sent_loss = fluid.layers.mean(next_sent_loss,
@@ -688,9 +696,10 @@ class ErnieModel(object):
                                      name="mask_lm_out_fc.w_0",
                                      initializer=self._param_initializer),
                                  bias_attr=mask_lm_out_bias_attr)
-
-        mask_lm_loss = fluid.layers.softmax_with_cross_entropy(
-            logits=fc_out, label=mask_label)
+        #mask_lm_loss = fluid.layers.softmax_with_cross_entropy(
+        #    logits=fc_out, label=mask_label)
+        mask_lm_softmax = fluid.layers.softmax(fc_out)
+        mask_lm_loss = fluid.layers.cross_entropy(mask_lm_softmax, mask_label)
         mean_mask_lm_loss = fluid.layers.mean(
             mask_lm_loss, name="mean_mask_lm_loss")
 
@@ -703,8 +712,10 @@ class ErnieModel(object):
                                           name=task["task_name"] + "_fc.w_0",
                                           initializer=self._param_initializer),
                                       bias_attr=task["task_name"] + "_fc.b_0")
-        task_loss, task_softmax = fluid.layers.softmax_with_cross_entropy(
-            logits=task_fc_out, label=task_labels, return_softmax=True)
+        #task_loss, task_softmax = fluid.layers.softmax_with_cross_entropy(
+        #    logits=task_fc_out, label=task_labels, return_softmax=True)
+        task_softmax = fluid.layers.softmax(task_fc_out)
+        task_loss = fluid.layers.cross_entropy(task_softmax, task_labels)
         task_acc = fluid.layers.accuracy(input=task_softmax, label=task_labels)
         mean_task_loss = fluid.layers.mean(task_loss)
         return mean_task_loss, task_acc
@@ -735,12 +746,19 @@ if __name__ == "__main__":
     paddle.static.default_startup_program().random_seed = SEED
     paddle.static.default_main_program().random_seed = SEED
 
+    INT_DTYPE = "int32" if args.run_on_ipu else "int64"
+
     # input data
     input_fields = {
-        'names': ['src_ids', 'sent_ids', 'mask_label', 'mask_pos'],
-        'shapes': [[1, 128, 1], [1, 128, 1], [1, 1], [1, 1]],
-        'dtypes': ['int64', 'int64', 'int64', 'int64'],
-        'lod_levels': [0, 0, 0, 0],
+        'names': [
+            'src_ids', 'sent_ids', 'pos_ids', 'input_mask', 'mask_label',
+            'mask_pos'
+        ],
+        'shapes':
+        [[1, 128, 1], [1, 128, 1], [1, 128, 1], [1, 128, 1], [1, 1], [1, 1]],
+        'dtypes':
+        [INT_DTYPE, INT_DTYPE, INT_DTYPE, 'float32', INT_DTYPE, INT_DTYPE],
+        'lod_levels': [0, 0, 0, 0, 0, 0],
     }
     inputs = [
         fluid.data(
@@ -750,15 +768,25 @@ if __name__ == "__main__":
             lod_level=input_fields['lod_levels'][i])
         for i in range(len(input_fields['names']))
     ]
-    np_inputs = [
-        np.random.randint(
-            0, 4, input_fields['shapes'][i], dtype=input_fields['dtypes'][i])
-        for i in range(len(input_fields['names']))
-    ]
-    (src_ids, sent_ids, mask_label, mask_pos) = inputs
+    np_inputs = []
+    for i in range(len(input_fields['names'])):
+        if input_fields['names'][i] == 'input_mask':
+            src_ids = np_inputs[0]
+            dtype = input_fields['dtypes'][i]
+            data = np.where(src_ids > 0,
+                            np.ones_like(src_ids),
+                            np.zeros_like(src_ids)).astype(dtype)
+        else:
+            data = np.random.randint(
+                0,
+                4,
+                input_fields['shapes'][i],
+                dtype=input_fields['dtypes'][i])
+        np_inputs.append(data)
+    (src_ids, sent_ids, pos_ids, input_mask, mask_label, mask_pos) = inputs
 
     # ernie model
-    ernie = ErnieModel(src_ids, sent_ids, ernie_config)
+    ernie = ErnieModel(src_ids, sent_ids, pos_ids, input_mask, ernie_config)
     fetch_node = ernie.get_sequence_output()
     if args.is_training:
         with fluid.ipu_shard(ipu_index=2):
@@ -799,8 +827,10 @@ if __name__ == "__main__":
         feed_dict = {
             src_ids.name: np_inputs[0],
             sent_ids.name: np_inputs[1],
-            mask_label.name: np_inputs[2],
-            mask_pos.name: np_inputs[3]
+            pos_ids.name: np_inputs[2],
+            input_mask.name: np_inputs[3],
+            mask_label.name: np_inputs[4],
+            mask_pos.name: np_inputs[5]
         }
     else:
         feed_dict = {
