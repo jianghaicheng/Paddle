@@ -3204,18 +3204,27 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init())
       .def_property(
           "num_ipus",
-          [](const ipu::IpuStrategy &self) { return self.num_ipus_; },
+          [](const ipu::IpuStrategy &self) { return self.num_ipus; },
           [](ipu::IpuStrategy &self, int num_ipus) {
-            self.num_ipus_ = num_ipus;
+            self.num_ipus = num_ipus;
           },
           R"DOC(
             Int type, set the number ipu we need. Default 1.
           )DOC")
       .def_property(
+          "batches_per_step",
+          [](const ipu::IpuStrategy &self) { return self.batches_per_step; },
+          [](ipu::IpuStrategy &self, int batches_per_step) {
+            self.batches_per_step = batches_per_step;
+          },
+          R"DOC(
+            Int type, set batches_per_step. Default 1.
+          )DOC")
+      .def_property(
           "is_training",
-          [](const ipu::IpuStrategy &self) { return self.is_training_; },
+          [](const ipu::IpuStrategy &self) { return self.is_training; },
           [](ipu::IpuStrategy &self, bool is_training) {
-            self.is_training_ = is_training;
+            self.is_training = is_training;
           },
           R"DOC(
             Bool type, True for training, False inference. Default True.

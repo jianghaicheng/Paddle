@@ -48,8 +48,8 @@ void InferenceExtractPass::ApplyImpl(ir::Graph* graph) const {
   static std::shared_ptr<ipu::IpuStrategy> ipu_strategy_instance_(
       new ipu::IpuStrategy());
 
-  ipu_strategy_instance_->is_training_ = false;
-  ipu_strategy_instance_->num_ipus_ = graph->Get<int>("num_ipus");
+  ipu_strategy_instance_->is_training = false;
+  ipu_strategy_instance_->num_ipus = graph->Get<int>("num_ipus");
   ipu_strategy_instance_->popart_options_.enablePipelining =
       graph->Get<bool>("enable_pipeline");
   auto& enable_sharding = graph->Get<bool>("enable_sharding");

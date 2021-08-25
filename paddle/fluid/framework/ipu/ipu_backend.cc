@@ -105,14 +105,14 @@ void IpuBackend::Prepare() {
   for (popart::TensorId item : compiler_->GetOutputs()) {
     anchor_ids.push_back(item);
   }
-  auto dataFlow = popart::DataFlow(1, anchor_ids);
+  auto dataFlow = popart::DataFlow(ipu_strategy_->batches_per_step, anchor_ids);
 
   PADDLE_ENFORCE_NOT_NULL(
       curr_device_,
       platform::errors::Unavailable("IPU device isn't attached, please call "
                                     "IpuBackend::AttachDevice(id) first."));
 
-  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training_) {
+  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training) {
     VLOG(1) << "Creating TrainingSession from Onnx Model...";
     auto popart_optimizer = GetPopartOptimizer();
     auto tensors = compiler_->GetTensors();
@@ -170,7 +170,7 @@ void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
     popart_anchors.emplace(tensor_id, anchor_wrappers.at(tensor_id));
   }
 
-  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training_) {
+  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training) {
     VLOG(1) << "Update optimizer learning rate...";
     auto popart_optimizer = GetPopartOptimizer();
     auto session = dynamic_cast<popart::TrainingSession*>(session_.get());
@@ -197,12 +197,12 @@ float IpuBackend::GetLRFromScope() {
 
 // ipu_num_ must be pow(2,n);
 int IpuBackend::UpperIpuNum() {
-  PADDLE_ENFORCE_GT(ipu_strategy_->num_ipus_, 0,
+  PADDLE_ENFORCE_GT(ipu_strategy_->num_ipus, 0,
                     platform::errors::Unavailable(
                         "The ipu num get is wrong, please make sure the "
                         "sharding or pipline parameter is right."));
   int i = 0;
-  while (pow(2, i) < ipu_strategy_->num_ipus_) {
+  while (pow(2, i) < ipu_strategy_->num_ipus) {
     i++;
   }
   return pow(2, i);

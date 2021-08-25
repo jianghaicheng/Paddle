@@ -32,7 +32,7 @@
     auto inputs = GetOpInputs(op_desc);                                   \
     auto outputs = op_desc->Output("__outputs__");                        \
     /*num_outputs training mode 5, inference mode 1*/                     \
-    auto num_outputs = ipu_strategy_->is_training_ ? 5 : 1;               \
+    auto num_outputs = ipu_strategy_->is_training ? 5 : 1;                \
     auto epsilon = BOOST_GET_CONST(float, op_desc->GetAttr("epsilon"));   \
     auto momentum = BOOST_GET_CONST(float, op_desc->GetAttr("momentum")); \
     auto result = builder_->aiOnnxOpset11().batchnormalization(           \

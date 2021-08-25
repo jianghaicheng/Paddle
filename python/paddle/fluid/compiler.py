@@ -526,7 +526,7 @@ class IpuCompiler(object):
             "popart_canonicalization_pass"
         ]
 
-    def compile(self, feed_list, fetch_list, scope=None):
+    def compile(self, feed_list, fetch_list, feed_var_name='feed', scope=None):
         for pass_name in self._graph_passes:
             graph_pass = core.get_pass(pass_name)
             graph_pass.apply(self._graph)
@@ -556,6 +556,15 @@ class IpuCompiler(object):
             # lr_sheduler attribute
             global_block = self._program.global_block()
             program.lr_sheduler.lr_var = global_block.vars[lr_var_name]
+
+        # with popart, we need to support batches_per_step, what means
+        # the shape of feed_var and feed_tensor(maybe numpy array) will
+        # mismatch, so we set need_check_feed to False. Thus we can avoid
+        # modify logic of run.
+        program_global_block = program.global_block()
+        for feed_name in feed_list:
+            feed_var = program_global_block.var(feed_name)
+            feed_var.desc.set_need_check_feed(False)
 
         return program
 

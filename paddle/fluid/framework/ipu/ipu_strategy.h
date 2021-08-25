@@ -37,8 +37,9 @@ namespace ipu {
 using VirtualGraphMode = popart::VirtualGraphMode;
 
 struct IpuStrategy {
-  int num_ipus_ = 1;
-  bool is_training_ = true;
+  int num_ipus = 1;
+  int batches_per_step = 1;
+  bool is_training = true;
   popart::SessionOptions popart_options_;
 };
 
