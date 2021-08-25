@@ -14,10 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <map>
-#include <string>
-#include <vector>
-
 #include <popart/adam.hpp>
 #include <popart/builder.hpp>
 #include <popart/dataflow.hpp>
@@ -81,9 +77,7 @@ class IpuBackend {
 
   std::unique_ptr<popart::Optimizer> GetPopartOptimizer();
 
-  std::vector<int64_t> GetTensorShape(const std::string &var_name) {
-    return compiler_->GetTensorShape(var_name);
-  }
+  std::vector<int64_t> GetTensorShape(const std::string &var_name);
 
   // SetScope, so we can get model parameters from scope
   void SetScope(const Scope &scope) { scope_ = &scope; }

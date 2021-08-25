@@ -87,6 +87,12 @@ std::unique_ptr<popart::Optimizer> IpuBackend::GetPopartOptimizer() {
   }
 }
 
+std::vector<int64_t> IpuBackend::GetTensorShape(const std::string& var_name) {
+  auto oshape = compiler_->GetTensorShape(var_name);
+  oshape.insert(oshape.begin(), ipu_strategy_->batches_per_step);
+  return oshape;
+}
+
 void IpuBackend::Prepare() {
   VLOG(1) << "Get ModelProto ...\n";
   auto proto = compiler_->GetModelProto();
