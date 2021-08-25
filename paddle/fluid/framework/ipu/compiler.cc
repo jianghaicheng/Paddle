@@ -43,12 +43,41 @@ void Compiler::InsertTensors(std::vector<std::string> output_names,
       std::pair<std::string, std::string>(output_names[0], tensor_id));
 }
 
+void Compiler::SetIpuIndexStage(const std::vector<std::string> &tensor_ids,
+                                const OpDesc *op_desc) {
+  // TODO(xiaobingw): replace ipu_index with macro or constexpr
+  if (op_desc->HasAttr("ipu_index")) {
+    auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr("ipu_index"));
+    for (const auto &tensor_id : tensor_ids) {
+      builder_->virtualGraph(tensor_id, ipu_index);
+    }
+    if (op_desc->HasAttr("ipu_stage")) {
+      auto ipu_stage = BOOST_GET_CONST(int, op_desc->GetAttr("ipu_stage"));
+      for (const auto &tensor_id : tensor_ids) {
+        builder_->pipelineStage(tensor_id, ipu_stage);
+      }
+    }
+  }
+}
+
+void Compiler::SetIpuIndexStage(const std::string &tensor_id,
+                                const OpDesc *op_desc) {
+  if (op_desc->HasAttr("ipu_index")) {
+    auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr("ipu_index"));
+    builder_->virtualGraph(tensor_id, ipu_index);
+    if (op_desc->HasAttr("ipu_stage")) {
+      auto ipu_stage = BOOST_GET_CONST(int, op_desc->GetAttr("ipu_stage"));
+      builder_->pipelineStage(tensor_id, ipu_stage);
+    }
+  }
+}
+
 template <typename T>
-T GetAttrAllowNull(std::string attr, OpDesc* opdesc) {
+T GetAttrAllowNull(std::string attr, OpDesc* op_desc) {
   std::string type = typeid(T).name();
   VLOG(1) << "body attr type is: " << type << " body attr name is: " << attr;
-  if (opdesc->HasAttr(attr)) {
-    return BOOST_GET_CONST(T, opdesc->GetAttr(attr));
+  if (op_desc->HasAttr(attr)) {
+    return BOOST_GET_CONST(T, op_desc->GetAttr(attr));
   } else {
     VLOG(1) << "body attr not exist: " << type;
     return {};
@@ -146,7 +175,7 @@ void Compiler::RegisterOpFunc() {
 #define STRING_VEC std::vector<std::string*>
 #define NONE
 
-#define ARG(Type, Name) , GetAttrAllowNull<Type>(#Name, opdesc)
+#define ARG(Type, Name) , GetAttrAllowNull<Type>(#Name, op_desc)
 #define POPART_CONST_ARG(Name) , const PopartConstant& Name
 #define HOST_SIDE_CONST_ARG(Name) , const HostSideConstant& Name
 #define POPART_ATTRIB_VEC_ARG(Name)
@@ -154,14 +183,15 @@ void Compiler::RegisterOpFunc() {
 
   name_function_ = {
 #define OP_DECL(FuncName, OnnxImpl, Args)                    \
-  {#FuncName, [&](OpDesc* opdesc) {                          \
-     auto op_type = opdesc->Type();                          \
+  {#FuncName, [&](OpDesc* op_desc) {                         \
+     auto op_type = op_desc->Type();                         \
      VLOG(1) << "build op:" << op_type << " args " << #Args; \
-     auto inputs = GetOpInputs(opdesc);                      \
-     auto output_names = opdesc->Output("__outputs__");      \
+     auto inputs = GetOpInputs(op_desc);                     \
+     auto output_names = op_desc->Output("__outputs__");     \
      auto aiOnnxOpset1 = builder_->aiGraphcoreOpset1();      \
      auto aiOnnxOpset = builder_->aiOnnxOpset11();           \
      auto output_ids = OnnxImpl(inputs Args);                \
+     SetIpuIndexStage(output_ids, op_desc);                  \
      InsertTensors(output_names, output_ids);                \
    }},
 #include "paddle/fluid/framework/ipu/supported_ops_autogen.h"

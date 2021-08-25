@@ -23,6 +23,7 @@
     auto keepdims = BOOST_GET_CONST(int64_t, op_desc->GetAttr("keepdims"));   \
     popart::TensorId result =                                                 \
         builder_->aiOnnxOpset11().reducemean(inputs, axes, keepdims);         \
+    SetIpuIndexStage(result, op_desc);                                        \
     tensors_.emplace(outputs[0], result);                                     \
   }
 
@@ -36,6 +37,7 @@
     auto momentum = BOOST_GET_CONST(float, op_desc->GetAttr("momentum")); \
     auto result = builder_->aiOnnxOpset11().batchnormalization(           \
         inputs, num_outputs, epsilon, momentum);                          \
+    SetIpuIndexStage(result, op_desc);                                    \
     for (int i = 0; i < num_outputs; i++) {                               \
       tensors_.emplace(outputs[i], result[i]);                            \
     }                                                                     \
@@ -77,6 +79,7 @@
             platform::errors::Unimplemented("popart::DataType %d", dtype));    \
     }                                                                          \
     popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data); \
+    SetIpuIndexStage(result, op_desc);                                         \
     tensors_.emplace(outputs[0], result);                                      \
   }
 
@@ -87,5 +90,6 @@
     auto ignoreIndex = BOOST_GET_CONST(int, op_desc->GetAttr("ignoreIndex")); \
     auto result = builder_->aiGraphcoreOpset1().nllloss(                      \
         inputs, popart::ReductionType::NoReduction, ignoreIndex);             \
+    SetIpuIndexStage(result, op_desc);                                        \
     tensors_.emplace(outputs[0], result);                                     \
   }

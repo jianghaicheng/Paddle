@@ -54,6 +54,12 @@ class Compiler {
                      std::vector<std::string> tensor_ids);
   void InsertTensors(std::vector<std::string> output_names,
                      std::string tensor_id);
+
+  void SetIpuIndexStage(const std::vector<std::string> &tensor_ids,
+                        const OpDesc *op_desc);
+  void SetIpuIndexStage(const std::string &tensor_id,
+                        const OpDesc *op_desc);
+
   std::vector<popart::TensorId> GetInputs() { return inputs_; }
   std::vector<popart::TensorId> GetOutputs() { return outputs_; }
   std::map<std::string, popart::TensorId> GetTensors() { return tensors_; }
@@ -69,7 +75,7 @@ class Compiler {
   const IpuStrategy *ipu_strategy_;
   std::vector<popart::TensorId> inputs_;
   std::vector<popart::TensorId> outputs_;
-  using Func = std::function<void(OpDesc *opdesc)>;
+  using Func = std::function<void(OpDesc *op_desc)>;
   std::unordered_map<std::string, Func> name_function_;
 };
 
