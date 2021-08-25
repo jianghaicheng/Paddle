@@ -35,14 +35,26 @@ class TestLookupTableNet(unittest.TestCase):
         startup_prog.random_seed = SEED
         np.random.seed(SEED)
 
-        np_image = np.array(
-            [[[1], [3]], [[2], [4]], [[4], [127]]]).astype(np.int64)
+        if run_ipu:
+            np_image = np.array(
+                [[[1], [3]], [[2], [4]], [[4], [127]]]).astype(np.int32)
+            with paddle.static.program_guard(main_prog, startup_prog):
+                image = paddle.static.data(
+                    name='image', shape=[3, 2, 1], dtype='int32')
+        else:
+            np_image = np.array(
+                [[[1], [3]], [[2], [4]], [[4], [127]]]).astype(np.int64)
+            with paddle.static.program_guard(main_prog, startup_prog):
+                image = paddle.static.data(
+                    name='image', shape=[3, 2, 1], dtype='int64')
 
         with paddle.static.program_guard(main_prog, startup_prog):
-            image = paddle.static.data(
-                name='image', shape=[3, 2, 1], dtype='int32')
             lookup = paddle.fluid.layers.embedding(
                 input=image, size=[128, 16], padding_idx=-1)
+            loss = paddle.mean(lookup)
+
+            adam = paddle.optimizer.Adam(learning_rate=1e-2)
+            adam.minimize(loss)
 
         if run_ipu:
             place = paddle.IPUPlace()
@@ -53,26 +65,27 @@ class TestLookupTableNet(unittest.TestCase):
 
         if run_ipu:
             feed_list = [image.name]
-            fetch_list = [lookup.name]
+            fetch_list = [loss.name]
             ipu_strategy = compiler.get_ipu_strategy()
-            ipu_strategy.is_training = False
+            ipu_strategy.is_training = True
             program = compiler.IpuCompiler(
                 main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
                                                               fetch_list)
         else:
             program = main_prog
-            print(program._to_readable_code())
 
-        result = exe.run(program, feed={"image": np_image}, fetch_list=[lookup])
-        return result[0]
+        result = []
+        for epoch in range(100):
+            loss_res = exe.run(program,
+                               feed={"image": np_image},
+                               fetch_list=[loss])
+            result.append(loss_res)
+        return np.array(result)
 
     def test_gather(self):
-        #cpu = self._test(False)
-        #print(cpu.shape)
-        #print(cpu)
-        ipu = self._test(True)
-        #print(ipu.shape)
-        #self.assertTrue(np.allclose(ipu, cpu, atol=1e-4))
+        cpu = self._test(False).flatten()
+        ipu = self._test(True).flatten()
+        self.assertTrue(np.allclose(ipu, cpu, atol=1e-4))
 
 
 if __name__ == "__main__":

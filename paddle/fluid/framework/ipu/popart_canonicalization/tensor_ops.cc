@@ -165,15 +165,90 @@ ir::Node *cast_handler(ir::Graph *graph, ir::Node *node) {
 }
 
 ir::Node *lookup_table_handler(ir::Graph *graph, ir::Node *node) {
-  auto new_node_squeeze =
+  auto *op = node->Op();
+  auto padding_idx_ = BOOST_GET_CONST(int64_t, op->GetAttr("padding_idx"));
+  auto w_shape_ = op->Block()->FindVar(op->Input("W")[0])->GetShape();
+  auto table_size_ = w_shape_[0];
+  auto emb_size_ = w_shape_[1];
+
+  ir::Node *w_node;
+  if (padding_idx_ >= 0 && padding_idx_ < table_size_) {
+    // TODO(yaozhixin): support other datatype
+    std::vector<float> const_value_(emb_size_, 0);
+    std::vector<int64_t> const_shape_{1, emb_size_};
+    auto concat_const =
+        CreateConst(graph, {}, {}, {{"value", const_value_},
+                                    {"dims", const_shape_},
+                                    {"dtype", ONNXDataType::FLOAT}});
+    auto axes = CreateConst(graph, {}, {}, {{"value", std::vector<int64_t>{0}},
+                                            {"dims", std::vector<int64_t>{1}},
+                                            {"dtype", ONNXDataType::INT64}});
+    auto step = CreateConst(graph, {}, {}, {{"value", std::vector<int64_t>{1}},
+                                            {"dims", std::vector<int64_t>{1}},
+                                            {"dtype", ONNXDataType::INT64}});
+
+    auto left_start =
+        CreateConst(graph, {}, {}, {{"value", std::vector<int64_t>{0}},
+                                    {"dims", std::vector<int64_t>{1}},
+                                    {"dtype", ONNXDataType::INT64}});
+    auto left_end = CreateConst(graph, {}, {},
+                                {{"value", std::vector<int64_t>{padding_idx_}},
+                                 {"dims", std::vector<int64_t>{1}},
+                                 {"dtype", ONNXDataType::INT64}});
+
+    auto right_start = CreateConst(
+        graph, {}, {}, {{"value", std::vector<int64_t>{padding_idx_ + 1}},
+                        {"dims", std::vector<int64_t>{1}},
+                        {"dtype", ONNXDataType::INT64}});
+    auto right_end = CreateConst(graph, {}, {},
+                                 {{"value", std::vector<int64_t>{table_size_}},
+                                  {"dims", std::vector<int64_t>{1}},
+                                  {"dtype", ONNXDataType::INT64}});
+
+    auto left_slice =
+        CreateBaseOp(graph, "popart_slice",
+                     {GetInputNode("W", node), left_start->outputs[0],
+                      left_end->outputs[0], axes->outputs[0], step->outputs[0]},
+                     {}, {});
+    auto right_slice = CreateBaseOp(
+        graph, "popart_slice",
+        {GetInputNode("W", node), right_start->outputs[0],
+         right_end->outputs[0], axes->outputs[0], step->outputs[0]},
+        {}, {});
+
+    if (padding_idx_ == 0) {
+      w_node = CreateBaseOp(graph, "popart_concat",
+                            {concat_const->outputs[0], right_slice->outputs[0]},
+                            {}, {{"axis", int64_t(0)}});
+      ClearNode(left_start);
+      ClearNode(left_end);
+      ClearNode(left_slice);
+    } else if (padding_idx_ == table_size_ - 1) {
+      w_node = CreateBaseOp(graph, "popart_concat",
+                            {left_slice->outputs[0], concat_const->outputs[0]},
+                            {}, {{"axis", int64_t{0}}});
+      ClearNode(right_start);
+      ClearNode(right_end);
+      ClearNode(right_slice);
+    } else {
+      w_node = CreateBaseOp(graph, "popart_concat",
+                            {left_slice->outputs[0], concat_const->outputs[0],
+                             right_slice->outputs[0]},
+                            {}, {{"axis", int64_t{0}}});
+    }
+    w_node = w_node->outputs[0];
+  } else {
+    w_node = GetInputNode("W", node);
+  }
+
+  auto squeeze =
       CreateBaseOp(graph, "popart_squeeze", {GetInputNode("Ids", node)}, {},
                    {{"axes", std::vector<int64_t>{-1}}});
 
-  auto new_node_gather =
-      CreateBaseOp(graph, "popart_gather",
-                   {GetInputNode("W", node), new_node_squeeze->outputs[0]},
+  auto gather =
+      CreateBaseOp(graph, "popart_gather", {w_node, squeeze->outputs[0]},
                    {GetOutputNode("Out", node)}, {});
-  return new_node_gather;
+  return gather;
 }
 
 ir::Node *unsqueeze_handler(ir::Graph *graph, ir::Node *node) {
@@ -202,7 +277,7 @@ ir::Node *stack_handler(ir::Graph *graph, ir::Node *node) {
   int64_t axis_{BOOST_GET_CONST(int, op->GetAttr("axis"))};
   std::vector<int64_t> axes_{axis_};
 
-  std::vector<Node *> unsqueeze_outputs_{};
+  std::vector<ir::Node *> unsqueeze_outputs_{};
   for (auto input : node->inputs) {
     auto new_unsqueeze_node =
         CreateBaseOp(graph, "popart_unsqueeze", {input}, {}, {{"axes", axes_}});
