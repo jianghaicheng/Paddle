@@ -43,33 +43,43 @@ void Compiler::InsertTensors(std::vector<std::string> output_names,
       std::pair<std::string, std::string>(output_names[0], tensor_id));
 }
 
-void Compiler::SetIpuIndexStage(const std::vector<std::string> &tensor_ids,
-                                const OpDesc *op_desc) {
+void Compiler::SetIpuIndexStage(const std::vector<std::string>& tensor_ids,
+                                const OpDesc* op_desc) {
   // TODO(xiaobingw): replace ipu_index with macro or constexpr
+  VLOG(10) << "enter Compiler::SetIpuIndexStage";
+  auto tensor_ids_set =
+      std::set<std::string>(tensor_ids.begin(), tensor_ids.end());
   if (op_desc->HasAttr("ipu_index")) {
     auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr("ipu_index"));
-    for (const auto &tensor_id : tensor_ids) {
-      builder_->virtualGraph(tensor_id, ipu_index);
-    }
+    builder_->virtualGraph(tensor_ids_set, ipu_index);
+    VLOG(10) << "set ipu_index= " << ipu_index
+             << " for op: " << op_desc->Type();
     if (op_desc->HasAttr("ipu_stage")) {
       auto ipu_stage = BOOST_GET_CONST(int, op_desc->GetAttr("ipu_stage"));
-      for (const auto &tensor_id : tensor_ids) {
-        builder_->pipelineStage(tensor_id, ipu_stage);
-      }
+      builder_->pipelineStage(tensor_ids_set, ipu_stage);
+      VLOG(10) << "set ipu_stage= " << ipu_stage
+               << " for op: " << op_desc->Type();
     }
   }
+  VLOG(10) << "leave Compiler::SetIpuIndexStage";
 }
 
-void Compiler::SetIpuIndexStage(const std::string &tensor_id,
-                                const OpDesc *op_desc) {
+void Compiler::SetIpuIndexStage(const std::string& tensor_id,
+                                const OpDesc* op_desc) {
+  VLOG(10) << "enter Compiler::SetIpuIndexStage";
   if (op_desc->HasAttr("ipu_index")) {
     auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr("ipu_index"));
     builder_->virtualGraph(tensor_id, ipu_index);
+    VLOG(10) << "set ipu_index= " << ipu_index
+             << " for op: " << op_desc->Type();
     if (op_desc->HasAttr("ipu_stage")) {
       auto ipu_stage = BOOST_GET_CONST(int, op_desc->GetAttr("ipu_stage"));
       builder_->pipelineStage(tensor_id, ipu_stage);
+      VLOG(10) << "set ipu_stage= " << ipu_stage
+               << " for op: " << op_desc->Type();
     }
   }
+  VLOG(10) << "leave Compiler::SetIpuIndexStage";
 }
 
 template <typename T>
@@ -219,6 +229,7 @@ void Compiler::RegisterOpFunc() {
   name_function_.emplace("popart_batchnormalization", BatchNormHandler);
   name_function_.emplace("popart_constant", Constant);
   name_function_.emplace("popart_nllloss", NllLoss);
+  name_function_.emplace("popart_groupnormalization", Groupnormalization);
 }
 
 void Compiler::LowerBody(const ir::Graph* graph) {
@@ -241,6 +252,7 @@ void Compiler::LowerBody(const ir::Graph* graph) {
     auto func = name_function_[op->Type()];
     func(node->Op());
   }
+  VLOG(10) << "leave Compiler::LowerBody";
 }
 
 }  // namespace ipu

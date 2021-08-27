@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO(alleng) add `//clang-format off` in python
+// clang-format off
 // Ops from AiGraphcoreOpset1
 OP_DECL(popart_gelu,aiOnnxOpset1.gelu, NONE)
-OP_DECL(popart_groupnormalization, aiOnnxOpset1.groupnormalization, ARG(INT,num_groups) ARG(FLOAT,epsilon))
+// OP_DECL(popart_groupnormalization, aiOnnxOpset1.groupnormalization, ARG(INT,num_groups) ARG(FLOAT,epsilon))
 //
 OP_DECL(popart_reshape,aiOnnxOpset.reshape, NONE)
 // Ops from AiOnnxOpset10
@@ -147,4 +149,3 @@ OP_DECL(popart_tanh, aiOnnxOpset.tanh, NONE)
 OP_DECL(popart_tile, aiOnnxOpset.tile, NONE)
 OP_DECL(popart_transpose, aiOnnxOpset.transpose, ARG(INT_VEC,perm) )
 OP_DECL(popart_unsqueeze, aiOnnxOpset.unsqueeze, ARG(INT_VEC,axes) )
-

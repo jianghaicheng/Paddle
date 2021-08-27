@@ -34,21 +34,24 @@ class TestMatmul(unittest.TestCase):
         startup_prog.random_seed = SEED
         np.random.seed(SEED)
 
-        np_a = np.random.uniform(
-            low=0, high=1, size=(10, 10)).astype(np.float32)
-        np_b = np.random.uniform(
-            low=0, high=1, size=(10, 10)).astype(np.float32)
+        shape_b = [1, 2, 3, 2]
+        shape_a = [1, 2, 3, 2]
+        np_a = np.random.uniform(low=0, high=1, size=shape_a).astype(np.float32)
+        np_b = np.random.uniform(low=0, high=1, size=shape_b).astype(np.float32)
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.fluid.layers.data(
                 name='a',
-                shape=[10, 10],
+                shape=shape_a,
                 dtype='float32',
                 append_batch_size=False)
             b = paddle.fluid.layers.data(
                 name='b',
-                shape=[10, 10],
+                shape=shape_b,
                 dtype='float32',
                 append_batch_size=False)
+
+            # out = paddle.fluid.layers.matmul(
+            #     a, b, transpose_x=False, transpose_y=True)
             out = paddle.fluid.layers.matmul(
                 a, b, transpose_x=False, transpose_y=True, alpha=7.0)
 

@@ -32,7 +32,7 @@ ir::Node *elementwise_op_handler(ir::Graph *graph, ir::Node *node,
   auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
   if (axis == -1 || axis == x_rank - 1 || x_rank == y_rank) {
     auto new_node = CreateBaseOp(
-        graph, type, {GetInputNode("X", node), GetInputNode("Y", node)},
+        graph, node, type, {GetInputNode("X", node), GetInputNode("Y", node)},
         node->outputs);
     return new_node;
   } else {
@@ -46,15 +46,15 @@ ir::Node *elementwise_op_handler(ir::Graph *graph, ir::Node *node,
         {"dtype", ONNXDataType::INT64},
     };
     // constant
-    auto new_node_const = CreateConst(graph, {}, {}, attrs);
+    auto new_node_const = CreateConst(graph, node, {}, {}, attrs);
     // reshape
     auto new_node_reshape =
-        CreateBaseOp(graph, "popart_reshape",
+        CreateBaseOp(graph, node, "popart_reshape",
                      {GetInputNode("Y", node), new_node_const->outputs[0]}, {});
     // elementwise_op
     auto new_node = CreateBaseOp(
-        graph, type, {GetInputNode("X", node), new_node_reshape->outputs[0]},
-        node->outputs);
+        graph, node, type,
+        {GetInputNode("X", node), new_node_reshape->outputs[0]}, node->outputs);
     return new_node;
   }
 }

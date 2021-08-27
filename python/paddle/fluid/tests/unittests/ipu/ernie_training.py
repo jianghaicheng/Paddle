@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,10 +35,10 @@ ernie_config = {
     "emb_size": 128,
     "emb_mapping_in": False,
     "hidden_size": 768,
-    "num_hidden_layers": 12,
-    "n_layer_per_block": 12,
+    "num_hidden_layers": 2,
+    "n_layer_per_block": 2,
     "num_attention_heads": 12,
-    "vocab_size": 30000,
+    "vocab_size": 300,
     "max_position_embeddings": 512,
     "sent_type_vocab_size": 4,
     "task_type_vocab_size": 16,
@@ -210,7 +210,7 @@ def multi_head_attention(queries,
         # The value 0 in shape attr means copying the corresponding dimension
         # size of the input as the output dimension size.
         reshaped = layers.reshape(
-            x=x, shape=[0, 0, n_head, hidden_size // n_head], inplace=True)
+            x=x, shape=[0, 0, n_head, hidden_size // n_head], inplace=False)
 
         # permuate the dimensions into:
         # [batch_size, n_head, max_sequence_len, hidden_size_per_head]
@@ -231,7 +231,7 @@ def multi_head_attention(queries,
         return layers.reshape(
             x=trans_x,
             shape=[0, 0, trans_x.shape[2] * trans_x.shape[3]],
-            inplace=True)
+            inplace=False)
 
     def scaled_dot_product_attention(q, k, v, attn_bias, d_key, dropout_rate):
         """
@@ -239,6 +239,7 @@ def multi_head_attention(queries,
         """
         scaled_q = layers.scale(x=q, scale=d_key**-0.5)
         product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
+
         if attn_bias:
             product += attn_bias
         weights = layers.softmax(product)
@@ -496,91 +497,96 @@ class ErnieModel(object):
 
         self.src_ids = src_ids
         self.sent_ids = sent_ids
-        self.posi_ids = pos_ids
+        self.pos_ids = pos_ids
         self.input_mask = input_mask
         '''
         _build_position_ids: range op doesn't support
         _build_input_mask: logic_not op doesn't support
         '''
-        #with fluid.ipu_shard(ipu_index=0):
-        #    self.position_ids = self._build_position_ids()  # position_ids
-        #    self.input_mask = self._build_input_mask()  # input mask
 
-        with fluid.ipu_shard(ipu_index=1):
-            self._build_model()
+        self._build_model()
 
     def _build_model(self, emb=None):
-        # padding id in vocabulary must be set to 0
-        emb_out = fluid.layers.embedding(
-            input=self.src_ids,
-            size=[self._voc_size, self._emb_size],
-            dtype=self._emb_dtype,
-            param_attr=fluid.ParamAttr(
-                name=self._word_emb_name, initializer=self._param_initializer),
-            is_sparse=False)
+        with fluid.ipu_shard(ipu_index=0):
+            # padding id in vocabulary must be set to 0
+            self.emb_out = fluid.layers.embedding(
+                input=self.src_ids,
+                size=[self._voc_size, self._emb_size],
+                dtype=self._emb_dtype,
+                param_attr=fluid.ParamAttr(
+                    name=self._word_emb_name,
+                    initializer=self._param_initializer),
+                is_sparse=False)
 
-        self.position_emb_out = fluid.layers.embedding(
-            input=self.posi_ids,
-            size=[self._max_position_seq_len, self._emb_size],
-            dtype=self._emb_dtype,
-            param_attr=fluid.ParamAttr(
-                name=self._pos_emb_name, initializer=self._param_initializer))
+            self.position_emb_out = fluid.layers.embedding(
+                input=self.pos_ids,
+                size=[self._max_position_seq_len, self._emb_size],
+                dtype=self._emb_dtype,
+                param_attr=fluid.ParamAttr(
+                    name=self._pos_emb_name,
+                    initializer=self._param_initializer))
 
-        self.sent_emb_out = fluid.layers.embedding(
-            self.sent_ids,
-            size=[self._sent_types, self._emb_size],
-            dtype=self._emb_dtype,
-            param_attr=fluid.ParamAttr(
-                name=self._sent_emb_name, initializer=self._param_initializer))
+            self.sent_emb_out = fluid.layers.embedding(
+                self.sent_ids,
+                size=[self._sent_types, self._emb_size],
+                dtype=self._emb_dtype,
+                param_attr=fluid.ParamAttr(
+                    name=self._sent_emb_name,
+                    initializer=self._param_initializer))
 
-        sum_emb = emb_out + self.position_emb_out + self.sent_emb_out
+            sum_emb = self.emb_out + self.position_emb_out + self.sent_emb_out
 
-        sum_emb = pre_process_layer(
-            sum_emb,
-            self.config['pre_encoder_cmd'],
-            self._prepostprocess_dropout,
-            name='pre_encoder',
-            epsilon=self.config['epsilon'])
+            sum_emb = pre_process_layer(
+                sum_emb,
+                self.config['pre_encoder_cmd'],
+                self._prepostprocess_dropout,
+                name='pre_encoder',
+                epsilon=self.config['epsilon'])
 
-        if self.config['emb_mapping_in']:
-            sum_emb = fluid.layers.fc(input=sum_emb,
-                                      num_flatten_dims=2,
-                                      size=self._hidden_size,
-                                      param_attr=fluid.ParamAttr(
-                                          name='emb_hidden_mapping',
-                                          initializer=self._param_initializer),
-                                      bias_attr='emb_hidden_mapping_bias')
+            if self.config['emb_mapping_in']:
+                sum_emb = fluid.layers.fc(
+                    input=sum_emb,
+                    num_flatten_dims=2,
+                    size=self._hidden_size,
+                    param_attr=fluid.ParamAttr(
+                        name='emb_hidden_mapping',
+                        initializer=self._param_initializer),
+                    bias_attr='emb_hidden_mapping_bias')
 
-        self_attn_mask = fluid.layers.matmul(
-            x=self.input_mask, y=self.input_mask, transpose_y=True)
+            self_attn_mask = fluid.layers.matmul(
+                x=self.input_mask, y=self.input_mask, transpose_y=True)
 
-        self_attn_mask = fluid.layers.scale(
-            x=self_attn_mask, scale=10000.0, bias=-1.0, bias_after_scale=False)
-        n_head_self_attn_mask = fluid.layers.stack(
-            x=[self_attn_mask] * self._n_head,
-            axis=1)  # [bs, _n_head, seqlen, seq_len]
-        n_head_self_attn_mask.stop_gradient = True
+            self_attn_mask = fluid.layers.scale(
+                x=self_attn_mask,
+                scale=10000.0,
+                bias=-1.0,
+                bias_after_scale=False)
+            n_head_self_attn_mask = fluid.layers.stack(
+                x=[self_attn_mask] * self._n_head,
+                axis=1)  # [bs, _n_head, seqlen, seq_len]
+            n_head_self_attn_mask.stop_gradient = True
 
-        self._enc_out = encoder(
-            enc_input=sum_emb,
-            attn_bias=n_head_self_attn_mask,
-            n_layer=self._n_layer,
-            n_head=self._n_head,
-            d_key=self._hidden_size // self._n_head,
-            d_value=self._hidden_size // self._n_head,
-            d_model=self._hidden_size,
-            d_inner_hid=self._hidden_size * 4,
-            prepostprocess_dropout=self._prepostprocess_dropout,
-            attention_dropout=self._attention_dropout,
-            relu_dropout=0,
-            hidden_act=self._hidden_act,
-            preprocess_cmd=self.config['preprocess_cmd'],
-            postprocess_cmd=self.config['postprocess_cmd'],
-            param_initializer=self._param_initializer,
-            name='encoder',
-            epsilon=self.config['epsilon'],
-            n_layer_per_block=self.config['n_layer_per_block'],
-            preln=self.preln)
+        with fluid.ipu_shard(ipu_index=1):
+            self._enc_out = encoder(
+                enc_input=sum_emb,
+                attn_bias=n_head_self_attn_mask,
+                n_layer=self._n_layer,
+                n_head=self._n_head,
+                d_key=self._hidden_size // self._n_head,
+                d_value=self._hidden_size // self._n_head,
+                d_model=self._hidden_size,
+                d_inner_hid=self._hidden_size * 4,
+                prepostprocess_dropout=self._prepostprocess_dropout,
+                attention_dropout=self._attention_dropout,
+                relu_dropout=0,
+                hidden_act=self._hidden_act,
+                preprocess_cmd=self.config['preprocess_cmd'],
+                postprocess_cmd=self.config['postprocess_cmd'],
+                param_initializer=self._param_initializer,
+                name='encoder',
+                epsilon=self.config['epsilon'],
+                n_layer_per_block=self.config['n_layer_per_block'],
+                preln=self.preln)
 
     def _build_position_ids(self):
         d_shape = fluid.layers.shape(self.src_ids)
@@ -589,7 +595,7 @@ class ErnieModel(object):
         position_ids = fluid.layers.reshape(
             fluid.layers.range(
                 0, d_seqlen, 1, dtype='int32'), [1, d_seqlen, 1],
-            inplace=True)
+            inplace=False)
         position_ids = fluid.layers.expand(position_ids, [d_batch, 1, 1])
         position_ids = fluid.layers.cast(position_ids, INT_DTYPE)
         position_ids.stop_gradient = True
@@ -630,7 +636,7 @@ class ErnieModel(object):
                 name="next_sent_fc.w_0", initializer=self._param_initializer),
             bias_attr="next_sent_fc.b_0")
         next_sent_fc_out = fluid.layers.reshape(
-            next_sent_fc_out, [-1, 33], inplace=True)
+            next_sent_fc_out, [-1, 33], inplace=False)
         #next_sent_loss, next_sent_softmax = fluid.layers.softmax_with_cross_entropy(
         #    logits=next_sent_fc_out, label=labels, return_softmax=True)
         next_sent_softmax = fluid.layers.softmax(next_sent_fc_out)
@@ -724,9 +730,9 @@ class ErnieModel(object):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument(
-        "--run_on_ipu", type=bool, default=False, help="Run model with IPU")
+        "--run_on_ipu", type=bool, default=True, help="Run model with IPU")
     parser.add_argument(
-        "--is_training", type=bool, default=True, help="Train of inference")
+        "--is_training", type=bool, default=False, help="Train of inference")
     parser.add_argument(
         "--save_model", type=bool, default=False, help="Save model or not")
     parser.add_argument(
@@ -736,9 +742,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--run_steps", type=int, default=10, help="Number steps exe.run()")
     parser.add_argument(
-        "--export_ops", type=bool, default=True, help="Export ops to ops.txt")
+        "--export_ops", type=bool, default=False, help="Export ops to ops.txt")
     parser.add_argument(
-        "--export_ipu_idx", type=bool, default=True, help="Export op-idx pair")
+        "--export_ipu_idx", type=bool, default=False, help="Export op-idx pair")
     args = parser.parse_args()
 
     # set random seed
@@ -789,7 +795,7 @@ if __name__ == "__main__":
     ernie = ErnieModel(src_ids, sent_ids, pos_ids, input_mask, ernie_config)
     fetch_node = ernie.get_sequence_output()
     if args.is_training:
-        with fluid.ipu_shard(ipu_index=2):
+        with fluid.ipu_shard(ipu_index=1):
             _, mean_mask_lm_loss = ernie.get_lm_output(mask_label, mask_pos)
             fetch_node = mean_mask_lm_loss
             adam = paddle.optimizer.Adam(learning_rate=1e-2)
@@ -806,7 +812,7 @@ if __name__ == "__main__":
     if args.is_training:
         feed_list = input_fields['names']
     else:
-        feed_list = input_fields['names'][:2]
+        feed_list = input_fields['names'][:4]
     fetch_list = [fetch_node.name]
 
     startup_prog = paddle.static.default_startup_program()
@@ -816,6 +822,9 @@ if __name__ == "__main__":
 
     if args.run_on_ipu:
         ipu_strategy = compiler.get_ipu_strategy()
+        ipu_strategy.num_ipus = 2
+        ipu_strategy.enable_manual_shard = True
+        ipu_strategy.is_training = args.is_training
         ipu_compiler = compiler.IpuCompiler(
             main_prog, ipu_strategy=ipu_strategy)
         program = ipu_compiler.compile(feed_list, fetch_list)
@@ -836,6 +845,8 @@ if __name__ == "__main__":
         feed_dict = {
             src_ids.name: np_inputs[0],
             sent_ids.name: np_inputs[1],
+            pos_ids.name: np_inputs[2],
+            input_mask.name: np_inputs[3]
         }
 
     for i in range(args.run_steps):

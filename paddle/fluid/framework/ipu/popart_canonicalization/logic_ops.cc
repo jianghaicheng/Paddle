@@ -23,8 +23,8 @@ namespace {
 
 ir::Node *equal_handler(ir::Graph *graph, ir::Node *node) {
   auto new_node = CreateBaseOp(
-      graph, "popart_equal", {GetInputNode("X", node), GetInputNode("Y", node)},
-      node->outputs);
+      graph, node, "popart_equal",
+      {GetInputNode("X", node), GetInputNode("Y", node)}, node->outputs);
   return new_node;
 }
 

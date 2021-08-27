@@ -93,3 +93,18 @@
     SetIpuIndexStage(result, op_desc);                                        \
     tensors_.emplace(outputs[0], result);                                     \
   }
+
+#define Groupnormalization                                                  \
+  [&](OpDesc *op_desc) {                                                    \
+    auto inputs = GetOpInputs(op_desc);                                     \
+    auto outputs = op_desc->Output("__outputs__");                          \
+    auto epsilon = BOOST_GET_CONST(float, op_desc->GetAttr("epsilon"));     \
+    auto groups = BOOST_GET_CONST(int64_t, op_desc->GetAttr("num_groups")); \
+    std::vector<popart::TensorId> result =                                  \
+        builder_->aiGraphcoreOpset1().groupnormalization(inputs, groups,    \
+                                                         epsilon);          \
+    SetIpuIndexStage(result, op_desc);                                      \
+    tensors_.emplace(outputs[0], result[0]);                                \
+    tensors_.emplace(outputs[1], result[1]);                                \
+    tensors_.emplace(outputs[2], result[2]);                                \
+  }

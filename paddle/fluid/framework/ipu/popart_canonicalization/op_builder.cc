@@ -27,7 +27,7 @@ std::string GenerateVarName() {
   return std::string("_popart_gen_") + std::to_string(var_count++);
 }
 
-ir::Node *MakeVarNode(ir::Graph *graph) {
+ir::Node *MakeVarNode(ir::Graph *graph, ir::Node *node) {
   auto var_name = GenerateVarName();
   auto var_desc = std::make_unique<framework::VarDesc>(var_name);
 
@@ -35,7 +35,7 @@ ir::Node *MakeVarNode(ir::Graph *graph) {
   return var;
 }
 
-ir::Node *MakeOpNode(ir::Graph *graph, const std::string &type,
+ir::Node *MakeOpNode(ir::Graph *graph, ir::Node *node, const std::string &type,
                      const std::vector<ir::Node *> &inputs,
                      const std::vector<ir::Node *> &outputs) {
   auto op_desc = std::make_unique<framework::OpDesc>();
@@ -46,7 +46,7 @@ ir::Node *MakeOpNode(ir::Graph *graph, const std::string &type,
     ConnectNodes(in, op);
   }
   if (outputs.empty()) {
-    auto var = MakeVarNode(graph);
+    auto var = MakeVarNode(graph, node);
     ConnectNodes(op, var);
   } else {
     for (auto *out : outputs) {
@@ -70,33 +70,46 @@ ir::Node *MakeOpNode(ir::Graph *graph, const std::string &type,
   return op;
 }
 
-Node *CreateBaseOp(ir::Graph *graph, const std::string &type,
-                   const std::vector<ir::Node *> &inputs,
-                   const std::vector<ir::Node *> &outputs,
-                   const AttributeMap &attrs) {
-  auto node = MakeOpNode(graph, type, inputs, outputs);
+ir::Node *CreateBaseOp(ir::Graph *graph, ir::Node *node,
+                       const std::string &type,
+                       const std::vector<ir::Node *> &inputs,
+                       const std::vector<ir::Node *> &outputs,
+                       const AttributeMap &attrs) {
+  auto new_node = MakeOpNode(graph, node, type, inputs, outputs);
   if (!attrs.empty()) {
-    node->Op()->SetAttrMap(attrs);
+    new_node->Op()->SetAttrMap(attrs);
   }
-  return node;
+  // deal special attr
+  if (!new_node->Op()->HasAttr("ipu_index")) {
+    CopyOpAttr("ipu_index", node->Op(), new_node->Op());
+  }
+  if (!new_node->Op()->HasAttr("ipu_stage")) {
+    CopyOpAttr("ipu_stage", node->Op(), new_node->Op());
+  }
+
+  return new_node;
 }
 
-ir::Node *CreateConst(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+ir::Node *CreateConst(ir::Graph *graph, ir::Node *node,
+                      const std::vector<ir::Node *> &inputs,
                       const std::vector<ir::Node *> &outputs,
                       const AttributeMap &attrs) {
-  return CreateBaseOp(graph, "popart_constant", inputs, outputs, attrs);
+  return CreateBaseOp(graph, node, "popart_constant", inputs, outputs, attrs);
 }
 
-ir::Node *CreateCast(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+ir::Node *CreateCast(ir::Graph *graph, ir::Node *node,
+                     const std::vector<ir::Node *> &inputs,
                      const std::vector<ir::Node *> &outputs, const int otype) {
   auto to = VarType2PopStr(otype);
-  return CreateBaseOp(graph, "popart_cast", inputs, outputs, {{"to", to}});
+  return CreateBaseOp(graph, node, "popart_cast", inputs, outputs,
+                      {{"to", to}});
 }
 
-ir::Node *CreateGemm(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+ir::Node *CreateGemm(ir::Graph *graph, ir::Node *node,
+                     const std::vector<ir::Node *> &inputs,
                      const std::vector<ir::Node *> &outputs, int64_t transA,
                      int64_t transB, float alpha, float beta) {
-  return CreateBaseOp(graph, "popart_gemm", inputs, outputs,
+  return CreateBaseOp(graph, node, "popart_gemm", inputs, outputs,
                       {
                           {"alpha", alpha},
                           {"beta", beta},
@@ -105,21 +118,24 @@ ir::Node *CreateGemm(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
                       });
 }
 
-ir::Node *CreateReshape(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+ir::Node *CreateReshape(ir::Graph *graph, ir::Node *node,
+                        const std::vector<ir::Node *> &inputs,
                         const std::vector<ir::Node *> &outputs,
                         const std::vector<int64_t> &oshape) {
   auto attr = AttributeMap{
       {"value", oshape},
       {"dims", std::vector<int64_t>{static_cast<int64_t>(oshape.size())}},
       {"dtype", ONNXDataType::INT64}};
-  auto new_node_const = CreateBaseOp(graph, "popart_constant", {}, {}, attr);
+  auto new_node_const =
+      CreateBaseOp(graph, node, "popart_constant", {}, {}, attr);
   auto new_node_reshape =
-      CreateBaseOp(graph, "popart_reshape",
+      CreateBaseOp(graph, node, "popart_reshape",
                    {inputs[0], new_node_const->outputs[0]}, outputs);
   return new_node_reshape;
 }
 
-ir::Node *CreateConv(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+ir::Node *CreateConv(ir::Graph *graph, ir::Node *node,
+                     const std::vector<ir::Node *> &inputs,
                      const std::vector<ir::Node *> &outputs,
                      const std::vector<int64_t> &dilations, int64_t group,
                      const std::vector<int64_t> &kernel_shape,
@@ -130,7 +146,7 @@ ir::Node *CreateConv(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
       {"kernel_shape", kernel_shape}, {"pads", pads},
       {"strides", strides},
   };
-  return CreateBaseOp(graph, "popart_conv", inputs, outputs, attrs);
+  return CreateBaseOp(graph, node, "popart_conv", inputs, outputs, attrs);
 }
 
 }  // namespace ipu

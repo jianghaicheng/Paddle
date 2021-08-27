@@ -22,15 +22,16 @@ namespace ipu {
 
 std::string GenerateVarName();
 
-ir::Node *MakeVarNode(ir::Graph *graph);
-ir::Node *MakeOpNode(ir::Graph *graph, const std::string &type,
+ir::Node *MakeVarNode(ir::Graph *graph, ir::Node *node);
+ir::Node *MakeOpNode(ir::Graph *graph, ir::Node *node, const std::string &type,
                      const std::vector<ir::Node *> &inputs,
                      const std::vector<ir::Node *> &outputs);
 
-Node *CreateBaseOp(ir::Graph *graph, const std::string &type,
-                   const std::vector<ir::Node *> &inputs,
-                   const std::vector<ir::Node *> &outputs,
-                   const AttributeMap &attrs = {});
+ir::Node *CreateBaseOp(ir::Graph *graph, ir::Node *node,
+                       const std::string &type,
+                       const std::vector<ir::Node *> &inputs,
+                       const std::vector<ir::Node *> &outputs,
+                       const AttributeMap &attrs = {});
 
 template <typename T>
 AttributeMap MakeConstAttrMap(std::vector<T> value, std::vector<int64_t> dims,
@@ -48,23 +49,28 @@ AttributeMap MakeConstAttrMapFromValue(T v, std::vector<int64_t> dims,
   return MakeConstAttrMap<T>(std::vector<T>(size, v), dims, dtype);
 }
 
-ir::Node *CreateConst(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+ir::Node *CreateConst(ir::Graph *graph, ir::Node *node,
+                      const std::vector<ir::Node *> &inputs,
                       const std::vector<ir::Node *> &outputs,
                       const AttributeMap &attrs);
 
 // otype is proto::VarType::Type
-ir::Node *CreateCast(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+ir::Node *CreateCast(ir::Graph *graph, ir::Node *node,
+                     const std::vector<ir::Node *> &inputs,
                      const std::vector<ir::Node *> &outputs, const int otype);
 
-ir::Node *CreateGemm(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+ir::Node *CreateGemm(ir::Graph *graph, ir::Node *node,
+                     const std::vector<ir::Node *> &inputs,
                      const std::vector<ir::Node *> &outputs, int64_t transA = 0,
                      int64_t transB = 0, float alpha = 1.0f, float beta = 1.0f);
 
-ir::Node *CreateReshape(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+ir::Node *CreateReshape(ir::Graph *graph, ir::Node *node,
+                        const std::vector<ir::Node *> &inputs,
                         const std::vector<ir::Node *> &outputs,
                         const std::vector<int64_t> &oshape);
 
-ir::Node *CreateConv(ir::Graph *graph, const std::vector<ir::Node *> &inputs,
+ir::Node *CreateConv(ir::Graph *graph, ir::Node *node,
+                     const std::vector<ir::Node *> &inputs,
                      const std::vector<ir::Node *> &outputs,
                      const std::vector<int64_t> &dilations = {1, 1},
                      int64_t group = 1,

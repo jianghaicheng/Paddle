@@ -53,13 +53,6 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
       new_node = handler(graph, node);
       VLOG(11) << "Post Popart Node:";
       VLOG(11) << new_node->Op()->Proto()->DebugString();
-      if (!new_node->Op()->HasAttr("ipu_index")) {
-        ipu::CopyOpAttr("ipu_index", node->Op(), new_node->Op());
-      }
-      if (!new_node->Op()->HasAttr("ipu_stage")) {
-        ipu::CopyOpAttr("ipu_stage", node->Op(), new_node->Op());
-      }
-
       ipu::ClearNode(node);
       graph->RemoveNode(node);
     }

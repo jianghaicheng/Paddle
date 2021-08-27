@@ -24,7 +24,7 @@ namespace {
 ir::Node *activation_op_handler(ir::Graph *graph, ir::Node *node,
                                 const std::string &type) {
   auto new_node =
-      CreateBaseOp(graph, type, {GetInputNode("X", node)}, node->outputs);
+      CreateBaseOp(graph, node, type, {GetInputNode("X", node)}, node->outputs);
   return new_node;
 }
 
@@ -54,10 +54,8 @@ ir::Node *gelu_handler(ir::Graph *graph, ir::Node *node) {
 
 ir::Node *log_softmax_handler(ir::Graph *graph, ir::Node *node) {
   auto axis_ = BOOST_GET_CONST(int, node->Op()->GetAttr("axis"));
-  return CreateBaseOp(graph, "popart_logsoftmax", node->inputs, node->outputs,
-                      {
-                          {"axis", int64_t{axis_}},
-                      });
+  return CreateBaseOp(graph, node, "popart_logsoftmax", node->inputs,
+                      node->outputs, {{"axis", int64_t{axis_}}});
 }
 
 REGISTER_HANDLER(relu, relu_handler);

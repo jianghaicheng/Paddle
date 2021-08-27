@@ -157,6 +157,21 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
     graph->RemoveNode(node);
   }
 
+  // TODO(alleng, zhixin) refactor this part
+  std::unordered_set<ir::Node*> rm_nodes_backward;
+  for (auto node : graph->Nodes()) {
+    if (!node->IsOp()) {
+      continue;
+    }
+    auto op_role = BOOST_GET_MUTABLE(int, node->Op()->GetAttr("op_role"));
+    if (op_role == 1) {
+      rm_nodes_backward.insert(node);
+    }
+  }
+  for (auto* node : rm_nodes_backward) {
+    graph->RemoveNode(node);
+  }
+
   VLOG(10) << "Post Graph: ";
   VLOG(10) << DebugString(graph);
 

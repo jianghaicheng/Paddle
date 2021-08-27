@@ -36,7 +36,7 @@ ir::Node *conv2d_handler(ir::Graph *graph, ir::Node *node) {
   auto stride = std::vector<int64_t>{stride_.begin(), stride_.end()};
   if (op->HasInput("Bias") && !op->Input("Bias").empty()) {
     return CreateConv(
-        graph,
+        graph, node,
         {
             GetInputNode("Input", node), GetInputNode("Filter", node),
             GetInputNode("Bias", node),
@@ -44,7 +44,7 @@ ir::Node *conv2d_handler(ir::Graph *graph, ir::Node *node) {
         node->outputs, dilations, group_, {}, pads, stride);
   } else {
     return CreateConv(
-        graph,
+        graph, node,
         {
             GetInputNode("Input", node), GetInputNode("Filter", node),
         },
@@ -71,7 +71,7 @@ ir::Node *batch_norm_handler(ir::Graph *graph, ir::Node *node) {
   auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
   // data_layout
   int64_t num_outputs = 1;
-  return CreateBaseOp(graph, "popart_batchnormalization", inputs, outputs,
+  return CreateBaseOp(graph, node, "popart_batchnormalization", inputs, outputs,
                       {
                           {"momentum", momentum},
                           {"epsilon", epsilon},
@@ -103,19 +103,19 @@ ir::Node *pool2d_handler(ir::Graph *graph, ir::Node *node) {
     int64_t num_outputs = 1;
     auto dilations = std::vector<int64_t>{};
     int64_t storage_order = 0;
-    return CreateBaseOp(graph, "popart_maxpool", node->inputs, node->outputs,
-                        {
-                            {"num_outputs", num_outputs},
-                            {"kernel_shape", kernel_shape},
-                            {"ceil_mode", ceil_mode},
-                            {"dilations", dilations},
-                            {"pads", pads},
-                            {"storage_order", storage_order},
-                            {"strides", strides},
-                        });
+    return CreateBaseOp(graph, node, "popart_maxpool", node->inputs,
+                        node->outputs, {
+                                           {"num_outputs", num_outputs},
+                                           {"kernel_shape", kernel_shape},
+                                           {"ceil_mode", ceil_mode},
+                                           {"dilations", dilations},
+                                           {"pads", pads},
+                                           {"storage_order", storage_order},
+                                           {"strides", strides},
+                                       });
   } else if (pooling_type == "avg") {
     int64_t count_include_pad = 0;
-    return CreateBaseOp(graph, "popart_averagepool", node->inputs,
+    return CreateBaseOp(graph, node, "popart_averagepool", node->inputs,
                         node->outputs,
                         {
                             {"kernel_shape", kernel_shape},
@@ -143,8 +143,8 @@ ir::Node *group_norm_handler(ir::Graph *graph, ir::Node *node) {
   std::vector<ir::Node *> outputs_ = {GetOutputNode("Y", node),
                                       GetOutputNode("Mean", node),
                                       GetOutputNode("Variance", node)};
-  return CreateBaseOp(graph, "popart_groupnormalization", inputs_, outputs_,
-                      attrs_);
+  return CreateBaseOp(graph, node, "popart_groupnormalization", inputs_,
+                      outputs_, attrs_);
 }
 
 ir::Node *instance_norm_handler(ir::Graph *graph, ir::Node *node) {
@@ -156,8 +156,8 @@ ir::Node *instance_norm_handler(ir::Graph *graph, ir::Node *node) {
                                      GetInputNode("Scale", node),
                                      GetInputNode("Bias", node)};
   std::vector<ir::Node *> outputs_ = {GetOutputNode("Y", node)};
-  return CreateBaseOp(graph, "popart_instancenormalization", inputs_, outputs_,
-                      attrs_);
+  return CreateBaseOp(graph, node, "popart_instancenormalization", inputs_,
+                      outputs_, attrs_);
 }
 
 ir::Node *layer_norm_handler(ir::Graph *graph, ir::Node *node) {
@@ -178,18 +178,19 @@ ir::Node *layer_norm_handler(ir::Graph *graph, ir::Node *node) {
       {"value", norm_shape_},
       {"dims", std::vector<int64_t>{static_cast<int64_t>(norm_shape_.size())}},
       {"dtype", ONNXDataType::INT64}};
-  auto reshape1_const = CreateBaseOp(graph, "popart_constant", {}, {}, attrs1);
+  auto reshape1_const =
+      CreateBaseOp(graph, node, "popart_constant", {}, {}, attrs1);
   auto new_node_reshape1 = CreateBaseOp(
-      graph, "popart_reshape",
+      graph, node, "popart_reshape",
       {GetInputNode("X", node), reshape1_const->outputs[0]}, {}, {});
 
   auto epsilon_ = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
   int64_t groups_ = 1;
   auto groupnorm_attrs_ =
       AttributeMap{{"epsilon", epsilon_}, {"num_groups", groups_}};
-  auto out_Y_ = MakeVarNode(graph);
-  auto new_node_groupnorm = CreateBaseOp(
-      graph, "popart_groupnormalization",
+  auto out_Y_ = MakeVarNode(graph, node);
+  CreateBaseOp(
+      graph, node, "popart_groupnormalization",
       {new_node_reshape1->outputs[0], GetInputNode("Scale", node),
        GetInputNode("Bias", node)},
       {out_Y_, GetOutputNode("Mean", node), GetOutputNode("Variance", node)},
@@ -199,11 +200,11 @@ ir::Node *layer_norm_handler(ir::Graph *graph, ir::Node *node) {
       {"value", input_shape_},
       {"dims", std::vector<int64_t>{static_cast<int64_t>(input_shape_.size())}},
       {"dtype", ONNXDataType::INT64}};
-  auto reshape2_const = CreateBaseOp(graph, "popart_constant", {}, {}, attrs2);
-  auto new_node_reshape2 =
-      CreateBaseOp(graph, "popart_reshape",
-                   {new_node_groupnorm->outputs[0], reshape2_const->outputs[0]},
-                   {GetOutputNode("Y", node)}, {});
+  auto reshape2_const =
+      CreateBaseOp(graph, node, "popart_constant", {}, {}, attrs2);
+  auto new_node_reshape2 = CreateBaseOp(graph, node, "popart_reshape",
+                                        {out_Y_, reshape2_const->outputs[0]},
+                                        {GetOutputNode("Y", node)}, {});
   return new_node_reshape2;
 }
 

@@ -77,6 +77,8 @@ void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
     return;
   }
   if (op->HasAttr(attr_name)) {
+    VLOG(10) << "Copying attr: " << attr_name << " from " << op->Type()
+             << " to " << new_op->Type();
     new_op->SetAttr(attr_name, op->GetAttr(attr_name));
     new_op->Flush();
   }
