@@ -38,21 +38,129 @@ namespace ipu {
 
 std::shared_ptr<IpuBackend> IpuBackend::instance_ = nullptr;
 
-IpuBackend::IpuBackend() {}
+IpuBackend::IpuBackend() { compiler_ = std::make_shared<Compiler>(); }
+
+IpuBackend::~IpuBackend() {
+  if (instance_ == nullptr) {
+    return;
+  }
+
+  // detach device
+  if (curr_device_ != nullptr && curr_device_->isAttached()) {
+    curr_device_->detach();
+  }
+}
+
+std::shared_ptr<IpuBackend> IpuBackend::GetInstance() {
+  if (!instance_) {
+    instance_.reset(new IpuBackend());
+  }
+  return instance_;
+}
 
 void IpuBackend::Compile(ir::Graph* graph,
                          const std::vector<std::string>& feed_list,
                          const std::vector<std::string>& fetch_list) {
-  VLOG(1) << "-- in Compile --";
-  compiler_ = std::make_shared<Compiler>(ipu_strategy_);
+  VLOG(10) << "enter IpuBackend::Compile";
   compiler_->InitInputs(graph, feed_list);
   compiler_->LowerWeights(graph, scope_);
   compiler_->LowerBody(graph);
   compiler_->InitOutputs(fetch_list);
-  VLOG(1) << "-- fetch_list --";
-  for (const auto& fetch_name : fetch_list) {
-    VLOG(1) << fetch_name;
+  VLOG(10) << "leave IpuBackend::Compile";
+}
+
+void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
+                     const std::vector<Tensor*>& outputs) {
+  if (!is_prepared_) {
+    Prepare();
+    is_prepared_ = true;
   }
+
+  std::map<popart::TensorId, popart::IArray&> popart_inputs;
+  std::map<popart::TensorId, PaddleIArray> input_wrappers;
+  auto input_tensors = compiler_->GetInputs();
+  for (size_t i = 0; i < inputs.size(); i++) {
+    auto tensor_id = input_tensors[i];
+    auto tensor = const_cast<Tensor*>(inputs[i]);
+    input_wrappers.emplace(tensor_id, PaddleIArray(tensor));
+    popart_inputs.emplace(tensor_id, input_wrappers.at(tensor_id));
+  }
+
+  std::map<popart::TensorId, popart::IArray&> popart_anchors;
+  std::map<popart::TensorId, PaddleIArray> anchor_wrappers;
+  auto output_tensors = compiler_->GetOutputs();
+  for (size_t i = 0; i < outputs.size(); i++) {
+    auto tensor_id = output_tensors[i];
+    auto tensor = const_cast<Tensor*>(outputs[i]);
+    anchor_wrappers.emplace(tensor_id, PaddleIArray(tensor));
+    popart_anchors.emplace(tensor_id, anchor_wrappers.at(tensor_id));
+  }
+
+  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training) {
+    VLOG(10) << "Update optimizer learning rate...";
+    auto popart_optimizer = GetPopartOptimizer();
+    auto session = dynamic_cast<popart::TrainingSession*>(session_.get());
+    session->updateOptimizerFromHost(popart_optimizer.get());
+  }
+
+  popart::StepIO stepio(popart_inputs, popart_anchors);
+  VLOG(10) << "Running...";
+  session_->run(stepio);
+  VLOG(10) << "Running...done";
+}
+
+void IpuBackend::Prepare() {
+  VLOG(10) << "Get ModelProto ...\n";
+  auto proto = compiler_->GetModelProto();
+  VLOG(10) << "Save Model to file paddle_model.onnx ...\n";
+  compiler_->SaveModelProto("paddle_model.onnx");
+  VLOG(10) << "Constructing DataFlow\n";
+  std::vector<popart::TensorId> anchor_ids;
+  for (popart::TensorId item : compiler_->GetOutputs()) {
+    anchor_ids.push_back(item);
+  }
+  auto dataFlow = popart::DataFlow(ipu_strategy_->batches_per_step, anchor_ids);
+
+  PADDLE_ENFORCE_NOT_NULL(
+      curr_device_,
+      platform::errors::Unavailable("IPU device isn't attached, please call "
+                                    "IpuBackend::AttachDevice(id) first."));
+
+  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training) {
+    VLOG(10) << "Creating TrainingSession from Onnx Model...";
+    auto popart_optimizer = GetPopartOptimizer();
+    auto tensors = compiler_->GetTensors();
+    auto it = tensors.find(optimizer_.loss_);
+    PADDLE_ENFORCE_NE(
+        it, tensors.end(),
+        paddle::platform::errors::InvalidArgument(
+            "loss_id = %s doesn't exist in popart graph.", optimizer_.loss_));
+    session_ = popart::TrainingSession::createFromOnnxModel(
+        proto, dataFlow, it->second, *popart_optimizer, curr_device_,
+        popart::InputShapeInfo(), ipu_strategy_->popart_options_,
+        popart::Patterns(popart::PatternsLevel::Default));
+  } else {
+    VLOG(10) << "Creating InferenceSession from Onnx Model...";
+    session_ = popart::InferenceSession::createFromOnnxModel(
+        proto, dataFlow, curr_device_, popart::InputShapeInfo(),
+        ipu_strategy_->popart_options_,
+        popart::Patterns(popart::PatternsLevel::Default));
+  }
+  VLOG(10) << "Creating session from Onnx Model...done";
+
+  VLOG(10) << "Preparing session device...";
+  session_->prepareDevice();
+  VLOG(10) << "Preparing session device...done";
+
+  VLOG(10) << "Copy weights from host to device...";
+  session_->weightsFromHost();
+  VLOG(10) << "Copy weights from host to device...done";
+}
+
+std::vector<int64_t> IpuBackend::GetTensorShape(const std::string& var_name) {
+  auto oshape = compiler_->GetTensorShape(var_name);
+  oshape.insert(oshape.begin(), ipu_strategy_->batches_per_step);
+  return oshape;
 }
 
 std::unique_ptr<popart::Optimizer> IpuBackend::GetPopartOptimizer() {
@@ -87,107 +195,16 @@ std::unique_ptr<popart::Optimizer> IpuBackend::GetPopartOptimizer() {
   }
 }
 
-std::vector<int64_t> IpuBackend::GetTensorShape(const std::string& var_name) {
-  auto oshape = compiler_->GetTensorShape(var_name);
-  oshape.insert(oshape.begin(), ipu_strategy_->batches_per_step);
-  return oshape;
+float IpuBackend::GetOptimizerAttr(const std::string& attr,
+                                   float default_value) {
+  if (optimizer_.attrs_.count(attr) == 0) {
+    return default_value;
+  }
+  return optimizer_.attrs_.at(attr);
 }
 
-void IpuBackend::Prepare() {
-  VLOG(1) << "Get ModelProto ...\n";
-  auto proto = compiler_->GetModelProto();
-
-  // for onnx graph debug
-  // std::ofstream onnxfile("paddle_model_no_check.onnx",
-  // std::ios_base::binary);
-  // onnxfile.write(proto.data(), proto.size());
-  // onnxfile.close();
-
-  VLOG(1) << "Save Model to file paddle_model.onnx ...\n";
-  compiler_->SaveModelProto("paddle_model.onnx");
-
-  VLOG(1) << "Constructing DataFlow\n";
-  std::vector<popart::TensorId> anchor_ids;
-  for (popart::TensorId item : compiler_->GetOutputs()) {
-    anchor_ids.push_back(item);
-  }
-  auto dataFlow = popart::DataFlow(ipu_strategy_->batches_per_step, anchor_ids);
-
-  PADDLE_ENFORCE_NOT_NULL(
-      curr_device_,
-      platform::errors::Unavailable("IPU device isn't attached, please call "
-                                    "IpuBackend::AttachDevice(id) first."));
-
-  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training) {
-    VLOG(1) << "Creating TrainingSession from Onnx Model...";
-    auto popart_optimizer = GetPopartOptimizer();
-    auto tensors = compiler_->GetTensors();
-    auto it = tensors.find(optimizer_.loss_);
-    PADDLE_ENFORCE_NE(
-        it, tensors.end(),
-        paddle::platform::errors::InvalidArgument(
-            "loss_id = %s doesn't exist in popart graph.", optimizer_.loss_));
-    session_ = popart::TrainingSession::createFromOnnxModel(
-        proto, dataFlow, it->second, *popart_optimizer, curr_device_,
-        popart::InputShapeInfo(), ipu_strategy_->popart_options_,
-        popart::Patterns(popart::PatternsLevel::Default));
-  } else {
-    VLOG(1) << "Creating InferenceSession from Onnx Model...";
-    session_ = popart::InferenceSession::createFromOnnxModel(
-        proto, dataFlow, curr_device_, popart::InputShapeInfo(),
-        ipu_strategy_->popart_options_,
-        popart::Patterns(popart::PatternsLevel::Default));
-  }
-  VLOG(1) << "Creating session from Onnx Model...done";
-
-  VLOG(1) << "Preparing session device...";
-  session_->prepareDevice();
-  VLOG(1) << "Preparing session device...done";
-
-  VLOG(1) << "Copy weights from host to device...";
-  session_->weightsFromHost();
-  VLOG(1) << "Copy weights from host to device...done";
-}
-
-void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
-                     const std::vector<Tensor*>& outputs) {
-  if (!is_prepared_) {
-    Prepare();
-    is_prepared_ = true;
-  }
-
-  std::map<popart::TensorId, popart::IArray&> popart_inputs;
-  std::map<popart::TensorId, PaddleIArray> input_wrappers;
-  auto input_tensors = compiler_->GetInputs();
-  for (size_t i = 0; i < inputs.size(); i++) {
-    auto tensor_id = input_tensors[i];
-    auto tensor = const_cast<Tensor*>(inputs[i]);
-    input_wrappers.emplace(tensor_id, PaddleIArray(tensor));
-    popart_inputs.emplace(tensor_id, input_wrappers.at(tensor_id));
-  }
-
-  std::map<popart::TensorId, popart::IArray&> popart_anchors;
-  std::map<popart::TensorId, PaddleIArray> anchor_wrappers;
-  auto output_tensors = compiler_->GetOutputs();
-  for (size_t i = 0; i < outputs.size(); i++) {
-    auto tensor_id = output_tensors[i];
-    auto tensor = const_cast<Tensor*>(outputs[i]);
-    anchor_wrappers.emplace(tensor_id, PaddleIArray(tensor));
-    popart_anchors.emplace(tensor_id, anchor_wrappers.at(tensor_id));
-  }
-
-  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training) {
-    VLOG(1) << "Update optimizer learning rate...";
-    auto popart_optimizer = GetPopartOptimizer();
-    auto session = dynamic_cast<popart::TrainingSession*>(session_.get());
-    session->updateOptimizerFromHost(popart_optimizer.get());
-  }
-
-  popart::StepIO stepio(popart_inputs, popart_anchors);
-
-  VLOG(1) << "Running...";
-  session_->run(stepio);
-  VLOG(1) << "Running...done";
+void IpuBackend::SetOptimizerAttr(const std::string& attr, float value) {
+  optimizer_.attrs_[attr] = value;
 }
 
 float IpuBackend::GetLRFromScope() {
@@ -201,17 +218,8 @@ float IpuBackend::GetLRFromScope() {
   return tensor.data<float>()[0];
 }
 
-// ipu_num_ must be pow(2,n);
-int IpuBackend::UpperIpuNum() {
-  PADDLE_ENFORCE_GT(ipu_strategy_->num_ipus, 0,
-                    platform::errors::Unavailable(
-                        "The ipu num get is wrong, please make sure the "
-                        "sharding or pipline parameter is right."));
-  int i = 0;
-  while (pow(2, i) < ipu_strategy_->num_ipus) {
-    i++;
-  }
-  return pow(2, i);
+void IpuBackend::SetIpuStrategy(const IpuStrategy& strategy) {
+  ipu_strategy_ = &strategy;
 }
 
 size_t IpuBackend::GetNumDevices() {
@@ -274,7 +282,7 @@ Device IpuBackend::GetDevice(int id) {
 void IpuBackend::AttachDevice(int id) {
   // trick here
   // Compiler ipu is not same as the runtime ipu.
-  VLOG(1) << "comile ipu id = " << id;
+  VLOG(10) << "comile ipu id = " << id;
   bool ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
   if (ipu_model) {
     return;
@@ -287,17 +295,20 @@ void IpuBackend::AttachDevice(int id) {
                         "Can't attach IPU, ipu_num = %d.", UpperIpuNum()));
 }
 
-IpuBackend::~IpuBackend() {
-  if (instance_ == nullptr) {
-    return;
-  }
-
-  // detach device
-  if (curr_device_ != nullptr && curr_device_->isAttached()) {
-    curr_device_->detach();
-  }
-}
 bool IpuBackend::DeviceIsAttached() { return curr_device_ != nullptr; }
+
+// ipu_num_ must be pow(2,n);
+int IpuBackend::UpperIpuNum() {
+  PADDLE_ENFORCE_GT(ipu_strategy_->num_ipus, 0,
+                    platform::errors::Unavailable(
+                        "The ipu num get is wrong, please make sure the "
+                        "sharding or pipline parameter is right."));
+  int i = 0;
+  while (pow(2, i) < ipu_strategy_->num_ipus) {
+    i++;
+  }
+  return pow(2, i);
+}
 
 }  // namespace ipu
 }  // namespace framework

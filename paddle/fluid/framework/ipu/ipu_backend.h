@@ -52,74 +52,50 @@ class IpuBackend {
   IpuBackend();
   ~IpuBackend();
 
+  static std::shared_ptr<IpuBackend> GetInstance();
+
   void Compile(ir::Graph *graph, const std::vector<std::string> &feed_list,
                const std::vector<std::string> &fetch_list);
-
   void Run(const std::vector<const Tensor *> &inputs,
            const std::vector<Tensor *> &outputs);
 
-  std::string GetOptimizerType() { return optimizer_.type_; }
-
-  void SetOptimizerType(const std::string &type) { optimizer_.type_ = type; }
-
-  float GetOptimizerAttr(const std::string &name, float default_value = 0.0f) {
-    if (optimizer_.attrs_.count(name) == 0) {
-      return default_value;
-    }
-    return optimizer_.attrs_.at(name);
-  }
-
-  void SetOptimizerAttr(const std::string &attr, float value) {
-    optimizer_.attrs_[attr] = value;
-  }
-
-  void SetLoss(const std::string &loss) { optimizer_.loss_ = loss; }
-
-  std::unique_ptr<popart::Optimizer> GetPopartOptimizer();
-
   std::vector<int64_t> GetTensorShape(const std::string &var_name);
-
-  // SetScope, so we can get model parameters from scope
   void SetScope(const Scope &scope) { scope_ = &scope; }
 
+  // Optimizer
+  std::unique_ptr<popart::Optimizer> GetPopartOptimizer();
+  std::string GetOptimizerType() { return optimizer_.type_; }
+  void SetOptimizerType(const std::string &type) { optimizer_.type_ = type; }
+  float GetOptimizerAttr(const std::string &attr, float default_value = 0.0f);
+  void SetOptimizerAttr(const std::string &attr, float value);
+  void SetLoss(const std::string &loss) { optimizer_.loss_ = loss; }
   void SetLRVarName(const std::string &name) { optimizer_.lr_var_name_ = name; }
 
-  // get fixed and adjustable learning rate from scope
-  float GetLRFromScope();
-
-  void SetIpuStrategy(const IpuStrategy &strategy) {
-    ipu_strategy_ = &strategy;
-  }
-  int UpperIpuNum();
+  // IpuStrategy
+  void SetIpuStrategy(const IpuStrategy &strategy);
   size_t GetNumDevices();
   std::vector<int> GetDeviceIds();
   Device GetDevice(int id);
   void AttachDevice(int id);
   bool DeviceIsAttached();
 
-  static std::shared_ptr<IpuBackend> GetInstance() {
-    if (NULL == instance_) {
-      instance_.reset(new IpuBackend());
-    }
-    return instance_;
-  }
-
  private:
   void Prepare();
-  void LowerWeights(const ir::Graph *);
-  void LowerBody(const ir::Graph *);
-  std::vector<std::string> GetOpInputs(const OpDesc *op);
+  float GetLRFromScope();
+  int UpperIpuNum();
 
  private:
-  Optimizer optimizer_;
-  bool is_prepared_ = false;
-  const Scope *scope_ = nullptr;
-  const IpuStrategy *ipu_strategy_ = nullptr;
-
-  std::unique_ptr<popart::Session> session_;
-  std::shared_ptr<popart::DeviceInfo> curr_device_;
   static std::shared_ptr<IpuBackend> instance_;
   std::shared_ptr<Compiler> compiler_;
+
+  Optimizer optimizer_;
+  std::unique_ptr<popart::Session> session_;
+  std::shared_ptr<popart::DeviceInfo> curr_device_;
+  bool is_prepared_ = false;
+
+  // not own
+  const Scope *scope_ = nullptr;
+  const IpuStrategy *ipu_strategy_ = nullptr;
 };
 
 }  // namespace ipu

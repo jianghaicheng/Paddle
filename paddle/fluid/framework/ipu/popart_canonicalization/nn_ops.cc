@@ -53,6 +53,7 @@ Node *conv2d_handler(Graph *graph, Node *node) {
 }
 
 Node *batch_norm_handler(Graph *graph, Node *node) {
+  // TODO(alleng) differ from trainning & inference
   auto *op = node->Op();
   std::vector<Node *> inputs;
   inputs.push_back(GetInputNode("X", node));
@@ -66,7 +67,7 @@ Node *batch_norm_handler(Graph *graph, Node *node) {
   outputs.push_back(GetOutputNode("VarianceOut", node));
   outputs.push_back(GetOutputNode("SavedMean", node));
   outputs.push_back(GetOutputNode("SavedVariance", node));
-  outputs.push_back(GetOutputNode("ReserveSpace", node));
+  // outputs.push_back(GetOutputNode("ReserveSpace", node));
   auto momentum = BOOST_GET_CONST(float, op->GetAttr("momentum"));
   auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
   // data_layout
