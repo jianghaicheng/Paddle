@@ -21,7 +21,7 @@ namespace framework {
 namespace ipu {
 namespace {
 
-ir::Node *equal_handler(ir::Graph *graph, ir::Node *node) {
+Node *equal_handler(Graph *graph, Node *node) {
   auto new_node = CreateBaseOp(
       graph, node, "popart_equal",
       {GetInputNode("X", node), GetInputNode("Y", node)}, node->outputs);

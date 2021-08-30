@@ -22,16 +22,15 @@ namespace ipu {
 
 std::string GenerateVarName();
 
-ir::Node *MakeVarNode(ir::Graph *graph, ir::Node *node);
-ir::Node *MakeOpNode(ir::Graph *graph, ir::Node *node, const std::string &type,
-                     const std::vector<ir::Node *> &inputs,
-                     const std::vector<ir::Node *> &outputs);
+Node *MakeVarNode(Graph *graph, Node *node);
+Node *MakeOpNode(Graph *graph, Node *node, const std::string &type,
+                 const std::vector<Node *> &inputs,
+                 const std::vector<Node *> &outputs);
 
-ir::Node *CreateBaseOp(ir::Graph *graph, ir::Node *node,
-                       const std::string &type,
-                       const std::vector<ir::Node *> &inputs,
-                       const std::vector<ir::Node *> &outputs,
-                       const AttributeMap &attrs = {});
+Node *CreateBaseOp(Graph *graph, Node *node, const std::string &type,
+                   const std::vector<Node *> &inputs,
+                   const std::vector<Node *> &outputs,
+                   const AttributeMap &attrs = {});
 
 template <typename T>
 AttributeMap MakeConstAttrMap(std::vector<T> value, std::vector<int64_t> dims,
@@ -49,34 +48,29 @@ AttributeMap MakeConstAttrMapFromValue(T v, std::vector<int64_t> dims,
   return MakeConstAttrMap<T>(std::vector<T>(size, v), dims, dtype);
 }
 
-ir::Node *CreateConst(ir::Graph *graph, ir::Node *node,
-                      const std::vector<ir::Node *> &inputs,
-                      const std::vector<ir::Node *> &outputs,
-                      const AttributeMap &attrs);
+Node *CreateConst(Graph *graph, Node *node, const std::vector<Node *> &inputs,
+                  const std::vector<Node *> &outputs,
+                  const AttributeMap &attrs);
 
 // otype is proto::VarType::Type
-ir::Node *CreateCast(ir::Graph *graph, ir::Node *node,
-                     const std::vector<ir::Node *> &inputs,
-                     const std::vector<ir::Node *> &outputs, const int otype);
+Node *CreateCast(Graph *graph, Node *node, const std::vector<Node *> &inputs,
+                 const std::vector<Node *> &outputs, const int otype);
 
-ir::Node *CreateGemm(ir::Graph *graph, ir::Node *node,
-                     const std::vector<ir::Node *> &inputs,
-                     const std::vector<ir::Node *> &outputs, int64_t transA = 0,
-                     int64_t transB = 0, float alpha = 1.0f, float beta = 1.0f);
+Node *CreateGemm(Graph *graph, Node *node, const std::vector<Node *> &inputs,
+                 const std::vector<Node *> &outputs, int64_t transA = 0,
+                 int64_t transB = 0, float alpha = 1.0f, float beta = 1.0f);
 
-ir::Node *CreateReshape(ir::Graph *graph, ir::Node *node,
-                        const std::vector<ir::Node *> &inputs,
-                        const std::vector<ir::Node *> &outputs,
-                        const std::vector<int64_t> &oshape);
+Node *CreateReshape(Graph *graph, Node *node, const std::vector<Node *> &inputs,
+                    const std::vector<Node *> &outputs,
+                    const std::vector<int64_t> &oshape);
 
-ir::Node *CreateConv(ir::Graph *graph, ir::Node *node,
-                     const std::vector<ir::Node *> &inputs,
-                     const std::vector<ir::Node *> &outputs,
-                     const std::vector<int64_t> &dilations = {1, 1},
-                     int64_t group = 1,
-                     const std::vector<int64_t> &kernel_shape = {},
-                     const std::vector<int64_t> &pads = {0, 0, 0, 0},
-                     const std::vector<int64_t> &strides = {1, 1});
+Node *CreateConv(Graph *graph, Node *node, const std::vector<Node *> &inputs,
+                 const std::vector<Node *> &outputs,
+                 const std::vector<int64_t> &dilations = {1, 1},
+                 int64_t group = 1,
+                 const std::vector<int64_t> &kernel_shape = {},
+                 const std::vector<int64_t> &pads = {0, 0, 0, 0},
+                 const std::vector<int64_t> &strides = {1, 1});
 
 }  // namespace ipu
 }  // namespace framework

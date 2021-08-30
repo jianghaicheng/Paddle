@@ -44,7 +44,7 @@ SymbolHandler GetHandler(const std::string &kind) {
   return {};
 }
 
-void ConnectNodes(ir::Node *first_node, ir::Node *next_node) {
+void ConnectNodes(Node *first_node, Node *next_node) {
   first_node->outputs.push_back(next_node);
   next_node->inputs.push_back(first_node);
 }

@@ -21,7 +21,7 @@ namespace framework {
 namespace ipu {
 namespace {
 
-ir::Node *conv2d_handler(ir::Graph *graph, ir::Node *node) {
+Node *conv2d_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto dilations_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dilations"));
   auto dilations = std::vector<int64_t>{dilations_.begin(), dilations_.end()};
@@ -52,15 +52,15 @@ ir::Node *conv2d_handler(ir::Graph *graph, ir::Node *node) {
   }
 }
 
-ir::Node *batch_norm_handler(ir::Graph *graph, ir::Node *node) {
+Node *batch_norm_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  std::vector<ir::Node *> inputs;
+  std::vector<Node *> inputs;
   inputs.push_back(GetInputNode("X", node));
   inputs.push_back(GetInputNode("Scale", node));
   inputs.push_back(GetInputNode("Bias", node));
   inputs.push_back(GetInputNode("Mean", node));
   inputs.push_back(GetInputNode("Variance", node));
-  std::vector<ir::Node *> outputs;
+  std::vector<Node *> outputs;
   outputs.push_back(GetOutputNode("Y", node));
   outputs.push_back(GetOutputNode("MeanOut", node));
   outputs.push_back(GetOutputNode("VarianceOut", node));
@@ -79,7 +79,7 @@ ir::Node *batch_norm_handler(ir::Graph *graph, ir::Node *node) {
                       });
 }
 
-ir::Node *pool2d_handler(ir::Graph *graph, ir::Node *node) {
+Node *pool2d_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto global_pooling = BOOST_GET_CONST(bool, op->GetAttr("global_pooling"));
   if (global_pooling) {
@@ -130,37 +130,37 @@ ir::Node *pool2d_handler(ir::Graph *graph, ir::Node *node) {
   }
 }
 
-ir::Node *group_norm_handler(ir::Graph *graph, ir::Node *node) {
+Node *group_norm_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto epsilon_ = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
   auto groups_ = BOOST_GET_CONST(int, op->GetAttr("groups"));
   auto groups = int64_t{groups_};
   auto attrs_ = AttributeMap{{"epsilon", epsilon_}, {"num_groups", groups}};
 
-  std::vector<ir::Node *> inputs_ = {GetInputNode("X", node),
-                                     GetInputNode("Scale", node),
-                                     GetInputNode("Bias", node)};
-  std::vector<ir::Node *> outputs_ = {GetOutputNode("Y", node),
-                                      GetOutputNode("Mean", node),
-                                      GetOutputNode("Variance", node)};
+  std::vector<Node *> inputs_ = {GetInputNode("X", node),
+                                 GetInputNode("Scale", node),
+                                 GetInputNode("Bias", node)};
+  std::vector<Node *> outputs_ = {GetOutputNode("Y", node),
+                                  GetOutputNode("Mean", node),
+                                  GetOutputNode("Variance", node)};
   return CreateBaseOp(graph, node, "popart_groupnormalization", inputs_,
                       outputs_, attrs_);
 }
 
-ir::Node *instance_norm_handler(ir::Graph *graph, ir::Node *node) {
+Node *instance_norm_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto epsilon_ = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
   auto attrs_ = AttributeMap{{"epsilon", epsilon_}};
 
-  std::vector<ir::Node *> inputs_ = {GetInputNode("X", node),
-                                     GetInputNode("Scale", node),
-                                     GetInputNode("Bias", node)};
-  std::vector<ir::Node *> outputs_ = {GetOutputNode("Y", node)};
+  std::vector<Node *> inputs_ = {GetInputNode("X", node),
+                                 GetInputNode("Scale", node),
+                                 GetInputNode("Bias", node)};
+  std::vector<Node *> outputs_ = {GetOutputNode("Y", node)};
   return CreateBaseOp(graph, node, "popart_instancenormalization", inputs_,
                       outputs_, attrs_);
 }
 
-ir::Node *layer_norm_handler(ir::Graph *graph, ir::Node *node) {
+Node *layer_norm_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto begin_norm_axis_ = BOOST_GET_CONST(int, op->GetAttr("begin_norm_axis"));
   auto input_shape_ = op->Block()->FindVar(op->Input("X")[0])->GetShape();

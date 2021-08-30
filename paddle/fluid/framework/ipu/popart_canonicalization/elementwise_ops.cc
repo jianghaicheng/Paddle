@@ -21,8 +21,8 @@ namespace framework {
 namespace ipu {
 namespace {
 
-ir::Node *elementwise_op_handler(ir::Graph *graph, ir::Node *node,
-                                 const std::string &type) {
+Node *elementwise_op_handler(Graph *graph, Node *node,
+                             const std::string &type) {
   auto *op = node->Op();
   auto x_shape = op->Block()->FindVar(op->Input("X").front())->GetShape();
   int64_t x_rank = x_shape.size();
@@ -59,35 +59,35 @@ ir::Node *elementwise_op_handler(ir::Graph *graph, ir::Node *node,
   }
 }
 
-ir::Node *elementwise_add_handler(ir::Graph *graph, ir::Node *node) {
+Node *elementwise_add_handler(Graph *graph, Node *node) {
   return elementwise_op_handler(graph, node, "popart_add");
 }
 
-ir::Node *elementwise_sub_handler(ir::Graph *graph, ir::Node *node) {
+Node *elementwise_sub_handler(Graph *graph, Node *node) {
   return elementwise_op_handler(graph, node, "popart_sub");
 }
 
-ir::Node *elementwise_div_handler(ir::Graph *graph, ir::Node *node) {
+Node *elementwise_div_handler(Graph *graph, Node *node) {
   return elementwise_op_handler(graph, node, "popart_div");
 }
 
-ir::Node *elementwise_mul_handler(ir::Graph *graph, ir::Node *node) {
+Node *elementwise_mul_handler(Graph *graph, Node *node) {
   return elementwise_op_handler(graph, node, "popart_mul");
 }
 
-ir::Node *elementwise_min_handler(ir::Graph *graph, ir::Node *node) {
+Node *elementwise_min_handler(Graph *graph, Node *node) {
   return elementwise_op_handler(graph, node, "popart_min");
 }
 
-ir::Node *elementwise_max_handler(ir::Graph *graph, ir::Node *node) {
+Node *elementwise_max_handler(Graph *graph, Node *node) {
   return elementwise_op_handler(graph, node, "popart_max");
 }
 
-ir::Node *elementwise_pow_handler(ir::Graph *graph, ir::Node *node) {
+Node *elementwise_pow_handler(Graph *graph, Node *node) {
   return elementwise_op_handler(graph, node, "popart_pow");
 }
 
-ir::Node *elementwise_mod_handler(ir::Graph *graph, ir::Node *node) {
+Node *elementwise_mod_handler(Graph *graph, Node *node) {
   return elementwise_op_handler(graph, node, "popart_mod");
 }
 

@@ -21,7 +21,7 @@ namespace framework {
 namespace ipu {
 namespace {
 
-ir::Node *fill_constant_handler(ir::Graph *graph, ir::Node *node) {
+Node *fill_constant_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   if (op->HasInput("ShapeTensor") && !op->Input("ShapeTensor").empty()) {
     PADDLE_THROW(
@@ -59,7 +59,7 @@ ir::Node *fill_constant_handler(ir::Graph *graph, ir::Node *node) {
                      });
 }
 
-ir::Node *gaussian_random_handler(ir::Graph *graph, ir::Node *node) {
+Node *gaussian_random_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
   auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
@@ -79,7 +79,7 @@ ir::Node *gaussian_random_handler(ir::Graph *graph, ir::Node *node) {
                                      });
 }
 
-ir::Node *uniform_random_handler(ir::Graph *graph, ir::Node *node) {
+Node *uniform_random_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto shape = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
   auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
@@ -99,7 +99,7 @@ ir::Node *uniform_random_handler(ir::Graph *graph, ir::Node *node) {
                                      });
 }
 
-ir::Node *transpose_handler(ir::Graph *graph, ir::Node *node) {
+Node *transpose_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
 
   auto axis_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axis"));
@@ -112,7 +112,7 @@ ir::Node *transpose_handler(ir::Graph *graph, ir::Node *node) {
   return new_node_transpose;
 }
 
-ir::Node *reshape_handler(ir::Graph *graph, ir::Node *node) {
+Node *reshape_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   // TODO(yaozhixin) : Shape and ShapeTensor as inputs
   auto shape_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("shape"));
@@ -131,7 +131,7 @@ ir::Node *reshape_handler(ir::Graph *graph, ir::Node *node) {
   return new_node_reshape;
 }
 
-ir::Node *gather_handler(ir::Graph *graph, ir::Node *node) {
+Node *gather_handler(Graph *graph, Node *node) {
   auto new_node_gather =
       CreateBaseOp(graph, node, "popart_gather",
                    {GetInputNode("X", node), GetInputNode("Index", node)},
@@ -139,7 +139,7 @@ ir::Node *gather_handler(ir::Graph *graph, ir::Node *node) {
   return new_node_gather;
 }
 
-ir::Node *squeeze_handler(ir::Graph *graph, ir::Node *node) {
+Node *squeeze_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axes"));
   auto input_shape_ = op->Block()->FindVar(op->Input("X")[0])->GetShape();
@@ -159,7 +159,7 @@ ir::Node *squeeze_handler(ir::Graph *graph, ir::Node *node) {
   return new_node_squeeze;
 }
 
-ir::Node *cast_handler(ir::Graph *graph, ir::Node *node) {
+Node *cast_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto otype = BOOST_GET_CONST(int, op->GetAttr("out_dtype"));
   auto new_node_cast =
@@ -167,14 +167,14 @@ ir::Node *cast_handler(ir::Graph *graph, ir::Node *node) {
   return new_node_cast;
 }
 
-ir::Node *lookup_table_handler(ir::Graph *graph, ir::Node *node) {
+Node *lookup_table_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto padding_idx_ = BOOST_GET_CONST(int64_t, op->GetAttr("padding_idx"));
   auto w_shape_ = op->Block()->FindVar(op->Input("W")[0])->GetShape();
   auto table_size_ = w_shape_[0];
   auto emb_size_ = w_shape_[1];
 
-  ir::Node *w_node;
+  Node *w_node;
   if (padding_idx_ >= 0 && padding_idx_ < table_size_) {
     // TODO(yaozhixin): support other datatype
     std::vector<float> const_value_(emb_size_, 0);
@@ -256,7 +256,7 @@ ir::Node *lookup_table_handler(ir::Graph *graph, ir::Node *node) {
   return gather;
 }
 
-ir::Node *unsqueeze_handler(ir::Graph *graph, ir::Node *node) {
+Node *unsqueeze_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axes"));
   std::vector<int64_t> axes{axes_.begin(), axes_.end()};
@@ -267,7 +267,7 @@ ir::Node *unsqueeze_handler(ir::Graph *graph, ir::Node *node) {
   return new_node_unsqueeze;
 }
 
-ir::Node *concat_handler(ir::Graph *graph, ir::Node *node) {
+Node *concat_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   // TODO(yaozhixin): support tensor as axis
   int64_t axis_{BOOST_GET_CONST(int, op->GetAttr("axis"))};
@@ -278,12 +278,12 @@ ir::Node *concat_handler(ir::Graph *graph, ir::Node *node) {
   return new_node_concat;
 }
 
-ir::Node *stack_handler(ir::Graph *graph, ir::Node *node) {
+Node *stack_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   int64_t axis_{BOOST_GET_CONST(int, op->GetAttr("axis"))};
   std::vector<int64_t> axes_{axis_};
 
-  std::vector<ir::Node *> unsqueeze_outputs_{};
+  std::vector<Node *> unsqueeze_outputs_{};
   for (auto input : node->inputs) {
     auto new_unsqueeze_node = CreateBaseOp(graph, node, "popart_unsqueeze",
                                            {input}, {}, {{"axes", axes_}});
@@ -301,13 +301,13 @@ ir::Node *stack_handler(ir::Graph *graph, ir::Node *node) {
   return new_node_concat;
 }
 
-ir::Node *shape_handler(ir::Graph *graph, ir::Node *node) {
+Node *shape_handler(Graph *graph, Node *node) {
   auto new_node =
       CreateBaseOp(graph, node, "popart_shape", node->inputs, node->outputs);
   return new_node;
 }
 
-ir::Node *slice_handler(ir::Graph *graph, ir::Node *node) {
+Node *slice_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   Node *starts = nullptr;
   if (op->HasInput("StartsTensor") && !op->Input("StartsTensor").empty()) {
@@ -352,7 +352,7 @@ ir::Node *slice_handler(ir::Graph *graph, ir::Node *node) {
   return new_node;
 }
 
-ir::Node *expand_handler(ir::Graph *graph, ir::Node *node) {
+Node *expand_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   // TODO(alleng) work with expand_times_tensor
   if (op->HasInput("expand_times_tensor") &&

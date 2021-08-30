@@ -23,7 +23,6 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
-// TODO(alleng) remove ir::
 using ir::Graph;
 using ir::Node;
 
@@ -31,7 +30,7 @@ using ir::Node;
   static bool __UNUSED_##name =      \
       paddle::framework::ipu::RegisterHandler(#name, func)
 
-using SymbolHandler = std::function<ir::Node *(ir::Graph *, ir::Node *)>;
+using SymbolHandler = std::function<Node *(Graph *, Node *)>;
 
 std::unordered_map<std::string, SymbolHandler> &SymbolHandlers();
 
@@ -39,7 +38,7 @@ bool RegisterHandler(const std::string &, const SymbolHandler &);
 
 SymbolHandler GetHandler(const std::string &);
 
-void ConnectNodes(ir::Node *first_node, ir::Node *next_node);
+void ConnectNodes(Node *first_node, Node *next_node);
 void DisConnectNodes(Node *first_node, Node *next_node);
 void ClearNode(Node *node);
 void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,

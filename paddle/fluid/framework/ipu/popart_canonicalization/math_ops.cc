@@ -21,7 +21,7 @@ namespace framework {
 namespace ipu {
 namespace {
 
-ir::Node *reduce_mean_handler(ir::Graph *graph, ir::Node *node) {
+Node *reduce_mean_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto attrs = AttributeMap{};
   auto reduce_all = BOOST_GET_CONST(bool, op->GetAttr("reduce_all"));
@@ -37,7 +37,7 @@ ir::Node *reduce_mean_handler(ir::Graph *graph, ir::Node *node) {
                       node->outputs, attrs);
 }
 
-ir::Node *mean_handler(ir::Graph *graph, ir::Node *node) {
+Node *mean_handler(Graph *graph, Node *node) {
   return CreateBaseOp(graph, node, "popart_reducemean",
                       {GetInputNode("X", node)}, {GetOutputNode("Out", node)},
                       {
@@ -45,7 +45,7 @@ ir::Node *mean_handler(ir::Graph *graph, ir::Node *node) {
                       });
 }
 
-ir::Node *pow_handler(ir::Graph *graph, ir::Node *node) {
+Node *pow_handler(Graph *graph, Node *node) {
   // Op(pow) -> Op(Constant)->Var(const_out)->Op(Pow)
   auto *op = node->Op();
   auto value_ = BOOST_GET_CONST(float, op->GetAttr("factor"));
@@ -57,7 +57,7 @@ ir::Node *pow_handler(ir::Graph *graph, ir::Node *node) {
                       node->outputs);
 }
 
-ir::Node *mul_handler(ir::Graph *graph, ir::Node *node) {
+Node *mul_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto x_num_col_dims = BOOST_GET_CONST(int, op->GetAttr("x_num_col_dims"));
   auto y_num_col_dims = BOOST_GET_CONST(int, op->GetAttr("y_num_col_dims"));
@@ -92,7 +92,7 @@ ir::Node *mul_handler(ir::Graph *graph, ir::Node *node) {
                       node->outputs, {});
 }
 
-ir::Node *matmul_handler(ir::Graph *graph, ir::Node *node) {
+Node *matmul_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto transpose_x = BOOST_GET_CONST(bool, op->GetAttr("transpose_X"));
   auto transpose_y = BOOST_GET_CONST(bool, op->GetAttr("transpose_Y"));
@@ -141,11 +141,11 @@ ir::Node *matmul_handler(ir::Graph *graph, ir::Node *node) {
   }
 }
 
-ir::Node *sum_handler(ir::Graph *graph, ir::Node *node) {
+Node *sum_handler(Graph *graph, Node *node) {
   return CreateBaseOp(graph, node, "popart_sum", node->inputs, node->outputs);
 }
 
-ir::Node *softmax_handler(ir::Graph *graph, ir::Node *node) {
+Node *softmax_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto axis_ = BOOST_GET_CONST(int, op->GetAttr("axis"));
   auto axis = int64_t{axis_};
@@ -155,7 +155,7 @@ ir::Node *softmax_handler(ir::Graph *graph, ir::Node *node) {
                                      });
 }
 
-ir::Node *scale_handler(ir::Graph *graph, ir::Node *node) {
+Node *scale_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto scale_ = BOOST_GET_CONST(float, op->GetAttr("scale"));
   auto bias_ = BOOST_GET_CONST(float, op->GetAttr("bias"));
@@ -182,7 +182,7 @@ ir::Node *scale_handler(ir::Graph *graph, ir::Node *node) {
     auto new_node_cast = CreateCast(graph, node, {GetInputNode("X", node)}, {},
                                     static_cast<int>(proto::VarType::FP32));
 
-    ir::Node *result = nullptr;
+    Node *result = nullptr;
     if (bias_after_scale_) {
       auto new_node_mul = CreateBaseOp(
           graph, node, "popart_mul",
@@ -205,7 +205,7 @@ ir::Node *scale_handler(ir::Graph *graph, ir::Node *node) {
   }
 }
 
-ir::Node *cross_entropy2_handler(ir::Graph *graph, ir::Node *node) {
+Node *cross_entropy2_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto ignoreIndex = BOOST_GET_CONST(int, op->GetAttr("ignore_index"));
   auto new_cast = CreateCast(graph, node, {GetInputNode("Label", node)}, {},

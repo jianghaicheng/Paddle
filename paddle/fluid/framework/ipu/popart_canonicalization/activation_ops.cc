@@ -21,38 +21,37 @@ namespace framework {
 namespace ipu {
 namespace {
 
-ir::Node *activation_op_handler(ir::Graph *graph, ir::Node *node,
-                                const std::string &type) {
+Node *activation_op_handler(Graph *graph, Node *node, const std::string &type) {
   auto new_node =
       CreateBaseOp(graph, node, type, {GetInputNode("X", node)}, node->outputs);
   return new_node;
 }
 
-ir::Node *relu_handler(ir::Graph *graph, ir::Node *node) {
+Node *relu_handler(Graph *graph, Node *node) {
   return activation_op_handler(graph, node, "popart_relu");
 }
 
-ir::Node *tanh_handler(ir::Graph *graph, ir::Node *node) {
+Node *tanh_handler(Graph *graph, Node *node) {
   return activation_op_handler(graph, node, "popart_tanh");
 }
 
-ir::Node *log_handler(ir::Graph *graph, ir::Node *node) {
+Node *log_handler(Graph *graph, Node *node) {
   return activation_op_handler(graph, node, "popart_log");
 }
 
-ir::Node *sigmoid_handler(ir::Graph *graph, ir::Node *node) {
+Node *sigmoid_handler(Graph *graph, Node *node) {
   return activation_op_handler(graph, node, "popart_sigmoid");
 }
 
-ir::Node *sqrt_handler(ir::Graph *graph, ir::Node *node) {
+Node *sqrt_handler(Graph *graph, Node *node) {
   return activation_op_handler(graph, node, "popart_sqrt");
 }
 
-ir::Node *gelu_handler(ir::Graph *graph, ir::Node *node) {
+Node *gelu_handler(Graph *graph, Node *node) {
   return activation_op_handler(graph, node, "popart_gelu");
 }
 
-ir::Node *log_softmax_handler(ir::Graph *graph, ir::Node *node) {
+Node *log_softmax_handler(Graph *graph, Node *node) {
   auto axis_ = BOOST_GET_CONST(int, node->Op()->GetAttr("axis"));
   return CreateBaseOp(graph, node, "popart_logsoftmax", node->inputs,
                       node->outputs, {{"axis", int64_t{axis_}}});
