@@ -34,7 +34,7 @@ INT_DTYPE = None
 ernie_config = {
     "emb_size": 128,
     "emb_mapping_in": False,
-    "hidden_size": 768,
+    "hidden_size": 192,
     "num_hidden_layers": 2,
     "n_layer_per_block": 2,
     "num_attention_heads": 12,
@@ -50,7 +50,8 @@ ernie_config = {
     "preprocess_cmd": "",
     "postprocess_cmd": "an",
     "epsilon": 1e-12,
-    "initializer_range": 0.02
+    "initializer_range": 0.02,
+    "seq_len": 32
 }
 
 
@@ -507,7 +508,7 @@ class ErnieModel(object):
         self._build_model()
 
     def _build_model(self, emb=None):
-        with fluid.ipu_shard(ipu_index=0):
+        with fluid.ipu_shard(ipu_index=0, ipu_stage=0):
             # padding id in vocabulary must be set to 0
             self.emb_out = fluid.layers.embedding(
                 input=self.src_ids,
@@ -566,7 +567,7 @@ class ErnieModel(object):
                 axis=1)  # [bs, _n_head, seqlen, seq_len]
             n_head_self_attn_mask.stop_gradient = True
 
-        with fluid.ipu_shard(ipu_index=1):
+        with fluid.ipu_shard(ipu_index=1, ipu_stage=1):
             self._enc_out = encoder(
                 enc_input=sum_emb,
                 attn_bias=n_head_self_attn_mask,
@@ -732,7 +733,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--run_on_ipu", type=bool, default=True, help="Run model with IPU")
     parser.add_argument(
-        "--is_training", type=bool, default=False, help="Train of inference")
+        "--is_training", type=bool, default=True, help="Train of inference")
+    parser.add_argument(
+        "--num_ipus", type=int, default=2, help="Number of ipus")
+    parser.add_argument(
+        "--enable_pipelining", type=bool, default=False, help="Pipelining")
     parser.add_argument(
         "--save_model", type=bool, default=False, help="Save model or not")
     parser.add_argument(
@@ -755,13 +760,14 @@ if __name__ == "__main__":
     INT_DTYPE = "int32" if args.run_on_ipu else "int64"
 
     # input data
+    seq = ernie_config["seq_len"]
     input_fields = {
         'names': [
             'src_ids', 'sent_ids', 'pos_ids', 'input_mask', 'mask_label',
             'mask_pos'
         ],
         'shapes':
-        [[1, 128, 1], [1, 128, 1], [1, 128, 1], [1, 128, 1], [1, 1], [1, 1]],
+        [[1, seq, 1], [1, seq, 1], [1, seq, 1], [1, seq, 1], [1, 1], [1, 1]],
         'dtypes':
         [INT_DTYPE, INT_DTYPE, INT_DTYPE, 'float32', INT_DTYPE, INT_DTYPE],
         'lod_levels': [0, 0, 0, 0, 0, 0],
@@ -788,14 +794,21 @@ if __name__ == "__main__":
                 4,
                 input_fields['shapes'][i],
                 dtype=input_fields['dtypes'][i])
+
+        if args.run_on_ipu and args.enable_pipelining:
+            if args.is_training:
+                data = np.tile(data, [args.num_ipus + 1, 1, 1])
+            else:
+                data = np.tile(data, [args.num_ipus, 1, 1])
         np_inputs.append(data)
+
     (src_ids, sent_ids, pos_ids, input_mask, mask_label, mask_pos) = inputs
 
     # ernie model
     ernie = ErnieModel(src_ids, sent_ids, pos_ids, input_mask, ernie_config)
     fetch_node = ernie.get_sequence_output()
     if args.is_training:
-        with fluid.ipu_shard(ipu_index=1):
+        with fluid.ipu_shard(ipu_index=1, ipu_stage=1):
             _, mean_mask_lm_loss = ernie.get_lm_output(mask_label, mask_pos)
             fetch_node = mean_mask_lm_loss
             adam = paddle.optimizer.Adam(learning_rate=1e-2)
@@ -822,8 +835,15 @@ if __name__ == "__main__":
 
     if args.run_on_ipu:
         ipu_strategy = compiler.get_ipu_strategy()
-        ipu_strategy.num_ipus = 2
-        ipu_strategy.enable_manual_shard = True
+        ipu_strategy.num_ipus = args.num_ipus
+        ipu_strategy.enable_manual_shard = args.num_ipus > 1
+        # RuntimeError: Copying to tensor that is not writable
+        ipu_strategy.enable_pipelining = args.enable_pipelining
+        if args.enable_pipelining:
+            if args.is_training:
+                ipu_strategy.batches_per_step = args.num_ipus + 1
+            else:
+                ipu_strategy.batches_per_step = args.num_ipus
         ipu_strategy.is_training = args.is_training
         ipu_compiler = compiler.IpuCompiler(
             main_prog, ipu_strategy=ipu_strategy)
