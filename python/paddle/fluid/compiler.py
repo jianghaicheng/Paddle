@@ -522,8 +522,10 @@ class IpuCompiler(object):
         self._backend.set_scope(self._scope)
         self._backend.set_ipu_strategy(self._ipu_strategy)
         self._graph_passes = [
-            "optimizer_extract_pass", "forward_graph_extract_pass",
-            "popart_canonicalization_pass"
+            "optimizer_extract_pass",
+            "forward_graph_extract_pass",
+            "popart_canonicalization_pass",
+            "ipu_inplace_pass",
         ]
 
     def compile(self, feed_list, fetch_list, feed_var_name='feed', scope=None):

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/graph.h"
+#pragma once
+
 #include "paddle/fluid/framework/ir/ipu/ipu_pass_base.h"
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
 namespace paddle {
 namespace framework {
@@ -23,7 +23,6 @@ namespace ir {
 class InferenceExtractPass : public IPUPassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
-
 };
 
 }  // namespace ir

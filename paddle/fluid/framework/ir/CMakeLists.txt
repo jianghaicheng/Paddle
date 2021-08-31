@@ -132,6 +132,7 @@ if(WITH_IPU)
     pass_library(inference_extract_pass base DIR ipu DEPS ipu_pass_base)
     pass_library(popart_canonicalization_pass base DIR ipu DEPS ipu_pass_base)
     target_link_libraries(popart_canonicalization_pass -Wl,--whole-archive popart_canonicalization_utils -Wl,--no-whole-archive)
+    pass_library(ipu_inplace_pass base DIR ipu DEPS ipu_pass_base)
 endif()
 
 cc_library(fuse_bn_act_pass SRCS fuse_bn_act_pass.cc DEPS pass graph_pattern_detector )

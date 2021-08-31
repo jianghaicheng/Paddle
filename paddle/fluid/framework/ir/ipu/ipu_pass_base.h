@@ -14,24 +14,13 @@
 
 #pragma once
 
-#include <string>
-
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
-class Scope;
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
-namespace framework {
 namespace ir {
-
-class Graph;
-class Node;
 
 class IPUPassBase : public Pass {
  public:

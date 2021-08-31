@@ -159,7 +159,9 @@ void IpuBackend::Prepare() {
 
 std::vector<int64_t> IpuBackend::GetTensorShape(const std::string& var_name) {
   auto oshape = compiler_->GetTensorShape(var_name);
-  oshape.insert(oshape.begin(), ipu_strategy_->batches_per_step);
+  if (ipu_strategy_->batches_per_step != 1) {
+    oshape.insert(oshape.begin(), ipu_strategy_->batches_per_step);
+  }
   return oshape;
 }
 

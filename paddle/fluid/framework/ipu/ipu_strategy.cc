@@ -13,13 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
-#include "paddle/fluid/framework/ir/ipu/ipu_graph_builder_pass.h"
-
-#include <glog/logging.h>
-#include "paddle/fluid/framework/ir/graph_printer.h"
 
 namespace paddle {
 namespace framework {
-namespace ipu {}
-}
-}
+namespace ipu {
+
+//
+
+}  // namespace ipu
+}  // namespace framework
+}  // namespace paddle

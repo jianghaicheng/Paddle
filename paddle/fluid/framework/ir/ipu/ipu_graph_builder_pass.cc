@@ -14,25 +14,7 @@
 
 #include "paddle/fluid/framework/ir/ipu/ipu_graph_builder_pass.h"
 
-#include <algorithm>
-#include <array>
-#include <fstream>
-#include <iosfwd>
-#include <memory>
-#include <ostream>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-
 #include "paddle/fluid/framework/ipu/ipu_backend.h"
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/ipu/ipu_pass_base.h"
-#include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
-
-// debug
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -67,5 +49,3 @@ REGISTER_PASS(ipu_graph_builder_pass,
               paddle::framework::ir::IpuGraphBuilderPass)
     .RequirePassAttr("feed_list")
     .RequirePassAttr("fetch_list");
-
-USE_PASS(graph_viz_pass);

@@ -16,13 +16,10 @@
 
 #include "paddle/fluid/framework/ipu/ipu_backend.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-
-class Graph;
 
 void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter IpuOptimizerExtractPass::ApplyImpl";

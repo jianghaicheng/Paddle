@@ -14,24 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include <memory>
-#include <string>
-#include <unordered_set>
-#include <utility>
-#include <vector>
-
 #include <popart/sessionoptions.hpp>
-
-#include "boost/optional.hpp"
-#include "paddle/fluid/framework/ir/pass_builder.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
-
 namespace ipu {
 
 using VirtualGraphMode = popart::VirtualGraphMode;
@@ -44,6 +30,5 @@ struct IpuStrategy {
 };
 
 }  // namespace ipu
-
 }  // namespace framework
 }  // namespace paddle

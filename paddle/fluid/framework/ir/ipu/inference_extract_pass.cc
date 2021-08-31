@@ -14,15 +14,9 @@
 
 #include "paddle/fluid/framework/ir/ipu/inference_extract_pass.h"
 
-#include <string>
-
 #include "paddle/fluid/framework/ipu/ipu_backend.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/enforce.h"
-
-// debug
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {

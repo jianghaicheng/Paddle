@@ -14,16 +14,6 @@
 
 #include "paddle/fluid/framework/ir/ipu/ipu_runtime_replacer_pass.h"
 
-#include <algorithm>
-#include <array>
-#include <fstream>
-#include <iosfwd>
-#include <memory>
-#include <ostream>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
@@ -124,4 +114,4 @@ REGISTER_PASS(ipu_runtime_replacer_pass,
     .RequirePassAttr("feed_list")
     .RequirePassAttr("fetch_list");
 
-USE_PASS(graph_viz_pass);
+// USE_PASS(graph_viz_pass);
