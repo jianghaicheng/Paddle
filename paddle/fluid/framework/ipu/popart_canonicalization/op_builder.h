@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/ipu/common.h"
 #include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
 
 namespace paddle {

@@ -48,6 +48,12 @@ struct Optimizer {
 };
 
 class IpuBackend {
+  // IpuBackend is the center of paddle-ipu, its function include:
+  //   1. Compile paddle model to popart model
+  //   2. Run popart model, inference or training
+  //   3. Request and release device
+  //   4. Other helper function
+
  public:
   IpuBackend();
   ~IpuBackend();

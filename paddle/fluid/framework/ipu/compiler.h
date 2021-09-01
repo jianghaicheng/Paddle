@@ -16,6 +16,7 @@
 
 #include <popart/builder.hpp>
 
+#include "paddle/fluid/framework/ipu/common.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
 

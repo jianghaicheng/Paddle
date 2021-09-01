@@ -267,19 +267,18 @@ void Compiler::InsertTensors(const std::vector<std::string>& output_names,
 
 void Compiler::SetIpuIndexStage(const std::vector<std::string>& tensor_ids,
                                 const OpDesc* op_desc) {
-  // TODO(xiaobingw): replace ipu_index with macro or constexpr
   VLOG(10) << "enter Compiler::SetIpuIndexStage";
   auto tensor_ids_set =
       std::set<std::string>(tensor_ids.begin(), tensor_ids.end());
-  if (op_desc->HasAttr("ipu_index")) {
-    auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr("ipu_index"));
+  if (op_desc->HasAttr(sIpuIndexAttr)) {
+    auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuIndexAttr));
     builder_->virtualGraph(tensor_ids_set, ipu_index);
-    VLOG(10) << "set ipu_index= " << ipu_index
+    VLOG(10) << "set " << sIpuIndexAttr << " = " << ipu_index
              << " for op: " << op_desc->Type();
-    if (op_desc->HasAttr("ipu_stage")) {
-      auto ipu_stage = BOOST_GET_CONST(int, op_desc->GetAttr("ipu_stage"));
+    if (op_desc->HasAttr(sIpuStageAttr)) {
+      auto ipu_stage = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuStageAttr));
       builder_->pipelineStage(tensor_ids_set, ipu_stage);
-      VLOG(10) << "set ipu_stage= " << ipu_stage
+      VLOG(10) << "set " << sIpuStageAttr << "= " << ipu_stage
                << " for op: " << op_desc->Type();
     }
   }
@@ -289,15 +288,15 @@ void Compiler::SetIpuIndexStage(const std::vector<std::string>& tensor_ids,
 void Compiler::SetIpuIndexStage(const std::string& tensor_id,
                                 const OpDesc* op_desc) {
   VLOG(10) << "enter Compiler::SetIpuIndexStage";
-  if (op_desc->HasAttr("ipu_index")) {
-    auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr("ipu_index"));
+  if (op_desc->HasAttr(sIpuIndexAttr)) {
+    auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuIndexAttr));
     builder_->virtualGraph(tensor_id, ipu_index);
-    VLOG(10) << "set ipu_index= " << ipu_index
+    VLOG(10) << "set " << sIpuIndexAttr << " = " << ipu_index
              << " for op: " << op_desc->Type();
-    if (op_desc->HasAttr("ipu_stage")) {
-      auto ipu_stage = BOOST_GET_CONST(int, op_desc->GetAttr("ipu_stage"));
+    if (op_desc->HasAttr(sIpuStageAttr)) {
+      auto ipu_stage = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuStageAttr));
       builder_->pipelineStage(tensor_id, ipu_stage);
-      VLOG(10) << "set ipu_stage= " << ipu_stage
+      VLOG(10) << "set " << sIpuStageAttr << "= " << ipu_stage
                << " for op: " << op_desc->Type();
     }
   }

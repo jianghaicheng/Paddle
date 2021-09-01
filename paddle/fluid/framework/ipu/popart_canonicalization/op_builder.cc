@@ -77,11 +77,11 @@ Node *CreateBaseOp(Graph *graph, Node *node, const std::string &type,
     new_node->Op()->SetAttrMap(attrs);
   }
   // deal special attr
-  if (!new_node->Op()->HasAttr("ipu_index")) {
-    CopyOpAttr("ipu_index", node->Op(), new_node->Op());
+  if (!new_node->Op()->HasAttr(sIpuIndexAttr)) {
+    CopyOpAttr(sIpuIndexAttr, node->Op(), new_node->Op());
   }
-  if (!new_node->Op()->HasAttr("ipu_stage")) {
-    CopyOpAttr("ipu_stage", node->Op(), new_node->Op());
+  if (!new_node->Op()->HasAttr(sIpuStageAttr)) {
+    CopyOpAttr(sIpuStageAttr, node->Op(), new_node->Op());
   }
 
   return new_node;
