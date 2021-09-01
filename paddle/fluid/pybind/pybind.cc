@@ -3212,6 +3212,18 @@ All parameter, weight, gradient are variables in Paddle.
             Int type, set the number ipu we need. Default 1.
           )DOC")
       .def_property(
+          "accumulationFactor",
+          [](const ipu::IpuStrategy &self) {
+            return self.popart_options_.accumulationFactor;
+          },
+          [](ipu::IpuStrategy &self, int accumulationFactor) {
+            self.popart_options_.accumulationFactor = accumulationFactor;
+          },
+          R"DOC(
+            Specify the number of micro-batches to accumulate before
+            applying the varUpdate. Default 1.
+          )DOC")
+      .def_property(
           "batches_per_step",
           [](const ipu::IpuStrategy &self) { return self.batches_per_step; },
           [](ipu::IpuStrategy &self, int batches_per_step) {
