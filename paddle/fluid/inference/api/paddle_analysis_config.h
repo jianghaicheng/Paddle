@@ -182,8 +182,7 @@ struct PD_INFER_DECL AnalysisConfig {
                  const std::string& precision = "int16",
                  bool adaptive_seqlen = false);
 
-  void EnableIpu(int device_num = 1, bool ipu_enable_pipeline = false,
-                 bool ipu_enable_sharding = false);
+  void EnableIpu(int device_num = 1, bool ipu_enable_pipeline = false);
   ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
@@ -704,7 +703,6 @@ struct PD_INFER_DECL AnalysisConfig {
   int ipu_device_num_{1};
 
   bool ipu_enable_pipeline_{false};
-  bool ipu_enable_sharding_{false};
 
   // If the config is already used on a predictor, it becomes invalid.
   // Any config can only be used with one predictor.

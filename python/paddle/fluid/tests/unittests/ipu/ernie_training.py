@@ -423,7 +423,7 @@ def encoder(enc_input,
 
     for _ in range(n_layer // n_layer_per_block):
         attn_bias.stop_gradient = True
-        attn_bias.persistable = True
+        attn_bias.persistable = False
         enc_output = encoder_inner_share(
             enc_input,
             attn_bias,
@@ -562,12 +562,13 @@ class ErnieModel(object):
                 scale=10000.0,
                 bias=-1.0,
                 bias_after_scale=False)
+
+        with fluid.ipu_shard(ipu_index=1, ipu_stage=1):
             n_head_self_attn_mask = fluid.layers.stack(
                 x=[self_attn_mask] * self._n_head,
                 axis=1)  # [bs, _n_head, seqlen, seq_len]
             n_head_self_attn_mask.stop_gradient = True
 
-        with fluid.ipu_shard(ipu_index=1, ipu_stage=1):
             self._enc_out = encoder(
                 enc_input=sum_emb,
                 attn_bias=n_head_self_attn_mask,
@@ -795,7 +796,8 @@ if __name__ == "__main__":
                 input_fields['shapes'][i],
                 dtype=input_fields['dtypes'][i])
 
-        if args.run_on_ipu and args.enable_pipelining:
+        if args.run_on_ipu and args.enable_pipelining \
+            and input_fields['names'][i] != 'input_mask':
             if args.is_training:
                 data = np.tile(data, [args.num_ipus + 1, 1, 1])
             else:
@@ -876,7 +878,13 @@ if __name__ == "__main__":
 
     if args.save_model:
         full_name = args.model_path + '/' + args.model_name
-        fluid.save(program=main_prog, model_path=full_name)
+        if args.is_training:
+            fluid.save(program=main_prog, model_path=full_name)
+        else:
+            with fluid.ipu_shard(ipu_index=1, ipu_stage=1):
+                paddle.static.save_inference_model(
+                    full_name, [src_ids, sent_ids, pos_ids, input_mask],
+                    [fetch_node], executor)
 
     if args.export_ops:
         op_type_list = []

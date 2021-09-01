@@ -253,7 +253,6 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_ipu, UseIpu, bool);
   DECL_ARGUMENT_FIELD(ipu_device_num, IpuDeviceNum, int);
   DECL_ARGUMENT_FIELD(ipu_enable_pipeline, IpuEnablePipeline, bool);
-  DECL_ARGUMENT_FIELD(ipu_enable_sharding, IpuEnableSharding, bool);
 
  private:
   std::unordered_set<std::string> valid_fields_;

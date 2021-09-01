@@ -72,8 +72,6 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
     argument->main_graph().SetNotOwned("num_ipus", &argument->ipu_device_num());
     argument->main_graph().SetNotOwned("enable_pipeline",
                                        &argument->ipu_enable_pipeline());
-    argument->main_graph().SetNotOwned("enable_sharding",
-                                       &argument->ipu_enable_sharding());
 #else
     PADDLE_THROW(
         platform::errors::Unimplemented("Please compile with WITH_IPU"));

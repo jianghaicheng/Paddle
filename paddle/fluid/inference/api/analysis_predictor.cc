@@ -264,13 +264,13 @@ bool AnalysisPredictor::CreateExecutor() {
           "with WITH_XPU."));
 #endif  // PADDLE_WITH_XPU
     }
-  } else if (config_.use_ipu()){
+  } else if (config_.use_ipu()) {
 #ifdef PADDLE_WITH_IPU
-      place_ = paddle::platform::IPUPlace();
+    place_ = paddle::platform::IPUPlace();
 #else
-      PADDLE_THROW(platform::errors::Unavailable(
-          "You tried to use IPU forward propagation, but Paddle was not compiled "
-          "with WITH_IPU."));
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use IPU forward propagation, but Paddle was not compiled "
+        "with WITH_IPU."));
 #endif
   } else {
     place_ = paddle::platform::CPUPlace();
@@ -555,12 +555,9 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
 #ifdef PADDLE_WITH_IPU
-  if (config_.use_ipu()) {
-    argument_.SetUseIpu(config_.use_ipu_);
-    argument_.SetIpuDeviceNum(config_.ipu_device_num());
-    argument_.SetIpuEnablePipeline(config_.ipu_enable_pipeline_);
-    argument_.SetIpuEnableSharding(config_.ipu_enable_sharding_);
-  }
+  argument_.SetUseIpu(config_.use_ipu_);
+  argument_.SetIpuDeviceNum(config_.ipu_device_num());
+  argument_.SetIpuEnablePipeline(config_.ipu_enable_pipeline_);
 #endif
 
   if (config_.use_mkldnn_) {
@@ -810,7 +807,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_ipu_place(place_)) {
-    // Currently, IPUPlace's tensor copy between cpu and ipu has been set in IpuBackend. 
+    // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
+    // IpuBackend.
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_xpu_place(place_)) {
     if (config_.lite_engine_enabled()) {
@@ -845,7 +843,8 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_ipu_place(place_)) {
-    // Currently, IPUPlace's tensor copy between cpu and ipu has been set in IpuBackend. 
+    // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
+    // IpuBackend.
     res->SetPlace(PaddlePlace::kCPU);
   } else if (platform::is_xpu_place(place_)) {
     if (config_.lite_engine_enabled()) {
