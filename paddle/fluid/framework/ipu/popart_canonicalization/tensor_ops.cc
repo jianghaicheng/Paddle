@@ -262,7 +262,7 @@ Node *unsqueeze_handler(Graph *graph, Node *node) {
   std::vector<int64_t> axes{axes_.begin(), axes_.end()};
   auto new_node_unsqueeze =
       CreateBaseOp(graph, node, "popart_unsqueeze", {GetInputNode("X", node)},
-                   node->outputs, {{"axes", axes}});
+                   {GetOutputNode("Out", node)}, {{"axes", axes}});
 
   return new_node_unsqueeze;
 }

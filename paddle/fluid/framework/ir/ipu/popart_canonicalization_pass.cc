@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/ipu/popart_canonicalization_pass.h"
 
 #include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
+#include "paddle/fluid/framework/ipu/popart_canonicalization/post_canonicalization.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -57,6 +58,8 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
       graph->RemoveNode(node);
     }
   }
+
+  // post popart_canonicalization
 
   // // graph_viz_pass
   // graph_viz_pass->Erase("graph_viz_path");

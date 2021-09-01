@@ -20,10 +20,21 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-Node *GetInputVarNode(const std::string &var_name, const ir::Node *node) {
+Node *GetInVarNode(const std::string &var_name, const ir::Node *node) {
   PADDLE_ENFORCE_EQ(node->IsOp(), true,
                     platform::errors::InvalidArgument("node is not Op"));
   for (auto *n : node->inputs) {
+    if (n->Name() == var_name) {
+      return n;
+    }
+  }
+  return nullptr;
+}
+
+Node *GetOutVarNode(const std::string &var_name, const ir::Node *node) {
+  PADDLE_ENFORCE_EQ(node->IsOp(), true,
+                    platform::errors::InvalidArgument("node is not Op"));
+  for (auto *n : node->outputs) {
     if (n->Name() == var_name) {
       return n;
     }
@@ -37,30 +48,37 @@ void IpuInplacePass::ApplyImpl(ir::Graph *graph) const {
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
-  for (auto *node : graph->Nodes()) {
-    if (!node->IsOp()) {
-      continue;
-    }
+  std::vector<std::string> feed_list;
+  feed_list = Get<std::vector<std::string>>("feed_list");
+  std::vector<std::string> fetch_list;
+  fetch_list = Get<std::vector<std::string>>("fetch_list");
 
-    RenameInplaceVar(node);
-  }
+  auto RenameInplaceVar = [&](ir::Node *node) {
+    auto *op = node->Op();
+    for (auto name : op->Input("__inputs__")) {
+      for (auto name_out : op->Output("__outputs__")) {
+        if (name == name_out) {
+          bool is_feed = std::find(feed_list.begin(), feed_list.end(), name) ==
+                         feed_list.end();
+          bool is_fetch = std::find(fetch_list.begin(), fetch_list.end(),
+                                    name) == fetch_list.end();
+          ir::Node *var;
+          auto new_name = name + "__inplace_1";
+          if (is_feed) {
+            VLOG(10) << "replace op node: " << node->Name()
+                     << " output var: " << name << " to " << new_name;
+            var = GetOutVarNode(name, node);
+          } else if (is_fetch) {
+            VLOG(10) << "replace op node: " << node->Name()
+                     << " input var: " << name << " to " << new_name;
+            var = GetInVarNode(name, node);
+          } else {
+            PADDLE_THROW(platform::errors::Unimplemented(
+                "found inplace op: %s, i/o var: %s, i/o are both feed/fetch "
+                "vars",
+                op->Type(), name));
+          }
 
-  VLOG(10) << "Post Graph: ";
-  VLOG(10) << DebugString(graph);
-  VLOG(10) << "leave IpuInplacePass::ApplyImpl";
-}
-
-void IpuInplacePass::RenameInplaceVar(ir::Node *node) const {
-  // rename input_var, only support one input_var rename
-  auto *op = node->Op();
-  for (auto name : op->Input("__inputs__")) {
-    for (auto name_out : op->Output("__outputs__")) {
-      if (name == name_out) {
-        auto new_name = name + "_1";
-        VLOG(10) << "replace op node: " << node->Name()
-                 << " input var: " << name << " to " << new_name;
-        auto var = GetInputVarNode(name, node);
-        if (var) {
           var->RenameVar(new_name);
           for (auto *op_in : var->inputs) {
             op_in->Op()->RenameOutput(name, new_name);
@@ -72,11 +90,24 @@ void IpuInplacePass::RenameInplaceVar(ir::Node *node) const {
         }
       }
     }
+  };
+
+  for (auto *node : graph->Nodes()) {
+    if (!node->IsOp()) {
+      continue;
+    }
+    RenameInplaceVar(node);
   }
+
+  VLOG(10) << "Post Graph: ";
+  VLOG(10) << DebugString(graph);
+  VLOG(10) << "leave IpuInplacePass::ApplyImpl";
 }
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(ipu_inplace_pass, paddle::framework::ir::IpuInplacePass);
+REGISTER_PASS(ipu_inplace_pass, paddle::framework::ir::IpuInplacePass)
+    .RequirePassAttr("feed_list")
+    .RequirePassAttr("fetch_list");

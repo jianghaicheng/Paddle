@@ -146,18 +146,26 @@ const std::string VarType2PopStr(const int type) {
 
 Node *GetInputNode(const std::string &name, const Node *node, const int id) {
   auto node_name = node->Op()->Input(name).at(id);
+  return GetInVar(node, node_name);
+}
+
+Node *GetOutputNode(const std::string &name, const Node *node, const int id) {
+  auto node_name = node->Op()->Output(name).at(id);
+  return GetOutVar(node, node_name);
+}
+
+Node *GetInVar(const Node *node, const std::string &var_name) {
   for (auto *n : node->inputs) {
-    if (n->Name() == node_name) {
+    if (n->Name() == var_name) {
       return n;
     }
   }
   return nullptr;
 }
 
-Node *GetOutputNode(const std::string &name, const Node *node, const int id) {
-  auto node_name = node->Op()->Output(name).at(id);
+Node *GetOutVar(const Node *node, const std::string &var_name) {
   for (auto *n : node->outputs) {
-    if (n->Name() == node_name) {
+    if (n->Name() == var_name) {
       return n;
     }
   }

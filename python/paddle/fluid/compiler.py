@@ -525,13 +525,17 @@ class IpuCompiler(object):
             "optimizer_extract_pass",
             "forward_graph_extract_pass",
             "popart_canonicalization_pass",
-            "ipu_inplace_pass",
         ]
 
     def compile(self, feed_list, fetch_list, feed_var_name='feed', scope=None):
         for pass_name in self._graph_passes:
             graph_pass = core.get_pass(pass_name)
             graph_pass.apply(self._graph)
+
+        ipu_graph_builder_pass = core.get_pass("ipu_inplace_pass")
+        ipu_graph_builder_pass.set("feed_list", feed_list)
+        ipu_graph_builder_pass.set("fetch_list", fetch_list)
+        ipu_graph_builder_pass.apply(self._graph)
 
         ipu_graph_builder_pass = core.get_pass("ipu_graph_builder_pass")
         ipu_graph_builder_pass.set("feed_list", feed_list)
