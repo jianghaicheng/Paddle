@@ -44,6 +44,7 @@ Node *GetOutVarNode(const std::string &var_name, const ir::Node *node) {
 
 void IpuInplacePass::ApplyImpl(ir::Graph *graph) const {
   // use this pass after forward_graph_extract_pass
+  // raise error if the inplaced var both in feed_list & fetch_list
   VLOG(10) << "enter IpuInplacePass::ApplyImpl";
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
@@ -53,18 +54,24 @@ void IpuInplacePass::ApplyImpl(ir::Graph *graph) const {
   std::vector<std::string> fetch_list;
   fetch_list = Get<std::vector<std::string>>("fetch_list");
 
+  bool is_feed = false;
+  bool is_fetch = false;
+  ir::Node *var = nullptr;
   auto RenameInplaceVar = [&](ir::Node *node) {
     auto *op = node->Op();
     for (auto name : op->Input("__inputs__")) {
       for (auto name_out : op->Output("__outputs__")) {
         if (name == name_out) {
-          bool is_feed = std::find(feed_list.begin(), feed_list.end(), name) !=
-                         feed_list.end();
-          bool is_fetch = std::find(fetch_list.begin(), fetch_list.end(),
-                                    name) != fetch_list.end();
-          ir::Node *var;
+          is_feed = std::find(feed_list.begin(), feed_list.end(), name) !=
+                    feed_list.end();
+          is_fetch = std::find(fetch_list.begin(), fetch_list.end(), name) !=
+                     fetch_list.end();
           auto new_name = name + "__inplace_1";
-          if (is_feed) {
+          if (!is_feed && !is_fetch) {
+            VLOG(10) << "replace op node: " << node->Name()
+                     << " output var: " << name << " to " << new_name;
+            var = GetOutVarNode(name, node);
+          } else if (is_feed) {
             VLOG(10) << "replace op node: " << node->Name()
                      << " output var: " << name << " to " << new_name;
             var = GetOutVarNode(name, node);

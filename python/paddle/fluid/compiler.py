@@ -532,10 +532,10 @@ class IpuCompiler(object):
             graph_pass = core.get_pass(pass_name)
             graph_pass.apply(self._graph)
 
-        ipu_graph_builder_pass = core.get_pass("ipu_inplace_pass")
-        ipu_graph_builder_pass.set("feed_list", feed_list)
-        ipu_graph_builder_pass.set("fetch_list", fetch_list)
-        ipu_graph_builder_pass.apply(self._graph)
+        ipu_inplace_pass = core.get_pass("ipu_inplace_pass")
+        ipu_inplace_pass.set("feed_list", feed_list)
+        ipu_inplace_pass.set("fetch_list", fetch_list)
+        ipu_inplace_pass.apply(self._graph)
 
         ipu_graph_builder_pass = core.get_pass("ipu_graph_builder_pass")
         ipu_graph_builder_pass.set("feed_list", feed_list)
