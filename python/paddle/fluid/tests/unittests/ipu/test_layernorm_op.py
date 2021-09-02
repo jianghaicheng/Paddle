@@ -29,6 +29,7 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestLayerNormNet(unittest.TestCase):
     def _test(self, run_ipu=True):
+        scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
@@ -37,56 +38,58 @@ class TestLayerNormNet(unittest.TestCase):
 
         np_image = np.random.rand(1, 128, 768).astype(np.float32)
 
-        with paddle.static.program_guard(main_prog, startup_prog):
-            image = paddle.static.data(
-                name='image', shape=[1, 128, 768], dtype='float32')
-            #conv1 = paddle.static.nn.conv2d(
-            #    image, num_filters=3, filter_size=3, bias_attr=False)
+        with fluid.scope_guard(scope):
+            with paddle.static.program_guard(main_prog, startup_prog):
+                image = paddle.static.data(
+                    name='image', shape=[1, 128, 768], dtype='float32')
+                #conv1 = paddle.static.nn.conv2d(
+                #    image, num_filters=3, filter_size=3, bias_attr=False)
 
-            bias_attr = paddle.ParamAttr(name="bias", trainable=True)
-            scale_attr = paddle.ParamAttr(name="scale", trainable=True)
+                bias_attr = paddle.ParamAttr(name="bias", trainable=True)
+                scale_attr = paddle.ParamAttr(name="scale", trainable=True)
 
-            ln = paddle.static.nn.layer_norm(
-                input=image,
-                param_attr=scale_attr,
-                bias_attr=bias_attr,
-                begin_norm_axis=2)
+                ln = paddle.static.nn.layer_norm(
+                    input=image,
+                    param_attr=scale_attr,
+                    bias_attr=bias_attr,
+                    begin_norm_axis=2)
 
-            loss = paddle.mean(ln)
+                loss = paddle.mean(ln)
 
-            adam = paddle.optimizer.Adam(learning_rate=1e-2)
-            adam.minimize(loss)
+                adam = paddle.optimizer.Adam(learning_rate=1e-2)
+                adam.minimize(loss)
 
-        if run_ipu:
-            place = paddle.IPUPlace()
-        else:
-            place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-        exe.run(startup_prog)
+            if run_ipu:
+                place = paddle.IPUPlace()
+            else:
+                place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
 
-        if run_ipu:
-            feed_list = [image.name]
-            fetch_list = [loss.name]
-            ipu_strategy = compiler.get_ipu_strategy()
-            ipu_strategy.is_training = True
-            program = compiler.IpuCompiler(
-                main_prog, ipu_strategy=ipu_strategy).compile(
-                    feed_list, fetch_list)
-        else:
-            program = main_prog
+            if run_ipu:
+                feed_list = [image.name]
+                fetch_list = [loss.name]
+                ipu_strategy = compiler.get_ipu_strategy()
+                ipu_strategy.is_training = True
+                program = compiler.IpuCompiler(
+                    main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
+                                                                  fetch_list)
+            else:
+                program = main_prog
 
-        result = []
-        for epoch in range(100):
-            loss_res = exe.run(program,
-                               feed={"image": np_image},
-                               fetch_list=[loss])
-            result.append(loss_res)
-        return np.array(result)
+            result = []
+            for epoch in range(100):
+                loss_res = exe.run(program,
+                                   feed={"image": np_image},
+                                   fetch_list=[loss])
+                result.append(loss_res)
+            return np.array(result)
 
     def test_training(self):
         # cpu and ipu dimenstion mismatch, cpu:(100, 1, 1), ipu:(100, 1)
         cpu_loss = self._test(False).flatten()
         ipu_loss = self._test(True).flatten()
+
         self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=1e-4))
 
 

@@ -29,6 +29,7 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestCastNet(unittest.TestCase):
     def _test(self, run_ipu=True):
+        scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
@@ -37,40 +38,37 @@ class TestCastNet(unittest.TestCase):
 
         np_image = np.random.rand(1, 3, 1, 5).astype(np.float32)
 
-        with paddle.static.program_guard(main_prog, startup_prog):
-            image = paddle.static.data(
-                name='image', shape=[1, 3, 1, 5], dtype="float32")
-            cast = paddle.cast(image, "float16")
+        with fluid.scope_guard(scope):
+            with paddle.static.program_guard(main_prog, startup_prog):
+                image = paddle.static.data(
+                    name='image', shape=[1, 3, 1, 5], dtype="float32")
+                cast = paddle.cast(image, "float16")
 
-        if run_ipu:
-            place = paddle.IPUPlace()
-        else:
-            place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-        exe.run(startup_prog)
+            if run_ipu:
+                place = paddle.IPUPlace()
+            else:
+                place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
 
-        if run_ipu:
-            feed_list = [image.name]
-            fetch_list = [cast.name]
-            ipu_strategy = compiler.get_ipu_strategy()
-            ipu_strategy.is_training = False
-            program = compiler.IpuCompiler(
-                main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
-                                                              fetch_list)
-            #print(program._to_readable_code())                                                  
-        else:
-            program = main_prog
-            #print(program._to_readable_code())
-        result = exe.run(program, feed={"image": np_image}, fetch_list=[cast])
-        return result[0]
+            if run_ipu:
+                feed_list = [image.name]
+                fetch_list = [cast.name]
+                ipu_strategy = compiler.get_ipu_strategy()
+                ipu_strategy.is_training = False
+                program = compiler.IpuCompiler(
+                    main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
+                                                                  fetch_list)
+            else:
+                program = main_prog
+            result = exe.run(
+                program, feed={"image": np_image}, fetch_list=[cast])
+            return result[0]
 
     def test_cast(self):
         cpu = self._test(False)
-        print(cpu.shape)
-        print(cpu)
         ipu = self._test(True)
-        print(ipu.shape)
-        print(ipu)
+
         self.assertTrue(np.allclose(ipu, cpu, atol=1e-3))
 
 

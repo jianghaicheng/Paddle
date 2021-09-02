@@ -29,6 +29,7 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestSlice(unittest.TestCase):
     def _test_slice(self, run_ipu=True):
+        scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
@@ -37,35 +38,40 @@ class TestSlice(unittest.TestCase):
 
         np_data = np.random.uniform(
             low=0, high=1, size=(3, 4, 5, 6)).astype(np.float32)
-        with paddle.static.program_guard(main_prog, startup_prog):
-            data = fluid.layers.data(
-                name="x",
-                shape=[3, 4, 5, 6],
-                append_batch_size=False,
-                dtype="float32")
-            out = fluid.layers.slice(
-                data, axes=[0, 1, 2], starts=[0, 0, 2], ends=[23333, 100, -1])
+        with fluid.scope_guard(scope):
+            with paddle.static.program_guard(main_prog, startup_prog):
+                data = fluid.layers.data(
+                    name="x",
+                    shape=[3, 4, 5, 6],
+                    append_batch_size=False,
+                    dtype="float32")
+                out = fluid.layers.slice(
+                    data,
+                    axes=[0, 1, 2],
+                    starts=[0, 0, 2],
+                    ends=[23333, 100, -1])
 
-        if run_ipu:
-            place = paddle.IPUPlace()
-        else:
-            place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-        exe.run(startup_prog)
+            if run_ipu:
+                place = paddle.IPUPlace()
+            else:
+                place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
 
-        if run_ipu:
-            feed_list = [data.name]
-            fetch_list = [out.name]
-            ipu_strategy = compiler.get_ipu_strategy()
-            ipu_strategy.is_training = False
-            program = compiler.IpuCompiler(
-                main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
-                                                              fetch_list)
-        else:
-            program = main_prog
+            if run_ipu:
+                feed_list = [data.name]
+                fetch_list = [out.name]
+                ipu_strategy = compiler.get_ipu_strategy()
+                ipu_strategy.is_training = False
+                program = compiler.IpuCompiler(
+                    main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
+                                                                  fetch_list)
+            else:
+                program = main_prog
 
-        result = exe.run(program, feed={data.name: np_data}, fetch_list=[out])
-        return result[0]
+            result = exe.run(
+                program, feed={data.name: np_data}, fetch_list=[out])
+            return result[0]
 
     def test_slice(self):
         cpu_res = self._test_slice(False)

@@ -61,6 +61,7 @@ class TestIpuShard(unittest.TestCase):
     def test_ipu_shard(self):
         ipu_index_list = self._test()
         expected_ipu_index_list = [1, 2, 3, 1, 2, 1, 2]
+
         self.assertTrue(
             np.allclose(
                 ipu_index_list, expected_ipu_index_list, atol=0))

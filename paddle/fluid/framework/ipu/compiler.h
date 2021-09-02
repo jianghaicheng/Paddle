@@ -59,12 +59,13 @@ class Compiler {
  private:
   std::unique_ptr<popart::Builder> builder_;
 
+  using OpFunc = std::function<void(OpDesc *op_desc)>;
+  std::unordered_map<std::string, OpFunc> name_function_;
+
+  // stateful variable
   std::map<std::string, popart::TensorId> tensors_;
   std::vector<popart::TensorId> inputs_;
   std::vector<popart::TensorId> outputs_;
-
-  using OpFunc = std::function<void(OpDesc *op_desc)>;
-  std::unordered_map<std::string, OpFunc> name_function_;
 };
 
 }  // namespace ipu

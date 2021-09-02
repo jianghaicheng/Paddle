@@ -40,7 +40,6 @@ print(main_prog._to_readable_code())
 
 feed_list = ['a', 'b']
 fetch_list = ['tmp_0']
-# program = compiler.IpuCompiler(main_prog).compile(feed_list, fetch_list)
 ipu_strategy = compiler.get_ipu_strategy()
 ipu_strategy.is_training = False
 ipu_strategy.num_ipus = 1

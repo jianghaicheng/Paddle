@@ -40,11 +40,11 @@ namespace ipu {
 
 using ipu::IpuStrategy;
 struct Optimizer {
-  std::string type_;
-  std::string loss_;
-  std::string lr_var_name_;
+  std::string type;
+  std::string loss;
+  std::string lr_var_name;
   // as far as we know, attr is usually float
-  std::map<std::string, float> attrs_;
+  std::map<std::string, float> attrs;
 };
 
 class IpuBackend {
@@ -58,7 +58,11 @@ class IpuBackend {
   IpuBackend();
   ~IpuBackend();
 
+  // return if exsits, else create and return
   static std::shared_ptr<IpuBackend> GetInstance();
+
+  // always return a new instance_
+  static std::shared_ptr<IpuBackend> GetNewInstance();
 
   void Compile(ir::Graph *graph, const std::vector<std::string> &feed_list,
                const std::vector<std::string> &fetch_list);
@@ -70,15 +74,17 @@ class IpuBackend {
 
   // Optimizer
   std::unique_ptr<popart::Optimizer> GetPopartOptimizer();
-  std::string GetOptimizerType() { return optimizer_.type_; }
-  void SetOptimizerType(const std::string &type) { optimizer_.type_ = type; }
+  std::string GetOptimizerType() { return optimizer_.type; }
+  void SetOptimizerType(const std::string &type) { optimizer_.type = type; }
   float GetOptimizerAttr(const std::string &attr, float default_value = 0.0f);
   void SetOptimizerAttr(const std::string &attr, float value);
-  void SetLoss(const std::string &loss) { optimizer_.loss_ = loss; }
-  void SetLRVarName(const std::string &name) { optimizer_.lr_var_name_ = name; }
+  void SetLoss(const std::string &loss) { optimizer_.loss = loss; }
+  void SetLRVarName(const std::string &name) { optimizer_.lr_var_name = name; }
 
   // IpuStrategy
   void SetIpuStrategy(const IpuStrategy &strategy);
+
+  // Device
   size_t GetNumDevices();
   std::vector<int> GetDeviceIds();
   Device GetDevice(int id);
@@ -91,7 +97,6 @@ class IpuBackend {
   int UpperIpuNum();
 
  private:
-  static std::shared_ptr<IpuBackend> instance_;
   std::shared_ptr<Compiler> compiler_;
 
   Optimizer optimizer_;

@@ -29,62 +29,65 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestLookupTableNet(unittest.TestCase):
     def _test(self, run_ipu=True):
+        scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
         startup_prog.random_seed = SEED
         np.random.seed(SEED)
 
-        if run_ipu:
-            np_image = np.array(
-                [[[1], [3]], [[2], [4]], [[4], [127]]]).astype(np.int32)
+        with fluid.scope_guard(scope):
+            if run_ipu:
+                np_image = np.array(
+                    [[[1], [3]], [[2], [4]], [[4], [127]]]).astype(np.int32)
+                with paddle.static.program_guard(main_prog, startup_prog):
+                    image = paddle.static.data(
+                        name='image', shape=[3, 2, 1], dtype='int32')
+            else:
+                np_image = np.array(
+                    [[[1], [3]], [[2], [4]], [[4], [127]]]).astype(np.int64)
+                with paddle.static.program_guard(main_prog, startup_prog):
+                    image = paddle.static.data(
+                        name='image', shape=[3, 2, 1], dtype='int64')
+
             with paddle.static.program_guard(main_prog, startup_prog):
-                image = paddle.static.data(
-                    name='image', shape=[3, 2, 1], dtype='int32')
-        else:
-            np_image = np.array(
-                [[[1], [3]], [[2], [4]], [[4], [127]]]).astype(np.int64)
-            with paddle.static.program_guard(main_prog, startup_prog):
-                image = paddle.static.data(
-                    name='image', shape=[3, 2, 1], dtype='int64')
+                lookup = paddle.fluid.layers.embedding(
+                    input=image, size=[128, 16], padding_idx=-1)
+                loss = paddle.mean(lookup)
 
-        with paddle.static.program_guard(main_prog, startup_prog):
-            lookup = paddle.fluid.layers.embedding(
-                input=image, size=[128, 16], padding_idx=-1)
-            loss = paddle.mean(lookup)
+                adam = paddle.optimizer.Adam(learning_rate=1e-2)
+                adam.minimize(loss)
 
-            adam = paddle.optimizer.Adam(learning_rate=1e-2)
-            adam.minimize(loss)
+            if run_ipu:
+                place = paddle.IPUPlace()
+            else:
+                place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
 
-        if run_ipu:
-            place = paddle.IPUPlace()
-        else:
-            place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-        exe.run(startup_prog)
+            if run_ipu:
+                feed_list = [image.name]
+                fetch_list = [loss.name]
+                ipu_strategy = compiler.get_ipu_strategy()
+                ipu_strategy.is_training = True
+                program = compiler.IpuCompiler(
+                    main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
+                                                                  fetch_list)
+            else:
+                program = main_prog
 
-        if run_ipu:
-            feed_list = [image.name]
-            fetch_list = [loss.name]
-            ipu_strategy = compiler.get_ipu_strategy()
-            ipu_strategy.is_training = True
-            program = compiler.IpuCompiler(
-                main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
-                                                              fetch_list)
-        else:
-            program = main_prog
-
-        result = []
-        for epoch in range(100):
-            loss_res = exe.run(program,
-                               feed={"image": np_image},
-                               fetch_list=[loss])
-            result.append(loss_res)
-        return np.array(result)
+            result = []
+            for epoch in range(100):
+                loss_res = exe.run(program,
+                                   feed={"image": np_image},
+                                   fetch_list=[loss])
+                result.append(loss_res)
+            return np.array(result)
 
     def test_gather(self):
         cpu = self._test(False).flatten()
         ipu = self._test(True).flatten()
+
         self.assertTrue(np.allclose(ipu, cpu, atol=1e-4))
 
 

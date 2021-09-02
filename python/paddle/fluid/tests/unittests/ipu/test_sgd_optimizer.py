@@ -29,6 +29,7 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestSGD(unittest.TestCase):
     def _test_sgd(self, run_ipu=True):
+        scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
@@ -37,42 +38,43 @@ class TestSGD(unittest.TestCase):
 
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
 
-        with paddle.static.program_guard(main_prog, startup_prog):
-            image = paddle.static.data(
-                name='image', shape=[1, 3, 10, 10], dtype='float32')
-            conv1 = paddle.static.nn.conv2d(
-                image, num_filters=3, filter_size=3, bias_attr=False)
-            loss = paddle.mean(conv1)
+        with fluid.scope_guard(scope):
+            with paddle.static.program_guard(main_prog, startup_prog):
+                image = paddle.static.data(
+                    name='image', shape=[1, 3, 10, 10], dtype='float32')
+                conv1 = paddle.static.nn.conv2d(
+                    image, num_filters=3, filter_size=3, bias_attr=False)
+                loss = paddle.mean(conv1)
 
-            sgd = paddle.optimizer.SGD(learning_rate=1e-1)
-            sgd.minimize(loss)
+                sgd = paddle.optimizer.SGD(learning_rate=1e-1)
+                sgd.minimize(loss)
 
-        if run_ipu:
-            place = paddle.IPUPlace()
-        else:
-            place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-        exe.run(startup_prog)
+            if run_ipu:
+                place = paddle.IPUPlace()
+            else:
+                place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
 
-        if run_ipu:
-            feed_list = [image.name]
-            fetch_list = [loss.name]
-            ipu_strategy = compiler.get_ipu_strategy()
-            ipu_strategy.is_training = True
-            program = compiler.IpuCompiler(
-                main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
-                                                              fetch_list)
-        else:
-            program = main_prog
+            if run_ipu:
+                feed_list = [image.name]
+                fetch_list = [loss.name]
+                ipu_strategy = compiler.get_ipu_strategy()
+                ipu_strategy.is_training = True
+                program = compiler.IpuCompiler(
+                    main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
+                                                                  fetch_list)
+            else:
+                program = main_prog
 
-        result = []
-        for epoch in range(100):
-            loss_res = exe.run(program,
-                               feed={"image": np_image},
-                               fetch_list=[loss])
-            result.append(loss_res)
+            result = []
+            for epoch in range(100):
+                loss_res = exe.run(program,
+                                   feed={"image": np_image},
+                                   fetch_list=[loss])
+                result.append(loss_res)
 
-        return np.array(result)
+            return np.array(result)
 
     def test_sgd(self):
         # cpu and ipu dimenstion mismatch, cpu:(100, 1, 1), ipu:(100, 1)

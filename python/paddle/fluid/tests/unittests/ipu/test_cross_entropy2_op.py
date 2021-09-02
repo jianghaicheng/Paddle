@@ -28,6 +28,7 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestCross_entropy2(unittest.TestCase):
     def _test_cross_entropy2(self, run_ipu=True):
+        scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
@@ -35,44 +36,48 @@ class TestCross_entropy2(unittest.TestCase):
         np.random.seed(SEED)
 
         np_x = np.random.rand(3, 7).astype(np.float32)
+        # [warning] Copying (host) tensor input/1 from INT64 to INT32.
+        # Will only warn once
         np_label = np.arange(3).reshape([3]).astype(np.int64)
-        with paddle.static.program_guard(main_prog, startup_prog):
-            x = fluid.layers.data(
-                name="x",
-                shape=[3, 7],
-                dtype='float32',
-                append_batch_size=False, )
-            label = fluid.layers.data(
-                name='label',
-                shape=[3],
-                dtype='int32',
-                append_batch_size=False, )
-            loss = fluid.layers.cross_entropy(input=x, label=label)
-            out = fluid.layers.mean(loss)
 
-        if run_ipu:
-            place = paddle.IPUPlace()
-        else:
-            place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-        exe.run(startup_prog)
+        with fluid.scope_guard(scope):
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = fluid.layers.data(
+                    name="x",
+                    shape=[3, 7],
+                    dtype='float32',
+                    append_batch_size=False, )
+                label = fluid.layers.data(
+                    name='label',
+                    shape=[3],
+                    dtype='int32',
+                    append_batch_size=False, )
+                loss = fluid.layers.cross_entropy(input=x, label=label)
+                out = fluid.layers.mean(loss)
 
-        if run_ipu:
-            feed_list = [x.name, label.name]
-            fetch_list = [out.name]
-            ipu_strategy = compiler.get_ipu_strategy()
-            ipu_strategy.is_training = False
-            program = compiler.IpuCompiler(
-                main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
-                                                              fetch_list)
-        else:
-            program = main_prog
+            if run_ipu:
+                place = paddle.IPUPlace()
+            else:
+                place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
 
-        result = exe.run(program,
-                         feed={x.name: np_x,
-                               label.name: np_label},
-                         fetch_list=[out])
-        return result[0]
+            if run_ipu:
+                feed_list = [x.name, label.name]
+                fetch_list = [out.name]
+                ipu_strategy = compiler.get_ipu_strategy()
+                ipu_strategy.is_training = False
+                program = compiler.IpuCompiler(
+                    main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
+                                                                  fetch_list)
+            else:
+                program = main_prog
+
+            result = exe.run(program,
+                             feed={x.name: np_x,
+                                   label.name: np_label},
+                             fetch_list=[out])
+            return result[0]
 
     def test_cross_entropy2(self):
         cpu_res = self._test_cross_entropy2(False)

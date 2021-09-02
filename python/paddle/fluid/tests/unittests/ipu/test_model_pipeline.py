@@ -28,6 +28,7 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestCastNet(unittest.TestCase):
     def _test(self, run_ipu=True):
+        scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
@@ -36,46 +37,49 @@ class TestCastNet(unittest.TestCase):
 
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
 
-        with paddle.static.program_guard(main_prog, startup_prog):
-            image = paddle.static.data(
-                name='image', shape=[1, 3, 10, 10], dtype='float32')
-            with fluid.ipu_shard(ipu_index=0):
-                conv1 = paddle.static.nn.conv2d(
-                    image, num_filters=3, filter_size=3, bias_attr=False)
-            with fluid.ipu_shard(ipu_index=1):
-                conv2 = paddle.static.nn.conv2d(
-                    conv1, num_filters=3, filter_size=3, bias_attr=False)
-                loss = paddle.mean(conv2)
+        with fluid.scope_guard(scope):
+            with paddle.static.program_guard(main_prog, startup_prog):
+                image = paddle.static.data(
+                    name='image', shape=[1, 3, 10, 10], dtype='float32')
+                with fluid.ipu_shard(ipu_index=0):
+                    conv1 = paddle.static.nn.conv2d(
+                        image, num_filters=3, filter_size=3, bias_attr=False)
+                with fluid.ipu_shard(ipu_index=1):
+                    conv2 = paddle.static.nn.conv2d(
+                        conv1, num_filters=3, filter_size=3, bias_attr=False)
+                    loss = paddle.mean(conv2)
 
-        if run_ipu:
-            place = paddle.IPUPlace()
-        else:
-            place = paddle.CPUPlace()
-        executor = paddle.static.Executor(place)
-        executor.run(startup_prog)
+            if run_ipu:
+                place = paddle.IPUPlace()
+            else:
+                place = paddle.CPUPlace()
+            executor = paddle.static.Executor(place)
+            executor.run(startup_prog)
 
-        if run_ipu:
-            feed_list = [image.name]
-            fetch_list = [loss.name]
-            ipu_strategy = compiler.get_ipu_strategy()
-            ipu_strategy.num_ipus = 2
-            ipu_strategy.is_training = False
-            ipu_strategy.enable_manual_shard = True
-            # TODO(xiaobingw): add support batchesPerStep
-            ipu_strategy.enable_pipelining = False
-            program = compiler.IpuCompiler(
-                main_prog, ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
-        else:
-            program = main_prog
+            if run_ipu:
+                feed_list = [image.name]
+                fetch_list = [loss.name]
+                ipu_strategy = compiler.get_ipu_strategy()
+                ipu_strategy.num_ipus = 2
+                ipu_strategy.is_training = False
+                ipu_strategy.enable_manual_shard = True
+                # TODO(xiaobingw): add support batchesPerStep
+                ipu_strategy.enable_pipelining = False
+                program = compiler.IpuCompiler(
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+            else:
+                program = main_prog
 
-        loss_res = executor.run(program,
-                                feed={"image": np_image},
-                                fetch_list=[loss])
-        return loss_res
+            loss_res = executor.run(program,
+                                    feed={"image": np_image},
+                                    fetch_list=[loss])
+            return loss_res
 
     def test_cast(self):
         cpu_outputs = self._test(False)
         ipu_outputs = self._test(True)
+
         self.assertTrue(np.allclose(cpu_outputs, ipu_outputs, atol=1e-4))
 
 

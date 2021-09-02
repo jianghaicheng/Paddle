@@ -28,45 +28,47 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestFill_constant(unittest.TestCase):
     def _test_fill_constant(self, run_ipu=True):
+        scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
         startup_prog.random_seed = SEED
         np.random.seed(SEED)
 
-        with paddle.static.program_guard(main_prog, startup_prog):
-            a = fluid.layers.fill_constant(
-                name="a",
-                shape=[1, 3, 10, 10],
-                dtype='float32',
-                value=0.2, )
-            b = fluid.layers.fill_constant(
-                name="b",
-                shape=[1, 3, 10, 10],
-                dtype='float32',
-                value=1, )
-            out = fluid.layers.elementwise_add(a, b)
+        with fluid.scope_guard(scope):
+            with paddle.static.program_guard(main_prog, startup_prog):
+                a = fluid.layers.fill_constant(
+                    name="a",
+                    shape=[1, 3, 10, 10],
+                    dtype='float32',
+                    value=0.2, )
+                b = fluid.layers.fill_constant(
+                    name="b",
+                    shape=[1, 3, 10, 10],
+                    dtype='float32',
+                    value=1, )
+                out = fluid.layers.elementwise_add(a, b)
 
-        if run_ipu:
-            place = paddle.IPUPlace()
-        else:
-            place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-        exe.run(startup_prog)
+            if run_ipu:
+                place = paddle.IPUPlace()
+            else:
+                place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
 
-        if run_ipu:
-            feed_list = []
-            fetch_list = [out.name]
-            ipu_strategy = compiler.get_ipu_strategy()
-            ipu_strategy.is_training = False
-            program = compiler.IpuCompiler(
-                main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
-                                                              fetch_list)
-        else:
-            program = main_prog
+            if run_ipu:
+                feed_list = []
+                fetch_list = [out.name]
+                ipu_strategy = compiler.get_ipu_strategy()
+                ipu_strategy.is_training = False
+                program = compiler.IpuCompiler(
+                    main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
+                                                                  fetch_list)
+            else:
+                program = main_prog
 
-        result = exe.run(program, feed={}, fetch_list=[out])
-        return result[0]
+            result = exe.run(program, feed={}, fetch_list=[out])
+            return result[0]
 
     def test_fill_constant(self):
         cpu_res = self._test_fill_constant(False)

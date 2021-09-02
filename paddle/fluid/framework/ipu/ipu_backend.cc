@@ -36,15 +36,11 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
-std::shared_ptr<IpuBackend> IpuBackend::instance_ = nullptr;
+std::shared_ptr<IpuBackend> instance_ = nullptr;
 
 IpuBackend::IpuBackend() { compiler_ = std::make_shared<Compiler>(); }
 
 IpuBackend::~IpuBackend() {
-  if (instance_ == nullptr) {
-    return;
-  }
-
   // detach device
   if (curr_device_ != nullptr && curr_device_->isAttached()) {
     curr_device_->detach();
@@ -55,6 +51,12 @@ std::shared_ptr<IpuBackend> IpuBackend::GetInstance() {
   if (!instance_) {
     instance_.reset(new IpuBackend());
   }
+  return instance_;
+}
+
+// This api should only call from python, always return a new object
+std::shared_ptr<IpuBackend> IpuBackend::GetNewInstance() {
+  instance_.reset(new IpuBackend());
   return instance_;
 }
 
@@ -99,8 +101,8 @@ void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
   if (ipu_strategy_ != nullptr && ipu_strategy_->is_training) {
     VLOG(10) << "Update optimizer learning rate...";
     auto popart_optimizer = GetPopartOptimizer();
-    auto session = dynamic_cast<popart::TrainingSession*>(session_.get());
-    session->updateOptimizerFromHost(popart_optimizer.get());
+    auto &session = dynamic_cast<popart::TrainingSession &>(*session_);
+    session.updateOptimizerFromHost(popart_optimizer.get());
   }
 
   popart::StepIO stepio(popart_inputs, popart_anchors);
@@ -130,11 +132,11 @@ void IpuBackend::Prepare() {
     VLOG(10) << "Creating TrainingSession from Onnx Model...";
     auto popart_optimizer = GetPopartOptimizer();
     auto tensors = compiler_->GetTensors();
-    auto it = tensors.find(optimizer_.loss_);
+    auto it = tensors.find(optimizer_.loss);
     PADDLE_ENFORCE_NE(
         it, tensors.end(),
         paddle::platform::errors::InvalidArgument(
-            "loss_id = %s doesn't exist in popart graph.", optimizer_.loss_));
+            "loss_id = %s doesn't exist in popart graph.", optimizer_.loss));
     session_ = popart::TrainingSession::createFromOnnxModel(
         proto, dataFlow, it->second, *popart_optimizer, curr_device_,
         popart::InputShapeInfo(), ipu_strategy_->popart_options_,
@@ -166,11 +168,11 @@ std::vector<int64_t> IpuBackend::GetTensorShape(const std::string& var_name) {
 }
 
 std::unique_ptr<popart::Optimizer> IpuBackend::GetPopartOptimizer() {
-  // TODO(xiaobingw): change type_ to enum
+  // TODO(xiaobingw): change type to enum
   PADDLE_ENFORCE_NE(
-      optimizer_.type_, "",
+      optimizer_.type, "",
       platform::errors::InvalidArgument("Optimizer type have not been set."));
-  if (optimizer_.type_ == "sgd") {
+  if (optimizer_.type == "sgd") {
     auto optimizer = std::make_unique<popart::SGD>(
         popart::OptimizerValue(GetLRFromScope(), false),
         popart::OptimizerValue(popart::SGD::getUnsetWeightDecay()),
@@ -179,7 +181,7 @@ std::unique_ptr<popart::Optimizer> IpuBackend::GetPopartOptimizer() {
         popart::OptimizerValue(popart::SGD::getUnsetVelocityScaling()),
         popart::OptimizerValue(popart::SGD::getUnsetLossScaling()));
     return optimizer;
-  } else if (optimizer_.type_ == "adam") {
+  } else if (optimizer_.type == "adam") {
     auto optimizer = std::make_unique<popart::Adam>(
         popart::OptimizerValue(GetLRFromScope(), false),
         popart::OptimizerValue(popart::Adam::getUnsetWeightDecay()),
@@ -193,24 +195,24 @@ std::unique_ptr<popart::Optimizer> IpuBackend::GetPopartOptimizer() {
     return optimizer;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Optimizer %s is not implemented now.", optimizer_.type_));
+        "Optimizer %s is not implemented now.", optimizer_.type));
   }
 }
 
 float IpuBackend::GetOptimizerAttr(const std::string& attr,
                                    float default_value) {
-  if (optimizer_.attrs_.count(attr) == 0) {
+  if (optimizer_.attrs.count(attr) == 0) {
     return default_value;
   }
-  return optimizer_.attrs_.at(attr);
+  return optimizer_.attrs.at(attr);
 }
 
 void IpuBackend::SetOptimizerAttr(const std::string& attr, float value) {
-  optimizer_.attrs_[attr] = value;
+  optimizer_.attrs[attr] = value;
 }
 
 float IpuBackend::GetLRFromScope() {
-  auto lr_var = scope_->GetVar(optimizer_.lr_var_name_);
+  auto lr_var = scope_->GetVar(optimizer_.lr_var_name);
   auto tensor = lr_var->Get<framework::LoDTensor>();
 
   PADDLE_ENFORCE_EQ(tensor.type(), framework::proto::VarType::FP32,
@@ -299,7 +301,7 @@ void IpuBackend::AttachDevice(int id) {
 
 bool IpuBackend::DeviceIsAttached() { return curr_device_ != nullptr; }
 
-// ipu_num_ must be pow(2,n);
+// num_ipus must be pow(2,n);
 int IpuBackend::UpperIpuNum() {
   PADDLE_ENFORCE_GT(ipu_strategy_->num_ipus, 0,
                     platform::errors::Unavailable(

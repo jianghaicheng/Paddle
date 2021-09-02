@@ -29,6 +29,7 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestSqueezeNet(unittest.TestCase):
     def _test(self, run_ipu=True):
+        scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
@@ -37,39 +38,39 @@ class TestSqueezeNet(unittest.TestCase):
 
         np_image = np.random.rand(1, 3, 1, 5).astype(np.float32)
 
-        with paddle.static.program_guard(main_prog, startup_prog):
-            image = paddle.static.data(
-                name='image', shape=[1, 3, 1, 5], dtype='float32')
-            squeeze = paddle.fluid.layers.squeeze(input=image, axes=[])
+        with fluid.scope_guard(scope):
+            with paddle.static.program_guard(main_prog, startup_prog):
+                image = paddle.static.data(
+                    name='image', shape=[1, 3, 1, 5], dtype='float32')
+                squeeze = paddle.fluid.layers.squeeze(input=image, axes=[])
 
-        if run_ipu:
-            place = paddle.IPUPlace()
-        else:
-            place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-        exe.run(startup_prog)
+            if run_ipu:
+                place = paddle.IPUPlace()
+            else:
+                place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
 
-        if run_ipu:
-            feed_list = [image.name]
-            fetch_list = [squeeze.name]
-            ipu_strategy = compiler.get_ipu_strategy()
-            ipu_strategy.is_training = False
-            program = compiler.IpuCompiler(
-                main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
-                                                              fetch_list)
-        else:
-            program = main_prog
+            if run_ipu:
+                feed_list = [image.name]
+                fetch_list = [squeeze.name]
+                ipu_strategy = compiler.get_ipu_strategy()
+                ipu_strategy.is_training = False
+                program = compiler.IpuCompiler(
+                    main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
+                                                                  fetch_list)
+            else:
+                program = main_prog
 
-        result = exe.run(program,
-                         feed={"image": np_image},
-                         fetch_list=[squeeze])
-        return result[0]
+            result = exe.run(program,
+                             feed={"image": np_image},
+                             fetch_list=[squeeze])
+            return result[0]
 
     def test_squeeze(self):
         cpu = self._test(False)
-        print(cpu.shape)
         ipu = self._test(True)
-        print(ipu.shape)
+
         self.assertTrue(np.allclose(ipu, cpu, atol=1e-4))
 
 
