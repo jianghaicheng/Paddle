@@ -117,9 +117,11 @@ void IpuBackend::Prepare() {
   VLOG(10) << "Save Model to file paddle_model.onnx ...\n";
   compiler_->SaveModelProto("paddle_model.onnx");
   VLOG(10) << "Constructing DataFlow\n";
-  std::vector<popart::TensorId> anchor_ids;
-  for (popart::TensorId item : compiler_->GetOutputs()) {
-    anchor_ids.push_back(item);
+
+  auto art = popart::AnchorReturnType("All");
+  std::map<popart::TensorId, popart::AnchorReturnType> anchor_ids;
+  for (const auto &id : compiler_->GetOutputs()) {
+    anchor_ids.emplace(id, art);
   }
   auto dataFlow = popart::DataFlow(ipu_strategy_->batches_per_step, anchor_ids);
 

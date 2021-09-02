@@ -738,7 +738,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_ipus", type=int, default=2, help="Number of ipus")
     parser.add_argument(
-        "--enable_pipelining", type=bool, default=False, help="Pipelining")
+        "--enable_pipelining", type=bool, default=True, help="Pipelining")
     parser.add_argument(
         "--save_model", type=bool, default=False, help="Save model or not")
     parser.add_argument(
@@ -871,10 +871,24 @@ if __name__ == "__main__":
             input_mask.name: np_inputs[3]
         }
 
-    for i in range(args.run_steps):
-        res = executor.run(program, feed=feed_dict, fetch_list=[fetch_node])
+    # enable_pipelining vs. disable_pipelining
+    total_steps = args.run_steps
+    if args.run_on_ipu and not args.enable_pipelining or not args.run_on_ipu:
+        if args.is_training:                  # training: num_stages = num_ipus + 1
+            total_steps *= (args.num_ipus + 1)
+        else:                                 # inference: num_stages = num_ipus
+            total_steps *= args.num_ipus
 
-        print(np.sum(res))
+
+    results = []
+    for i in range(total_steps):
+        res = executor.run(program, feed=feed_dict, fetch_list=[fetch_node])
+        results.append(res)
+
+    results = np.asarray(results).flatten()
+    if results.size > 32:
+        results = results[-32:]
+    print(results)
 
     if args.save_model:
         full_name = args.model_path + '/' + args.model_name
