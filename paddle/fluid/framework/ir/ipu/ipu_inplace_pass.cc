@@ -58,10 +58,10 @@ void IpuInplacePass::ApplyImpl(ir::Graph *graph) const {
     for (auto name : op->Input("__inputs__")) {
       for (auto name_out : op->Output("__outputs__")) {
         if (name == name_out) {
-          bool is_feed = std::find(feed_list.begin(), feed_list.end(), name) ==
+          bool is_feed = std::find(feed_list.begin(), feed_list.end(), name) !=
                          feed_list.end();
           bool is_fetch = std::find(fetch_list.begin(), fetch_list.end(),
-                                    name) == fetch_list.end();
+                                    name) != fetch_list.end();
           ir::Node *var;
           auto new_name = name + "__inplace_1";
           if (is_feed) {
