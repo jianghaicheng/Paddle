@@ -150,9 +150,7 @@ class IPUDeviceContext : public DeviceContext {
   Place GetPlace() const override;
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
-  int DeviceId() const {
-    return device_.getId();
-  }
+  int DeviceId() const { return device_.getId(); }
 
  private:
   IPUPlace place_;

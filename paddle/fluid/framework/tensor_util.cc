@@ -334,7 +334,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
              platform::is_ipu_place(dst_place)) {
     memory::Copy(BOOST_GET_CONST(platform::IPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size);
-  }else {  // NOLINT
+  } else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
@@ -344,12 +344,14 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
            platform::is_cpu_place(dst_place)) {
     memory::Copy(BOOST_GET_CONST(platform::CPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::XPUPlace, src_place), src_ptr, size);
-  } else if (platform::is_cpu_place(src_place) &&  // NOLINT
-             platform::is_xpu_place(dst_place)) {
+  }
+  else if (platform::is_cpu_place(src_place) &&  // NOLINT
+           platform::is_xpu_place(dst_place)) {
     memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size);
-  } else if (platform::is_xpu_place(src_place) &&  // NOLINT
-             platform::is_xpu_place(dst_place)) {
+  }
+  else if (platform::is_xpu_place(src_place) &&  // NOLINT
+           platform::is_xpu_place(dst_place)) {
     if (src_ptr == dst_ptr) {
       VLOG(3) << "Skip copy the same data async from " << src_place << " to "
               << dst_place;
@@ -357,7 +359,8 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     }
     memory::Copy(BOOST_GET_CONST(platform::XPUPlace, dst_place), dst_ptr,
                  BOOST_GET_CONST(platform::XPUPlace, src_place), src_ptr, size);
-  } else {  // NOLINT
+  }
+  else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }

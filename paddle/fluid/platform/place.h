@@ -155,8 +155,8 @@ struct IsIPUPlace : public boost::static_visitor<bool> {
 class Place : public boost::variant<CUDAPlace, XPUPlace, NPUPlace, CPUPlace,
                                     CUDAPinnedPlace, IPUPlace> {
  private:
-  using PlaceBase =
-      boost::variant<CUDAPlace, XPUPlace, NPUPlace, CPUPlace, CUDAPinnedPlace, IPUPlace>;
+  using PlaceBase = boost::variant<CUDAPlace, XPUPlace, NPUPlace, CPUPlace,
+                                   CUDAPinnedPlace, IPUPlace>;
 
  public:
   Place() = default;

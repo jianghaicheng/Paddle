@@ -17,8 +17,8 @@
 #include "paddle/fluid/framework/ipu/ipu_backend.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
 
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -124,4 +124,5 @@ void InferenceExtractPass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(inference_extract_pass,
               paddle::framework::ir::InferenceExtractPass);
-USE_PASS(graph_viz_pass);
+
+// USE_PASS(graph_viz_pass);

@@ -101,7 +101,7 @@ void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
   if (ipu_strategy_ != nullptr && ipu_strategy_->is_training) {
     VLOG(10) << "Update optimizer learning rate...";
     auto popart_optimizer = GetPopartOptimizer();
-    auto &session = dynamic_cast<popart::TrainingSession &>(*session_);
+    auto& session = dynamic_cast<popart::TrainingSession&>(*session_);
     session.updateOptimizerFromHost(popart_optimizer.get());
   }
 
@@ -120,7 +120,7 @@ void IpuBackend::Prepare() {
 
   auto art = popart::AnchorReturnType("All");
   std::map<popart::TensorId, popart::AnchorReturnType> anchor_ids;
-  for (const auto &id : compiler_->GetOutputs()) {
+  for (const auto& id : compiler_->GetOutputs()) {
     anchor_ids.emplace(id, art);
   }
   auto dataFlow = popart::DataFlow(ipu_strategy_->batches_per_step, anchor_ids);

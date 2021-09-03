@@ -86,11 +86,6 @@ if(WITH_ASCEND_CL)
     add_definitions(-DPADDLE_WITH_ASCEND_CL)
 endif()
 
-if(WITH_IPU)
-    message(STATUS "Compile with Graphcore IPU!")
-    add_definitions(-DPADDLE_WITH_IPU)
-endif()
-
 if(WITH_XPU)
     message(STATUS "Compile with XPU!")
     add_definitions(-DPADDLE_WITH_XPU)

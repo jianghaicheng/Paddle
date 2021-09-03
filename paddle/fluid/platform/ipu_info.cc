@@ -17,13 +17,15 @@ namespace platform {
 
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetSelectedIPUDevices() {
-  std::shared_ptr<framework::ipu::IpuBackend> ipu_backend = framework::ipu::IpuBackend::GetInstance();
+  std::shared_ptr<framework::ipu::IpuBackend> ipu_backend =
+      framework::ipu::IpuBackend::GetInstance();
   return ipu_backend->GetDeviceIds();
 }
 
 //! Get the total number of IPU devices in system.
 int GetIPUDeviceCount() {
-  std::shared_ptr<framework::ipu::IpuBackend> ipu_backend = framework::ipu::IpuBackend::GetInstance();
+  std::shared_ptr<framework::ipu::IpuBackend> ipu_backend =
+      framework::ipu::IpuBackend::GetInstance();
   return ipu_backend->GetNumDevices();
 }
 }  // namespace platform

@@ -21,6 +21,6 @@ namespace framework {
 namespace ipu {
 static constexpr const char *sIpuIndexAttr = "ipu_index";
 static constexpr const char *sIpuStageAttr = "ipu_stage";
-} // namespace ipu
-} // namespace framework
-} // namespace paddle
+}  // namespace ipu
+}  // namespace framework
+}  // namespace paddle

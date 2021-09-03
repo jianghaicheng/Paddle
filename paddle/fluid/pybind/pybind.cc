@@ -1846,7 +1846,7 @@ All parameter, weight, gradient are variables in Paddle.
                  "If you want to use IPU, please try to install IPU version "
                  "PaddlePaddle by: pip install paddlepaddle*\n"
                  "If you only have CPU, please change IPUPlace to be "
-                 "CPUPlace().\n", );
+                 "CPUPlace().\n");
              std::exit(-1);
 #endif
            })
@@ -3202,24 +3202,23 @@ All parameter, weight, gradient are variables in Paddle.
   // TODO(xiaobingw): maybe refactor at future
   py::class_<framework::ipu::IpuStrategy>(m, "IpuStrategy")
       .def(py::init())
-      .def_property(
-          "num_ipus",
-          [](const ipu::IpuStrategy &self) { return self.num_ipus; },
-          [](ipu::IpuStrategy &self, int num_ipus) {
-            self.num_ipus = num_ipus;
-          },
-          R"DOC(
+      .def_property("num_ipus",
+                    [](const ipu::IpuStrategy &self) { return self.num_ipus; },
+                    [](ipu::IpuStrategy &self, int num_ipus) {
+                      self.num_ipus = num_ipus;
+                    },
+                    R"DOC(
             Int type, set the number ipu we need. Default 1.
           )DOC")
-      .def_property(
-          "accumulationFactor",
-          [](const ipu::IpuStrategy &self) {
-            return self.popart_options_.accumulationFactor;
-          },
-          [](ipu::IpuStrategy &self, int accumulationFactor) {
-            self.popart_options_.accumulationFactor = accumulationFactor;
-          },
-          R"DOC(
+      .def_property("accumulationFactor",
+                    [](const ipu::IpuStrategy &self) {
+                      return self.popart_options_.accumulationFactor;
+                    },
+                    [](ipu::IpuStrategy &self, int accumulationFactor) {
+                      self.popart_options_.accumulationFactor =
+                          accumulationFactor;
+                    },
+                    R"DOC(
             Specify the number of micro-batches to accumulate before
             applying the varUpdate. Default 1.
           )DOC")
@@ -3241,33 +3240,31 @@ All parameter, weight, gradient are variables in Paddle.
           R"DOC(
             Bool type, True for training, False inference. Default True.
           )DOC")
-      .def_property(
-          "enable_pipelining",
-          [](const ipu::IpuStrategy &self) {
-            return self.popart_options_.enablePipelining;
-          },
-          [](ipu::IpuStrategy &self, bool enable_pipelining) {
-            self.popart_options_.enablePipelining = enable_pipelining;
-          },
-          R"DOC(
+      .def_property("enable_pipelining",
+                    [](const ipu::IpuStrategy &self) {
+                      return self.popart_options_.enablePipelining;
+                    },
+                    [](ipu::IpuStrategy &self, bool enable_pipelining) {
+                      self.popart_options_.enablePipelining = enable_pipelining;
+                    },
+                    R"DOC(
             Bool type, True enable pipeline, otherwise disable. Default False.
           )DOC")
-      .def_property(
-          "enable_manual_shard",
-          [](const ipu::IpuStrategy &self) {
-            return self.popart_options_.virtualGraphMode ==
-                    ipu::VirtualGraphMode::Manual;
-          },
-          [](ipu::IpuStrategy &self, bool enable_ipu_shard) {
-            if (enable_ipu_shard) {
-              self.popart_options_.virtualGraphMode =
-                  ipu::VirtualGraphMode::Manual;
-            } else {
-              self.popart_options_.virtualGraphMode =
-                  ipu::VirtualGraphMode::Off;
-            }
-          },
-          R"DOC(
+      .def_property("enable_manual_shard",
+                    [](const ipu::IpuStrategy &self) {
+                      return self.popart_options_.virtualGraphMode ==
+                             ipu::VirtualGraphMode::Manual;
+                    },
+                    [](ipu::IpuStrategy &self, bool enable_ipu_shard) {
+                      if (enable_ipu_shard) {
+                        self.popart_options_.virtualGraphMode =
+                            ipu::VirtualGraphMode::Manual;
+                      } else {
+                        self.popart_options_.virtualGraphMode =
+                            ipu::VirtualGraphMode::Off;
+                      }
+                    },
+                    R"DOC(
             Bool type, True enable model sharding, otherwise disable. Default "
             "False.
           )DOC");

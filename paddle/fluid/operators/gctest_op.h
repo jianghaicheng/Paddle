@@ -67,13 +67,12 @@ class GCTestKernel : public framework::OpKernel<T> {
               input_dims, x_dims, y_dims));
     }
     // broadcast mode check
-   
 
     // blas.GEMM(false, false, x_dims[0], y_dims[1], x_dims[1], alpha,
     //           x->data<T>(), x_dims[1], y->data<T>(), y_dims[1], beta,
     //           out->data<T>(), y_dims[1]);
 
-    VLOG(1)<<"success come to compute gctest!!";
+    VLOG(1) << "success come to compute gctest!!";
   }
 };
 

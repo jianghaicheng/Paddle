@@ -34,12 +34,11 @@ void Analyzer::RunAnalysis(Argument *argument) {
   for (auto &pass : argument->analysis_passes()) {
     if (argument->use_ipu()) {
 #ifdef PADDLE_WITH_IPU
-      if (pass == "inference_op_replace_pass")
-        continue;
+      if (pass == "inference_op_replace_pass") continue;
 #else
       PADDLE_THROW(platform::errors::Unavailable(
-                          "You tried to enable the ipu "
-                          "but did not have the option -DWITH_IPU compiled."));
+          "You tried to enable the ipu "
+          "but did not have the option -DWITH_IPU compiled."));
 #endif
     }
 
