@@ -13,6 +13,7 @@
 // limitations under the License.
 
 // TODO(alleng) add `//clang-format off` in python, add `//NOLINT` for each op
+// TODO(alleng, haicheng) add Ops from AiOnnxOpset11
 // clang-format off
 // Ops from AiGraphcoreOpset1
 OP_DECL(popart_gelu,aiOnnxOpset1.gelu, NONE)
@@ -32,12 +33,12 @@ OP_DECL(popart_nonmaxsuppression, aiOnnxOpset.nonmaxsuppression, ARG(INT,center_
 OP_DECL(popart_qlinearconv, aiOnnxOpset.qlinearconv, ARG(INT_VEC,dilations) ARG(INT,group) ARG(INT_VEC,kernel_shape) ARG(INT_VEC,pads) ARG(INT_VEC,strides) )
 OP_DECL(popart_qlinearmatmul, aiOnnxOpset.qlinearmatmul, NONE)
 OP_DECL(popart_quantizelinear, aiOnnxOpset.quantizelinear, NONE)
-OP_DECL(popart_resize, aiOnnxOpset.resize, ARG(STRING,mode) )
+// OP_DECL(popart_resize, aiOnnxOpset.resize, ARG(STRING,mode) )
 OP_DECL(popart_reversesequence, aiOnnxOpset.reversesequence, ARG(INT,batch_axis) ARG(INT,time_axis) )
 OP_DECL(popart_roialign, aiOnnxOpset.roialign, ARG(STRING,mode) ARG(INT,output_height) ARG(INT,output_width) ARG(INT,sampling_ratio) ARG(FLOAT,spatial_scale) )
 OP_DECL(popart_slice, aiOnnxOpset.slice, NONE)
 OP_DECL(popart_thresholdedrelu, aiOnnxOpset.thresholdedrelu, ARG(FLOAT,alpha) )
-OP_DECL(popart_topk, aiOnnxOpset.topk, ARG(INT,axis) )
+// OP_DECL(popart_topk, aiOnnxOpset.topk, ARG(INT,axis) )
 OP_DECL(popart_upsample, aiOnnxOpset.upsample, ARG(STRING,mode) )
 // Ops from AiOnnxOpset9
 OP_DECL(popart_acosh, aiOnnxOpset.acosh, NONE)

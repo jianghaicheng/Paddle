@@ -21,18 +21,6 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
-std::string GenerateVarName();
-
-Node *MakeVarNode(Graph *graph, Node *node);
-Node *MakeOpNode(Graph *graph, Node *node, const std::string &type,
-                 const std::vector<Node *> &inputs,
-                 const std::vector<Node *> &outputs);
-
-Node *CreateBaseOp(Graph *graph, Node *node, const std::string &type,
-                   const std::vector<Node *> &inputs,
-                   const std::vector<Node *> &outputs,
-                   const AttributeMap &attrs = {});
-
 template <typename T>
 AttributeMap MakeConstAttrMap(std::vector<T> value, std::vector<int64_t> dims,
                               int dtype) {
@@ -48,6 +36,18 @@ AttributeMap MakeConstAttrMapFromValue(T v, std::vector<int64_t> dims,
   }
   return MakeConstAttrMap<T>(std::vector<T>(size, v), dims, dtype);
 }
+
+std::string GenerateVarName();
+
+Node *MakeVarNode(Graph *graph, Node *node);
+Node *MakeOpNode(Graph *graph, Node *node, const std::string &type,
+                 const std::vector<Node *> &inputs,
+                 const std::vector<Node *> &outputs);
+
+Node *CreateBaseOp(Graph *graph, Node *node, const std::string &type,
+                   const std::vector<Node *> &inputs,
+                   const std::vector<Node *> &outputs,
+                   const AttributeMap &attrs = {});
 
 Node *CreateConst(Graph *graph, Node *node, const std::vector<Node *> &inputs,
                   const std::vector<Node *> &outputs,

@@ -55,6 +55,7 @@ class Compiler {
  private:
   std::vector<std::string> GetOpInputs(const OpDesc *op);
   std::vector<std::string> GetOpOutputs(const OpDesc *op);
+  popart::DebugContext BuildDebugContext(const OpDesc *op);
 
  private:
   std::unique_ptr<popart::Builder> builder_;

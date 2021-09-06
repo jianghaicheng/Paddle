@@ -19,8 +19,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ipu {
+
 static constexpr const char *sIpuIndexAttr = "ipu_index";
 static constexpr const char *sIpuStageAttr = "ipu_stage";
+static constexpr const char *sOpIdentifyIdAttr = "op_identify_id";
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

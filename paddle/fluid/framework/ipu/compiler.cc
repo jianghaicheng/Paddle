@@ -64,9 +64,10 @@ void Compiler::RegisterOpFunc() {
      VLOG(10) << "build op:" << op_type << " args " << #Args; \
      auto inputs = GetOpInputs(op_desc);                      \
      auto output_names = GetOpOutputs(op_desc);               \
+     auto debug_context = BuildDebugContext(op_desc);          \
      auto aiOnnxOpset1 = builder_->aiGraphcoreOpset1();       \
      auto aiOnnxOpset = builder_->aiOnnxOpset11();            \
-     auto output_ids = OnnxImpl(inputs Args);                 \
+     auto output_ids = OnnxImpl(inputs Args, debug_context);   \
      SetIpuIndexStage(output_ids, op_desc);                   \
      InsertTensors(output_names, output_ids);                 \
    }},  // NOLINT
@@ -343,6 +344,14 @@ std::vector<std::string> Compiler::GetOpInputs(const OpDesc* op) {
 
 std::vector<std::string> Compiler::GetOpOutputs(const OpDesc* op) {
   return op->Output("__outputs__");
+}
+
+popart::DebugContext Compiler::BuildDebugContext(const OpDesc* op) {
+  auto op_identify_id =
+      BOOST_GET_CONST(std::string, op->GetAttr(sOpIdentifyIdAttr));
+  VLOG(10) << "op_identify_id of op: " << op->Type() << " is "
+           << op_identify_id;
+  return popart::DebugContext(op_identify_id);
 }
 
 }  // namespace ipu
