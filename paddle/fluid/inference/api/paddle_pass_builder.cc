@@ -289,8 +289,8 @@ void CpuPassStrategy::EnableMkldnnBfloat16() {
 }
 
 IpuPassStrategy::IpuPassStrategy() : PassStrategy({}) {
-  passes_.assign({"forward_graph_extract_pass", "popart_canonicalization_pass",
-                  "inference_extract_pass"});
+  passes_.assign(
+      {"inference_attr_extract_pass", "inference_graph_extract_pass"});
 }
 
 }  // namespace paddle

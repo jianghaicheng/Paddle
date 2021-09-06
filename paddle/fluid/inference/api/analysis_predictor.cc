@@ -557,7 +557,8 @@ void AnalysisPredictor::PrepareArgument() {
 #ifdef PADDLE_WITH_IPU
   argument_.SetUseIpu(config_.use_ipu_);
   argument_.SetIpuDeviceNum(config_.ipu_device_num());
-  argument_.SetIpuEnablePipeline(config_.ipu_enable_pipeline_);
+  argument_.SetIpuEnablePipelining(config_.ipu_enable_pipelining_);
+  argument_.SetIpuBatchesPerStep(config_.ipu_batches_per_step_);
 #endif
 
   if (config_.use_mkldnn_) {

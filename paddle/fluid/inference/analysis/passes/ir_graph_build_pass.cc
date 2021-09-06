@@ -70,8 +70,10 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   if (argument->use_ipu()) {
 #ifdef PADDLE_WITH_IPU
     argument->main_graph().SetNotOwned("num_ipus", &argument->ipu_device_num());
-    argument->main_graph().SetNotOwned("enable_pipeline",
-                                       &argument->ipu_enable_pipeline());
+    argument->main_graph().SetNotOwned("enable_pipelining",
+                                       &argument->ipu_enable_pipelining());
+    argument->main_graph().SetNotOwned("batches_per_step",
+                                       &argument->ipu_batches_per_step());
 #else
     PADDLE_THROW(
         platform::errors::Unimplemented("Please compile with WITH_IPU"));

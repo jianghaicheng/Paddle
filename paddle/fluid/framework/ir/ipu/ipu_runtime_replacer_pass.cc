@@ -82,10 +82,6 @@ void IpuRuntimeReplacerPass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_set<const Node*> marked_nodes;
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
-      // Paddle inference
-      if (node->Name() == "feed" || node->Name() == "fetch") {
-        continue;
-      }
       auto* op_desc = node->Op();
       if (op_desc->Type() != "ipu_runtime") {
         marked_nodes.insert(node);

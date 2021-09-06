@@ -32,16 +32,6 @@ void Analyzer::RunAnalysis(Argument *argument) {
                         "analsis_passes is not valid in the argument."));
   const bool disable_logs = argument->disable_logs();
   for (auto &pass : argument->analysis_passes()) {
-    if (argument->use_ipu()) {
-#ifdef PADDLE_WITH_IPU
-      if (pass == "inference_op_replace_pass") continue;
-#else
-      PADDLE_THROW(platform::errors::Unavailable(
-          "You tried to enable the ipu "
-          "but did not have the option -DWITH_IPU compiled."));
-#endif
-    }
-
     if (!disable_logs) {
       string::PrettyLogH1("--- Running analysis [%s]", pass);
     }

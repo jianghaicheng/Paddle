@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class InferenceExtractPass : public IPUPassBase {
+class InferenceAttrExtractPass : public IPUPassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 };

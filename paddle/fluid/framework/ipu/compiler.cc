@@ -112,10 +112,6 @@ void Compiler::LowerBody(const ir::Graph* graph) {
     auto* op_desc = node->Op();
     auto op_type = op_desc->Type();
     VLOG(10) << "node->type: " << op_type;
-    // Paddle inference
-    if (op_type == "feed" || op_type == "fetch") {
-      continue;
-    }
 
     auto itr = name_function_.find(op_type);
     if (itr != name_function_.end()) {
@@ -234,10 +230,6 @@ void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope_) {
     if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
       if (node->Var()->Persistable()) {
         auto var_name = node->Var()->Name();
-        // Paddle inference
-        if (var_name == "feed" || var_name == "fetch") {
-          continue;
-        }
         auto var = scope_->FindVar(var_name);
         if (var) {
           auto tensor = var->Get<framework::LoDTensor>();
