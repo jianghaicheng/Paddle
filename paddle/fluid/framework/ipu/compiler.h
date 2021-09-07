@@ -64,6 +64,7 @@ class Compiler {
   std::unordered_map<std::string, OpFunc> name_function_;
 
   // stateful variable
+  std::map<std::string, popart::TensorId> weights_;
   std::map<std::string, popart::TensorId> tensors_;
   std::vector<popart::TensorId> inputs_;
   std::vector<popart::TensorId> outputs_;
