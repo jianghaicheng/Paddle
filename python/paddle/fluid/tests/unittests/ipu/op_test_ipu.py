@@ -20,6 +20,22 @@ from paddle.fluid.tests.unittests.op_test import _set_use_system_allocator
 
 SEED = 2021
 
+# TODO(alleng) add more dtype
+map_np_dtype_to_fluid_dtype = {
+    'bool': "bool",
+    'int8': "int8",
+    'uint8': "uint8",
+    "int32": "int32",
+    "int64": "int64",
+    "float16": "float16",
+    "float32": "float32",
+    "float64": "float64",
+}
+
+
+def np_dtype_to_fluid_str(dtype):
+    return map_np_dtype_to_fluid_dtype[dtype.name]
+
 
 class IPUOpTest(unittest.TestCase):
     @classmethod
