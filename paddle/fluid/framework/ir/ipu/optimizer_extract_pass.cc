@@ -37,7 +37,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       // graph usually have multiple optimizer node for different parameter,
       // and these node have the same type and attr value usually
       if ((op_role == static_cast<int>(framework::OpRole::kOptimize))) {
-        ipu_backend->SetOptimizerType(node->Op()->Type());
+        ipu_backend->GetExecutor().SetOptimizerType(node->Op()->Type());
         VLOG(10) << "found optimizer type: " << node->Op()->Type();
 
         for (const std::string& attr_name : node->Op()->AttrNames()) {
@@ -46,7 +46,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
           if (attr_type == proto::AttrType::FLOAT) {
             auto attr_value =
                 BOOST_GET_CONST(float, node->Op()->GetAttr(attr_name));
-            ipu_backend->SetOptimizerAttr(attr_name, attr_value);
+            ipu_backend->GetExecutor().SetOptimizerAttr(attr_name, attr_value);
           } else {
             VLOG(10) << "Skip " << attr_type;
           }
@@ -58,7 +58,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
                               "In op(%s), find input(LearningRate) failed.",
                               node->Op()->Type()));
 
-        ipu_backend->SetLRVarName(lr_var_name[0]);
+        ipu_backend->GetExecutor().SetLRVarName(lr_var_name[0]);
       }
 
       if ((op_role == static_cast<int>(framework::OpRole::kLoss))) {
@@ -73,7 +73,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
                           platform::errors::InvalidArgument(
                               "Can only support one loss name"));
 
-        ipu_backend->SetLoss(losses_name[0]);
+        ipu_backend->GetExecutor().SetLoss(losses_name[0]);
       }
     }
   }

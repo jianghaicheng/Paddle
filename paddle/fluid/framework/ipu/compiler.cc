@@ -64,10 +64,10 @@ void Compiler::RegisterOpFunc() {
      VLOG(10) << "build op:" << op_type << " args " << #Args; \
      auto inputs = GetOpInputs(op_desc);                      \
      auto output_names = GetOpOutputs(op_desc);               \
-     auto debug_context = BuildDebugContext(op_desc);          \
+     auto debug_context = BuildDebugContext(op_desc);         \
      auto aiOnnxOpset1 = builder_->aiGraphcoreOpset1();       \
      auto aiOnnxOpset = builder_->aiOnnxOpset11();            \
-     auto output_ids = OnnxImpl(inputs Args, debug_context);   \
+     auto output_ids = OnnxImpl(inputs Args, debug_context);  \
      SetIpuIndexStage(output_ids, op_desc);                   \
      InsertTensors(output_names, output_ids);                 \
    }},  // NOLINT
@@ -198,7 +198,8 @@ void Compiler::InitInputs(ir::Graph* graph,
           auto data_type = VarType2PopartType(var_desc->GetDataType());
           popart::TensorInfo input_info{data_type, var_desc->GetShape()};
           VLOG(10) << "popart input_info = " << input_info;
-          popart::TensorId tensor_id = builder_->addInputTensor(input_info);
+          popart::TensorId tensor_id =
+              builder_->addInputTensor(input_info, feed_name);
           VLOG(10) << "popart input tensor id = " << tensor_id;
           inputs_.push_back(tensor_id);
           tensors_.emplace(var_desc->Name(), tensor_id);
@@ -242,7 +243,6 @@ void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope_) {
           popart::ConstVoidData const_data{tensor.data<void>(), tensor_info};
           popart::TensorId result =
               builder_->addInitializedInputTensor(const_data, var_name);
-          weights_.emplace(var_name, result);
           tensors_.emplace(var_name, result);
         }
       }
