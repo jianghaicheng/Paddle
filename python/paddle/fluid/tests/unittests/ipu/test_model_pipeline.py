@@ -24,9 +24,8 @@ paddle.enable_static()
 SEED = 2021
 
 
-#@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-#                 "core is not compiled with IPU")
-@unittest.skipIf(True, "core is not compiled with IPU")
+@unittest.skipIf(not paddle.is_compiled_with_ipu(),
+                 "core is not compiled with IPU")
 class TestCastNet(unittest.TestCase):
     def _test(self, run_ipu=True):
         scope = fluid.core.Scope()
