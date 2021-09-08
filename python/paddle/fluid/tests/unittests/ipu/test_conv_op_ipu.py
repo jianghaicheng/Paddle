@@ -115,8 +115,6 @@ class TestBase(IPUOpTest):
                 res0.flatten(), res1.flatten(), atol=self.atol))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestTrainCase0(TestBase):
     def set_training(self):
         self.is_training = True

@@ -44,3 +44,6 @@ scripts
 sdk/
 demos/
 *.onnx
+*.pdmodel
+
+__pycache__

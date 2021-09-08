@@ -12,42 +12,58 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
 
 import numpy as np
-import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
+import paddle.optimizer
+import paddle.static
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 paddle.enable_static()
-SEED = 2021
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
-class TestReduce_mean(unittest.TestCase):
-    def _test_reduce_mean(self, run_ipu=True):
+class TestBase(IPUOpTest):
+    def setUp(self):
+        self.set_atol()
+        self.set_training()
+        self.set_feed()
+        self.set_attrs()
+
+    def set_feed(self):
+        self.feed_shape = []
+        self.feed_shape.append([1, 3, 10, 10])
+
+        self.feed = {}
+        self.feed["in_0"] = np.random.uniform(
+            size=self.feed_shape[0]).astype(np.float32)
+
+        self.feed_list = list(self.feed.keys())
+
+    def set_attrs(self):
+        self.attrs = {}
+
+    def _test_base(self, run_ipu=True):
         scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
+        SEED = self.SEED
         main_prog.random_seed = SEED
         startup_prog.random_seed = SEED
-        np.random.seed(SEED)
 
-        np_data = np.random.uniform(
-            low=0, high=1, size=(1, 3, 10, 10)).astype(np.float32)
         with fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                data = paddle.static.data(
-                    name="data",
-                    shape=[1, 3, 10, 10],
-                    dtype='float32', )
-                out = paddle.fluid.layers.reduce_mean(data)
-                # out = paddle.fluid.layers.reduce_mean(data, dim=0)
-                # out = paddle.fluid.layers.reduce_mean(data, dim=1)
-                # out = paddle.fluid.layers.reduce_mean(data, dim=2)
-                # out = paddle.fluid.layers.reduce_mean(data, dim=2, keep_dim=True)
+                x = paddle.static.data(
+                    name=self.feed_list[0],
+                    shape=self.feed_shape[0],
+                    dtype='float32')
+                out = paddle.fluid.layers.mean(x)
+
+                fetch_list = [out.name]
 
             if run_ipu:
                 place = paddle.IPUPlace()
@@ -57,24 +73,25 @@ class TestReduce_mean(unittest.TestCase):
             exe.run(startup_prog)
 
             if run_ipu:
-                feed_list = [data.name]
-                fetch_list = [out.name]
+                feed_list = self.feed_list
                 ipu_strategy = compiler.get_ipu_strategy()
-                ipu_strategy.is_training = False
+                ipu_strategy.is_training = self.is_training
                 program = compiler.IpuCompiler(
-                    main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
-                                                                  fetch_list)
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
             else:
                 program = main_prog
 
-            result = exe.run(program, feed={'data': np_data}, fetch_list=[out])
+            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
             return result[0]
 
-    def test_reduce_mean(self):
-        ipu_res = self._test_reduce_mean(True)
-        cpu_res = self._test_reduce_mean(False)
+    def test_base(self):
+        res0 = self._test_base(True)
+        res1 = self._test_base(False)
 
-        self.assertTrue(np.allclose(ipu_res, cpu_res, atol=1e-4))
+        self.assertTrue(
+            np.allclose(
+                res0.flatten(), res1.flatten(), atol=self.atol))
 
 
 if __name__ == "__main__":

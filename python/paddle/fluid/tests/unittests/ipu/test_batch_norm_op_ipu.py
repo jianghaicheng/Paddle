@@ -36,40 +36,45 @@ class TestBase(IPUOpTest):
 
     def set_feed(self):
         self.feed_shape = []
-        self.feed_shape.append([3, 3, 3])
-        self.feed_shape.append([3])
+        self.feed_shape.append([1, 3, 10, 10])
 
         self.feed = {}
         self.feed["in_0"] = np.random.uniform(
             size=self.feed_shape[0]).astype(np.float32)
-        self.feed["in_1"] = np.random.uniform(
-            size=self.feed_shape[1]).astype(np.float32)
 
         self.feed_list = list(self.feed.keys())
 
     def set_attrs(self):
         self.attrs = {}
-        self.attrs['axis'] = -1
+        self.attrs['is_test'] = False
+        self.attrs['data_layout'] = 'NCHW'
+        self.attrs['in_place'] = False
 
     def _test_base(self, run_ipu=True):
         scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        main_prog.random_seed = self.SEED
-        startup_prog.random_seed = self.SEED
+        SEED = self.SEED
+        main_prog.random_seed = SEED
+        startup_prog.random_seed = SEED
 
         with fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                a = paddle.static.data(
+                x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype='float32')
-                b = paddle.static.data(
-                    name=self.feed_list[1],
-                    shape=self.feed_shape[1],
-                    dtype='float32')
-                out = paddle.fluid.layers.elementwise_add(a, b, **self.attrs)
-                fetch_list = [out.name]
+                conv1 = paddle.static.nn.conv2d(
+                    x, num_filters=3, filter_size=3, bias_attr=False)
+                out = paddle.fluid.layers.batch_norm(conv1)
+
+                if self.is_training:
+                    loss = paddle.mean(out)
+                    adam = paddle.optimizer.Adam(learning_rate=1e-2)
+                    adam.minimize(loss)
+                    fetch_list = [loss.name]
+                else:
+                    fetch_list = [out.name]
 
             if run_ipu:
                 place = paddle.IPUPlace()
@@ -88,37 +93,59 @@ class TestBase(IPUOpTest):
             else:
                 program = main_prog
 
-            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
-            return result[0]
+            if self.is_training:
+                result = []
+                for _ in range(self.epoch):
+                    loss_res = exe.run(program,
+                                       feed=self.feed,
+                                       fetch_list=fetch_list)
+                    result.append(loss_res[0])
+                return np.array(result)
+            else:
+                result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
+                return result[0]
 
     def test_base(self):
         res0 = self._test_base(True)
         res1 = self._test_base(False)
 
-        self.assertTrue(np.allclose(res0, res1, atol=self.atol))
-
-        self.assertTrue(res0.shape == res1.shape)
+        self.assertTrue(
+            np.allclose(
+                res0.flatten(), res1.flatten(), atol=self.atol))
 
 
 class TestCase1(TestBase):
     def set_attrs(self):
         self.attrs = {}
-        self.attrs['axis'] = 1
+        self.attrs['is_test'] = True
+        self.attrs['data_layout'] = 'NCHW'
+        self.attrs['in_place'] = False
 
 
 class TestCase2(TestBase):
-    def set_feed(self):
-        self.feed_shape = []
-        self.feed_shape.append([3, 3, 3, 3])
-        self.feed_shape.append([3, 3, 3, 3])
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['is_test'] = True
+        self.attrs['data_layout'] = 'NCHW'
+        self.attrs['in_place'] = True
 
-        self.feed = {}
-        self.feed["in_0"] = np.random.uniform(
-            size=self.feed_shape[0]).astype(np.float32)
-        self.feed["in_1"] = np.random.uniform(
-            size=self.feed_shape[1]).astype(np.float32)
 
-        self.feed_list = list(self.feed.keys())
+class TestTrainCase0(TestBase):
+    def set_training(self):
+        self.is_training = True
+        self.epoch = 10
+
+
+class TestTrainCase1(TestBase):
+    def set_training(self):
+        self.is_training = True
+        self.epoch = 10
+
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['is_test'] = True
+        self.attrs['data_layout'] = 'NCHW'
+        self.attrs['in_place'] = False
 
 
 if __name__ == "__main__":

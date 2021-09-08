@@ -38,6 +38,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       // and these node have the same type and attr value usually
       if ((op_role == static_cast<int>(framework::OpRole::kOptimize))) {
         ipu_backend->SetOptimizerType(node->Op()->Type());
+        VLOG(10) << "found optimizer type: " << node->Op()->Type();
 
         for (const std::string& attr_name : node->Op()->AttrNames()) {
           auto attr_type = node->Op()->GetAttrType(attr_name);
@@ -61,6 +62,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       }
 
       if ((op_role == static_cast<int>(framework::OpRole::kLoss))) {
+        VLOG(10) << "found loss op type: " << node->Op()->Type();
         auto outputs = node->Op()->Outputs();
         PADDLE_ENFORCE_EQ(
             outputs.size(), 1,

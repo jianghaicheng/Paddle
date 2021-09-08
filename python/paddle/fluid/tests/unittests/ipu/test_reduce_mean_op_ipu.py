@@ -36,39 +36,35 @@ class TestBase(IPUOpTest):
 
     def set_feed(self):
         self.feed_shape = []
-        self.feed_shape.append([3, 3, 3])
-        self.feed_shape.append([3])
+        self.feed_shape.append([2, 4])
 
         self.feed = {}
         self.feed["in_0"] = np.random.uniform(
             size=self.feed_shape[0]).astype(np.float32)
-        self.feed["in_1"] = np.random.uniform(
-            size=self.feed_shape[1]).astype(np.float32)
 
         self.feed_list = list(self.feed.keys())
 
     def set_attrs(self):
         self.attrs = {}
-        self.attrs['axis'] = -1
+        self.attrs['dim'] = None
+        self.attrs['keep_dim'] = False
 
     def _test_base(self, run_ipu=True):
         scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        main_prog.random_seed = self.SEED
-        startup_prog.random_seed = self.SEED
+        SEED = self.SEED
+        main_prog.random_seed = SEED
+        startup_prog.random_seed = SEED
 
         with fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                a = paddle.static.data(
+                x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype='float32')
-                b = paddle.static.data(
-                    name=self.feed_list[1],
-                    shape=self.feed_shape[1],
-                    dtype='float32')
-                out = paddle.fluid.layers.elementwise_add(a, b, **self.attrs)
+                out = paddle.fluid.layers.reduce_mean(x, **self.attrs)
+
                 fetch_list = [out.name]
 
             if run_ipu:
@@ -95,30 +91,68 @@ class TestBase(IPUOpTest):
         res0 = self._test_base(True)
         res1 = self._test_base(False)
 
-        self.assertTrue(np.allclose(res0, res1, atol=self.atol))
-
-        self.assertTrue(res0.shape == res1.shape)
+        self.assertTrue(
+            np.allclose(
+                res0.flatten(), res1.flatten(), atol=self.atol))
 
 
 class TestCase1(TestBase):
     def set_attrs(self):
         self.attrs = {}
-        self.attrs['axis'] = 1
+        self.attrs['dim'] = 0
+        self.attrs['keep_dim'] = False
 
 
 class TestCase2(TestBase):
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['dim'] = -1
+        self.attrs['keep_dim'] = False
+
+
+class TestCase3(TestBase):
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['dim'] = 1
+        self.attrs['keep_dim'] = False
+
+
+class TestCase4(TestBase):
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['dim'] = 1
+        self.attrs['keep_dim'] = True
+
+
+class TestCase5(TestBase):
     def set_feed(self):
         self.feed_shape = []
-        self.feed_shape.append([3, 3, 3, 3])
-        self.feed_shape.append([3, 3, 3, 3])
+        self.feed_shape.append([2, 2, 2])
 
         self.feed = {}
         self.feed["in_0"] = np.random.uniform(
             size=self.feed_shape[0]).astype(np.float32)
-        self.feed["in_1"] = np.random.uniform(
-            size=self.feed_shape[1]).astype(np.float32)
 
         self.feed_list = list(self.feed.keys())
+
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['dim'] = [1, 2]
+        self.attrs['keep_dim'] = False
+
+
+class TestCase6(TestCase5):
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['dim'] = [0, 1]
+        self.attrs['keep_dim'] = False
+
+
+class TestCase7(TestCase5):
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['dim'] = [0, 1]
+        self.attrs['keep_dim'] = True
 
 
 if __name__ == "__main__":
