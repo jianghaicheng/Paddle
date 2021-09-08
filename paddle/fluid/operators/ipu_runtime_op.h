@@ -43,7 +43,7 @@ class IpuRuntimeKernel : public framework::OpKernel<T> {
     auto output_names = ctx.OutputNames("FetchList");
     for (size_t i = 0; i < outputs.size(); ++i) {
       auto* out = outputs[i];
-      auto oshape = ipu_backend->GetTensorShape(output_names[i]);
+      auto oshape = ipu_backend->GetExecutor().GetOutputShape(output_names[i]);
       out->Resize(framework::make_ddim(oshape));
       // TODO(alleng) support muti-output dtypes
       // maybe get dtype from ipu_backend

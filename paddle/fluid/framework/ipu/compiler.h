@@ -47,6 +47,7 @@ class Compiler {
   std::vector<popart::TensorId> GetOutputs() { return outputs_; }
   std::map<std::string, popart::TensorId> GetTensors() { return tensors_; }
   std::vector<int64_t> GetTensorShape(const std::string &name);
+  std::map<std::string, std::vector<int64_t>> GetOutputsShape();
 
   std::string GetModelProto();
   void SaveModelProto(const std::string &path);
@@ -65,6 +66,12 @@ class Compiler {
 
   // stateful variable
   std::map<std::string, popart::TensorId> tensors_;
+
+  // feed_list_ & fetch_list save paddle tensor id
+  std::vector<std::string> feed_list_;
+  std::vector<std::string> fetch_list_;
+
+  // inputs_ & outputs_ save popart tensor id
   std::vector<popart::TensorId> inputs_;
   std::vector<popart::TensorId> outputs_;
 };

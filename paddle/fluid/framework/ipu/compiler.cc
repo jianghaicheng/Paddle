@@ -190,6 +190,7 @@ void Compiler::LowerBody(const ir::Graph* graph) {
 void Compiler::InitInputs(ir::Graph* graph,
                           const std::vector<std::string>& feed_list) {
   for (const auto& feed_name : feed_list) {
+    feed_list_.push_back(feed_name);
     for (const ir::Node* n : graph->Nodes()) {
       if (n->IsVar()) {
         auto* var_desc = n->Var();
@@ -211,6 +212,7 @@ void Compiler::InitInputs(ir::Graph* graph,
 
 void Compiler::InitOutputs(const std::vector<std::string>& fetch_list) {
   for (const auto& fetch_name : fetch_list) {
+    fetch_list_.push_back(fetch_name);
     auto tensor = tensors_.find(fetch_name);
     PADDLE_ENFORCE_NE(tensor, tensors_.end(),
                       platform::errors::NotFound(
@@ -307,6 +309,15 @@ void Compiler::SetIpuIndexStage(const std::string& tensor_id,
 
 std::vector<int64_t> Compiler::GetTensorShape(const std::string& name) {
   return builder_->getTensorShape(tensors_[name]);
+}
+
+std::map<std::string, std::vector<int64_t>> Compiler::GetOutputsShape() {
+  std::map<std::string, std::vector<int64_t>> outputs_shape;
+  for (const auto &fetch_name : fetch_list_) {
+    auto shape = GetTensorShape(fetch_name);
+    outputs_shape[fetch_name] = shape;
+  }
+  return outputs_shape;
 }
 
 std::string Compiler::GetModelProto() { return builder_->getModelProto(); }

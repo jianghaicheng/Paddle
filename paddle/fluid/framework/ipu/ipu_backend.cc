@@ -59,6 +59,7 @@ void IpuBackend::Compile(ir::Graph* graph,
   compiler_->LowerWeights(graph, scope_);
   compiler_->LowerBody(graph);
   compiler_->InitOutputs(fetch_list);
+  executor_->SetOutputsShape(compiler_->GetOutputsShape());
   VLOG(10) << "leave IpuBackend::Compile";
 }
 
@@ -82,14 +83,6 @@ void IpuBackend::Prepare() {
   auto tensors = compiler_->GetTensors();
   auto outputs = compiler_->GetOutputs();
   executor_->Prepare(proto, tensors, outputs, device_);
-}
-
-std::vector<int64_t> IpuBackend::GetTensorShape(const std::string& var_name) {
-  auto oshape = compiler_->GetTensorShape(var_name);
-  if (ipu_strategy_->batches_per_step != 1) {
-    oshape.insert(oshape.begin(), ipu_strategy_->batches_per_step);
-  }
-  return oshape;
 }
 
 void IpuBackend::SetScope(Scope& scope) {
