@@ -36,10 +36,7 @@ class TestBase(IPUOpTest):
         self.set_attrs()
 
     def set_feed(self):
-        self.feed = {
-            "x": np.random.uniform(size=[3, 7]).astype('float32'),
-            "label": np.arange(3).reshape([3]).astype(np.int64),
-        }
+        self.feed = {}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed.values()]
@@ -49,7 +46,12 @@ class TestBase(IPUOpTest):
         ]
 
     def set_attrs(self):
-        self.attrs = {'soft_label': False, }
+        self.attrs = {
+            'name': 'x',
+            'shape': [1, 3, 3, 3],
+            'dtype': 'float32',
+            'value': 0.3,
+        }
 
     def _test_base(self, run_ipu=True):
         scope = fluid.core.Scope()
@@ -61,26 +63,9 @@ class TestBase(IPUOpTest):
 
         with fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                x = paddle.static.data(
-                    name=self.feed_list[0],
-                    shape=self.feed_shape[0],
-                    dtype=self.feed_dtype[0])
+                x = paddle.fluid.layers.fill_constant(**self.attrs)
+                out = paddle.fluid.layers.elementwise_add(x, x)
 
-                # [warning] Copying (host) tensor input/1 from INT64 to INT32.
-                #  Will only warn once
-                if run_ipu:
-                    label = paddle.static.data(
-                        name=self.feed_list[1],
-                        shape=self.feed_shape[1],
-                        dtype='int32')
-                else:
-                    label = paddle.static.data(
-                        name=self.feed_list[1],
-                        shape=self.feed_shape[1],
-                        dtype='int64')
-
-                out = fluid.layers.cross_entropy(
-                    input=x, label=label, **self.attrs)
                 fetch_list = [out.name]
 
             if run_ipu:
@@ -104,8 +89,8 @@ class TestBase(IPUOpTest):
             return result[0]
 
     def test_base(self):
-        res0 = self._test_base(True)
-        res1 = self._test_base(False)
+        res0 = self._test_base(False)
+        res1 = self._test_base(True)
 
         self.assertTrue(
             np.allclose(
@@ -117,15 +102,11 @@ class TestBase(IPUOpTest):
 class TestCase1(TestBase):
     def set_attrs(self):
         self.attrs = {
-            'soft_label': False,
-            'ignore_index': 1,
+            'name': 'x',
+            'shape': [1, 3, 3, 3],
+            'dtype': 'int32',
+            'value': 3.0,
         }
-
-
-@unittest.skip("soft_label=True id not supported")
-class TestCase2(TestBase):
-    def set_attrs(self):
-        self.attrs = {'soft_label': True, }
 
 
 if __name__ == "__main__":

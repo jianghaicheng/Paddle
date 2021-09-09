@@ -35,10 +35,12 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
         self.set_attrs()
 
+    def set_atol(self):
+        self.atol = 1e-3
+
     def set_feed(self):
         self.feed = {
-            "x": np.random.uniform(size=[3, 7]).astype('float32'),
-            "label": np.arange(3).reshape([3]).astype(np.int64),
+            "x": np.random.uniform(size=[1, 3, 10, 10]).astype('float32')
         }
 
     def set_feed_attr(self):
@@ -49,7 +51,7 @@ class TestBase(IPUOpTest):
         ]
 
     def set_attrs(self):
-        self.attrs = {'soft_label': False, }
+        self.attrs = {"approximate": False}
 
     def _test_base(self, run_ipu=True):
         scope = fluid.core.Scope()
@@ -65,22 +67,8 @@ class TestBase(IPUOpTest):
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype=self.feed_dtype[0])
+                out = paddle.fluid.layers.gelu(x, **self.attrs)
 
-                # [warning] Copying (host) tensor input/1 from INT64 to INT32.
-                #  Will only warn once
-                if run_ipu:
-                    label = paddle.static.data(
-                        name=self.feed_list[1],
-                        shape=self.feed_shape[1],
-                        dtype='int32')
-                else:
-                    label = paddle.static.data(
-                        name=self.feed_list[1],
-                        shape=self.feed_shape[1],
-                        dtype='int64')
-
-                out = fluid.layers.cross_entropy(
-                    input=x, label=label, **self.attrs)
                 fetch_list = [out.name]
 
             if run_ipu:
@@ -104,8 +92,8 @@ class TestBase(IPUOpTest):
             return result[0]
 
     def test_base(self):
-        res0 = self._test_base(True)
-        res1 = self._test_base(False)
+        res0 = self._test_base(False)
+        res1 = self._test_base(True)
 
         self.assertTrue(
             np.allclose(
@@ -114,18 +102,10 @@ class TestBase(IPUOpTest):
         self.assertTrue(res0.shape == res1.shape)
 
 
+@unittest.skip('approximate=True is not supported')
 class TestCase1(TestBase):
     def set_attrs(self):
-        self.attrs = {
-            'soft_label': False,
-            'ignore_index': 1,
-        }
-
-
-@unittest.skip("soft_label=True id not supported")
-class TestCase2(TestBase):
-    def set_attrs(self):
-        self.attrs = {'soft_label': True, }
+        self.attrs = {"approximate": True}
 
 
 if __name__ == "__main__":

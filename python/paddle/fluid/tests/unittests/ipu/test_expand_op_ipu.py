@@ -36,10 +36,7 @@ class TestBase(IPUOpTest):
         self.set_attrs()
 
     def set_feed(self):
-        self.feed = {
-            "x": np.random.uniform(size=[3, 7]).astype('float32'),
-            "label": np.arange(3).reshape([3]).astype(np.int64),
-        }
+        self.feed = {"x": np.random.uniform(size=[2, 3, 1]).astype('float32')}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed.values()]
@@ -49,7 +46,7 @@ class TestBase(IPUOpTest):
         ]
 
     def set_attrs(self):
-        self.attrs = {'soft_label': False, }
+        self.attrs = {"expand_times": [1, 2, 2]}
 
     def _test_base(self, run_ipu=True):
         scope = fluid.core.Scope()
@@ -65,22 +62,8 @@ class TestBase(IPUOpTest):
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype=self.feed_dtype[0])
+                out = paddle.fluid.layers.expand(x, **self.attrs)
 
-                # [warning] Copying (host) tensor input/1 from INT64 to INT32.
-                #  Will only warn once
-                if run_ipu:
-                    label = paddle.static.data(
-                        name=self.feed_list[1],
-                        shape=self.feed_shape[1],
-                        dtype='int32')
-                else:
-                    label = paddle.static.data(
-                        name=self.feed_list[1],
-                        shape=self.feed_shape[1],
-                        dtype='int64')
-
-                out = fluid.layers.cross_entropy(
-                    input=x, label=label, **self.attrs)
                 fetch_list = [out.name]
 
             if run_ipu:
@@ -104,8 +87,8 @@ class TestBase(IPUOpTest):
             return result[0]
 
     def test_base(self):
-        res0 = self._test_base(True)
-        res1 = self._test_base(False)
+        res0 = self._test_base(False)
+        res1 = self._test_base(True)
 
         self.assertTrue(
             np.allclose(
@@ -114,18 +97,62 @@ class TestBase(IPUOpTest):
         self.assertTrue(res0.shape == res1.shape)
 
 
+# TODO(alleng)
+@unittest.skip("raise runtime exception for poplar")
 class TestCase1(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            'soft_label': False,
-            'ignore_index': 1,
-        }
+    def set_feed(self):
+        self.feed = {"x": np.random.uniform(size=[2, 3, 1]).astype('float32')}
 
+    def set_feed_attr(self):
+        self.feed_shape = [x.shape for x in self.feed.values()]
+        self.feed_list = list(self.feed.keys())
+        self.feed_dtype = [
+            np_dtype_to_fluid_str(x.dtype) for x in self.feed.values()
+        ]
 
-@unittest.skip("soft_label=True id not supported")
-class TestCase2(TestBase):
     def set_attrs(self):
-        self.attrs = {'soft_label': True, }
+        self.attrs = {}
+
+    def _test_base(self, run_ipu=True):
+        scope = fluid.core.Scope()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        SEED = self.SEED
+        main_prog.random_seed = SEED
+        startup_prog.random_seed = SEED
+
+        with fluid.scope_guard(scope):
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.static.data(
+                    name=self.feed_list[0],
+                    shape=self.feed_shape[0],
+                    dtype=self.feed_dtype[0])
+                expand_times = fluid.layers.fill_constant(
+                    shape=[len(self.feed_shape[0])], dtype="int32", value=2)
+                out = paddle.fluid.layers.expand(
+                    x, expand_times=expand_times, **self.attrs)
+
+                fetch_list = [out.name]
+
+            if run_ipu:
+                place = paddle.IPUPlace()
+            else:
+                place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
+
+            if run_ipu:
+                feed_list = self.feed_list
+                ipu_strategy = compiler.get_ipu_strategy()
+                ipu_strategy.is_training = self.is_training
+                program = compiler.IpuCompiler(
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+            else:
+                program = main_prog
+
+            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
+            return result[0]
 
 
 if __name__ == "__main__":

@@ -49,7 +49,22 @@ class IpuRuntimeKernel : public framework::OpKernel<T> {
       // maybe get dtype from ipu_backend
       out->mutable_data<T>(ctx.GetPlace());
     }
+
     ipu_backend->Run(inputs, outputs);
+
+    // resize tensor when tensor.dims() is empty
+    for (size_t i = 0; i < outputs.size(); ++i) {
+      auto* out = outputs[i];
+      if (out->dims().size() == 0) {
+        auto tensor_dtype = out->type();
+        auto sizeof_dtype = framework::SizeOfType(tensor_dtype);
+        int64_t dim = out->memory_size() / sizeof_dtype;
+        out->Resize({dim});
+        VLOG(10) << "set ipu_runtime_op output: " << output_names[i]
+                 << " dims from () to: "
+                 << "(" << dim << ")";
+      }
+    }
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "Please compile WITH_IPU option to enable ipu_runtime op"));

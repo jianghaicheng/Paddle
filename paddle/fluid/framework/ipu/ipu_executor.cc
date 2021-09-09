@@ -152,6 +152,6 @@ float Executor::GetLRFromScope() {
   return tensor.data<float>()[0];
 }
 
-}  // namespace paddle
-}  // namespace framework
 }  // namespace ipu
+}  // namespace framework
+}  // namespace paddle

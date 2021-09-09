@@ -68,13 +68,7 @@ class TestBase(IPUOpTest):
                     x, num_filters=3, filter_size=3, bias_attr=False)
                 out = paddle.fluid.layers.batch_norm(conv1)
 
-                if self.is_training:
-                    loss = paddle.mean(out)
-                    adam = paddle.optimizer.Adam(learning_rate=1e-2)
-                    adam.minimize(loss)
-                    fetch_list = [loss.name]
-                else:
-                    fetch_list = [out.name]
+                fetch_list = [out.name]
 
             if run_ipu:
                 place = paddle.IPUPlace()
@@ -93,17 +87,8 @@ class TestBase(IPUOpTest):
             else:
                 program = main_prog
 
-            if self.is_training:
-                result = []
-                for _ in range(self.epoch):
-                    loss_res = exe.run(program,
-                                       feed=self.feed,
-                                       fetch_list=fetch_list)
-                    result.append(loss_res[0])
-                return np.array(result)
-            else:
-                result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
-                return result[0]
+            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
+            return result[0]
 
     def test_base(self):
         res0 = self._test_base(True)
@@ -128,24 +113,6 @@ class TestCase2(TestBase):
         self.attrs['is_test'] = True
         self.attrs['data_layout'] = 'NCHW'
         self.attrs['in_place'] = True
-
-
-class TestTrainCase0(TestBase):
-    def set_training(self):
-        self.is_training = True
-        self.epoch = 10
-
-
-class TestTrainCase1(TestBase):
-    def set_training(self):
-        self.is_training = True
-        self.epoch = 10
-
-    def set_attrs(self):
-        self.attrs = {}
-        self.attrs['is_test'] = True
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = False
 
 
 if __name__ == "__main__":

@@ -101,7 +101,9 @@ Node *matmul_handler(Graph *graph, Node *node) {
   auto y_shape = GetInputNodeShape("Y", node);
   int x_rank = x_shape.size();
   std::vector<int64_t> perm;
-  if (x_rank == 2) {
+  if (x_rank == 1) {
+    perm = std::vector<int64_t>{0};
+  } else if (x_rank == 2) {
     return CreateGemm(graph, node,
                       {GetInputNode("X", node), GetInputNode("Y", node)},
                       node->outputs, transpose_x, transpose_y, alpha);
