@@ -1,0 +1,69 @@
+### Customer codes
+COLOR_OFF='\033[0m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+BOLD='\033[1m'
+
+### Poplar SDK commandline tool
+alias popsdk-activate='. $HOME/.local/bin/popsdk-activate'
+alias popsdk-clean='. $HOME/.local/bin/popsdk-clean'
+export PYTHONPATH=$PYTHONPATH:poplar_sdk/pse_tools/popsdk/artifactory_api
+export PATH=$PATH:$HOME/.local/bin
+
+### Poplar SDK 2.1
+source poplar-sdk/setup.bash
+export PATH=$PATH:$CPATH
+
+### IPU Config
+# Use `vipu list partition` to see partition ID
+export IPUOF_VIPU_API_PARTITION_ID="YOUR PARTITION ID"
+# Host name or IP address
+export IPUOF_VIPU_API_HOST="YOUR VIPU HOST"
+
+# Or equivalently, use:
+#   `mkdir -p /home/$USER/.ipuof.conf.d && \
+#       vipu get partition $IPUOF_VIPU_API_PARTITION_ID -H $IPUOF_VIPU_API_HOST --gcd 0 --ipu-configs > /home/$USER/.ipuof.conf.d/your_pod.conf`
+#
+# to set up IPU servers
+#
+# export IPUOF_CONFIG_PATH="YOUR PATH TO '.ipuof.conf.d/your_podX_ipuof.conf'"
+
+### IPU DOCKER
+function is_in_container() {
+  if [ -f /.dockerenv ]; then
+    echo "true"
+  else
+    echo "false"
+  fi
+}
+export -f is_in_container
+
+IS_IN_DOCKER=$(is_in_container)
+export IS_IN_DOCKER=$IS_IN_DOCKER
+
+if [ "$IS_IN_DOCKER" == "true" ];then
+  echo "Inside docker container"
+  PS1="${RED}[docker-$CONTAINER_NAME]${COLOR_OFF} $PS1"
+  export PS1=$PS1
+fi
+
+### Anaconda Python Env
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('$HOME/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "$HOME/anaconda3/etc/profile.d/conda.sh" ]; then
+        . "$HOME/anaconda3/etc/profile.d/conda.sh"
+    else
+	echo "cannot find '$HOME/anaconda3'!"
+        export PATH="$HOME/anaconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+source conda.env.sh
+source conda.py37.env.sh

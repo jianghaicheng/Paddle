@@ -18,9 +18,9 @@ set(POPART_DIR CACHE PATH "Path to a Popart install")
 set(POPLAR_SDK_DIR CACHE PATH "Path to an extracted SDK archive or to a Poplar & Popart install directory (Will populate POPLAR_DIR and POPART_DIR)")
 
 if(EXISTS ${POPLAR_SDK_DIR})
-  execute_process(COMMAND find ${POPLAR_SDK_DIR} -maxdepth 1 -type d -name "popart*"
+  execute_process(COMMAND find ${POPLAR_SDK_DIR}/ -maxdepth 1 -type d -name "popart*"
     OUTPUT_VARIABLE POPART_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
-  execute_process(COMMAND find ${POPLAR_SDK_DIR} -maxdepth 1 -type d -name "poplar-*" -o -name "poplar"
+  execute_process(COMMAND find ${POPLAR_SDK_DIR}/ -maxdepth 1 -type d -name "poplar-*" -o -name "poplar"
     OUTPUT_VARIABLE POPLAR_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
   if(NOT IS_DIRECTORY "${POPLAR_DIR}")
     message(FATAL_ERROR "Couldn't find a \"poplar\" or \"poplar-*\" folder in '${POPLAR_SDK_DIR}'")
