@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../.." && pwd )"
 
-source utils.sh
+source $ROOT/paddle/scripts/ipu/utils.sh
 
 BUILD=${ROOT}/build
 # ${ROOT}/cmake-build-debug
@@ -9,17 +9,21 @@ mkdir -p $BUILD
 
 cd $BUILD
 # used in find poplar, popart directories
-if [ ! -z "${POPLAR_SDK_DIR}" ];then
+set -x
+if [ $POPLAR_SDK_DIR == "" || ! -z "$POPLAR_SDK_DIR" ];then
   if [ -d "$ROOT/paddle/scripts/ipu/poplar-sdk/poplar_sdk-ubuntu_18_04-2.1.0+617-6bb5f5b742" ];then
     POPLAR_SDK_DIR=$ROOT/paddle/scripts/ipu/poplar-sdk/poplar_sdk-ubuntu_18_04-2.1.0+617-6bb5f5b742/
-  elif [ -d /popskd/ ];then
-    POPLAR_SKD_DIR=/popsdk/
+  elif [ -d /popsdk/ ];then
+    POPLAR_SDK_DIR=/popsdk/
+    # enable Poplar SDK for jekin machine
+    source /popsdk/poplar-ubuntu_18_04-2.1.0+145366-ce995e299d/enable.sh
+    source /popsdk/popart-ubuntu_18_04-2.1.0+145366-ce995e299d/enable.sh
   else
     err "Could not find valid popsdk directoriy!"
     exit 1
   fi
 fi
-
+set +x
 cmake .. -DPY_VERSION=3.7 \
           -DWITH_GPU=OFF \
           -DWITH_TESTING=OFF \
