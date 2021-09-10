@@ -46,15 +46,22 @@ Node *mean_handler(Graph *graph, Node *node) {
 }
 
 Node *pow_handler(Graph *graph, Node *node) {
-  // Op(pow) -> Op(Constant)->Var(const_out)->Op(Pow)
   auto *op = node->Op();
-  auto value_ = BOOST_GET_CONST(float, op->GetAttr("factor"));
-  auto attrs =
-      MakeConstAttrMapFromValue<float>(value_, {1}, ONNXDataType::FLOAT);
-  auto new_node_const = CreateConst(graph, node, {}, {}, attrs);
-  return CreateBaseOp(graph, node, "popart_pow",
-                      {GetInputNode("X", node), new_node_const->outputs[0]},
-                      node->outputs);
+  if (op->HasInput("FactorTensor") && !op->Input("FactorTensor").empty()) {
+    return CreateBaseOp(
+        graph, node, "popart_pow",
+        {GetInputNode("X", node), GetInputNode("FactorTensor", node)},
+        node->outputs);
+  } else {
+    // Op(pow) -> Op(Constant)->Var(const_out)->Op(Pow)
+    auto value_ = BOOST_GET_CONST(float, op->GetAttr("factor"));
+    auto attrs =
+        MakeConstAttrMapFromValue<float>(value_, {1}, ONNXDataType::FLOAT);
+    auto new_node_const = CreateConst(graph, node, {}, {}, attrs);
+    return CreateBaseOp(graph, node, "popart_pow",
+                        {GetInputNode("X", node), new_node_const->outputs[0]},
+                        node->outputs);
+  }
 }
 
 Node *mul_handler(Graph *graph, Node *node) {
@@ -152,9 +159,7 @@ Node *softmax_handler(Graph *graph, Node *node) {
   auto axis_ = BOOST_GET_CONST(int, op->GetAttr("axis"));
   auto axis = int64_t{axis_};
   return CreateBaseOp(graph, node, "popart_softmax", node->inputs,
-                      node->outputs, {
-                                         {"axis", axis},
-                                     });
+                      node->outputs, {{"axis", axis}});
 }
 
 Node *scale_handler(Graph *graph, Node *node) {

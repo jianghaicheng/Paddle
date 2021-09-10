@@ -1,6 +1,7 @@
 cd /paddle/python
 source /popsdk/poplar-ubuntu_18_04-2.1.0+145366-ce995e299d/enable.sh
 source /popsdk/popart-ubuntu_18_04-2.1.0+145366-ce995e299d/enable.sh
+export PYTHONPATH=/paddle/build/python:$PYTHONPATH
 test_dir=/paddle/python/paddle/fluid/tests/unittests/ipu/
 for file in `ls $test_dir | grep -i test`
 do
