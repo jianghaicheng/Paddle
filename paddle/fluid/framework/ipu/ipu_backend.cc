@@ -60,6 +60,7 @@ void IpuBackend::Compile(ir::Graph* graph,
   compiler_->LowerBody(graph);
   compiler_->InitOutputs(fetch_list);
   executor_->SetOutputsShape(compiler_->GetOutputsShape());
+  executor_->SetWeightsInfo(compiler_->GetWeightsInfo());
   VLOG(10) << "leave IpuBackend::Compile";
 }
 
@@ -76,9 +77,6 @@ void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
 }
 
 void IpuBackend::Prepare() {
-  compiler_->SaveModelProto("paddle_model.onnx");
-  VLOG(10) << "Constructing DataFlow\n";
-
   auto proto = compiler_->GetModelProto();
   auto tensors = compiler_->GetTensors();
   auto outputs = compiler_->GetOutputs();

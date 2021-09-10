@@ -104,6 +104,10 @@ void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
   VLOG(10) << "Running...";
   session_->run(stepio);
   VLOG(10) << "Running...done";
+
+  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training) {
+    UpdateHostOptimizer();
+  }
 }
 
 void Executor::SetOptimizerType(const std::string &type) {
@@ -120,6 +124,37 @@ void Executor::SetLoss(const std::string &loss) { opt_info.SetLoss(loss); }
 
 void Executor::SetLRVarName(const std::string &name) {
   opt_info.SetLRVarName(name);
+}
+
+void Executor::SetWeightsInfo(const std::vector<IdToInfo> &info) {
+  weights_info_ = info;
+}
+
+void Executor::UpdateHostOptimizer() {
+  // only support adam currently
+  if (opt_info.GetType() != "adam") {
+    return;
+  }
+
+  session_->weightsToHost();
+
+  popart::WeightsIO weights_read;
+  auto pre_post_fix = GetOptPrePostfix(opt_info.GetType());
+  for (const auto &id_to_info : weights_info_) {
+    for (const auto &pair : pre_post_fix) {
+      auto var_name = id_to_info.first + pair.second;
+      if (scope_->FindVar(var_name) == nullptr) {
+        continue;
+      }
+
+      auto var = scope_->GetVar(var_name);
+      auto data_ptr = var->GetMutable<framework::LoDTensor>()->data<void>();
+      weights_read.insert(pair.first + id_to_info.first,
+                          {data_ptr, id_to_info.second});
+    }
+  }
+  session_->readWeights(weights_read);
+  //session_->modelToHost("paddle_model.onnx");
 }
 
 void Executor::SetIpuStrategy(const IpuStrategy &strategy) {

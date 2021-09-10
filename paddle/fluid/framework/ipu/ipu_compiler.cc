@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ipu/compiler.h"
+#include "paddle/fluid/framework/ipu/ipu_compiler.h"
 
 #include "paddle/fluid/framework/ipu/ipu_utils.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -233,6 +233,11 @@ void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope_) {
     if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
       if (node->Var()->Persistable()) {
         auto var_name = node->Var()->Name();
+        // workround: https://github.com/graphcore/Paddle/issues/151
+        if (tensors_.count(var_name) != 0) {
+          continue;
+        }
+
         auto var = scope_->FindVar(var_name);
         if (var) {
           auto tensor = var->Get<framework::LoDTensor>();
@@ -246,6 +251,7 @@ void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope_) {
           popart::TensorId result =
               builder_->addInitializedInputTensor(const_data, var_name);
           tensors_.emplace(var_name, result);
+          weights_info_.push_back({result, tensor_info});
         }
       }
     }
@@ -318,6 +324,10 @@ std::map<std::string, std::vector<int64_t>> Compiler::GetOutputsShape() {
     outputs_shape[fetch_name] = shape;
   }
   return outputs_shape;
+}
+
+std::vector<IdToInfo>& Compiler::GetWeightsInfo() {
+  return weights_info_;
 }
 
 std::string Compiler::GetModelProto() { return builder_->getModelProto(); }

@@ -67,6 +67,23 @@ std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
   }
 }
 
+std::vector<std::pair<std::string, std::string>>
+GetOptPrePostfix(const std::string& opt_type) {
+  // format: {popart_tensor_id, paddle_tensor_id}, ...
+  std::vector<std::pair<std::string, std::string>> pre_post_fix;
+
+  pre_post_fix.push_back(std::make_pair("", ""));
+  if (opt_type == "sgd") {
+  } else if (opt_type == "adam") {
+    pre_post_fix.push_back(std::make_pair("Accl1___", "_moment1_0"));
+    pre_post_fix.push_back(std::make_pair("Accl2___", "_moment2_0"));
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Optimizer %s is not implemented now.", opt_type));
+  }
+  return pre_post_fix;
+}
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

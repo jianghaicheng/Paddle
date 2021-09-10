@@ -854,6 +854,9 @@ if __name__ == "__main__":
     executor.run(startup_prog)
 
     main_prog = paddle.static.default_main_program()
+    paddle.static.save(main_prog, "model/ernie")
+    paddle.static.load(main_prog, "model/ernie")
+
     if args.run_on_ipu:
         ipu_strategy = compiler.get_ipu_strategy()
         ipu_strategy.num_ipus = args.num_ipus
@@ -890,6 +893,8 @@ if __name__ == "__main__":
 
         res = executor.run(program, feed=feed_dict, fetch_list=[fetch_node])
         results.append(res)
+
+    paddle.static.save(main_prog, "model/ernie")
 
     results = np.asarray(results).flatten()
     if results.size > 32:

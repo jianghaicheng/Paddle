@@ -45,5 +45,6 @@ sdk/
 demos/
 *.onnx
 *.pdmodel
+*.log
 
 __pycache__

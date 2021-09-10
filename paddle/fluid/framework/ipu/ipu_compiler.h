@@ -48,6 +48,7 @@ class Compiler {
   std::map<std::string, popart::TensorId> GetTensors() { return tensors_; }
   std::vector<int64_t> GetTensorShape(const std::string &name);
   std::map<std::string, std::vector<int64_t>> GetOutputsShape();
+  std::vector<IdToInfo>& GetWeightsInfo();
 
   std::string GetModelProto();
   void SaveModelProto(const std::string &path);
@@ -74,6 +75,9 @@ class Compiler {
   // inputs_ & outputs_ save popart tensor id
   std::vector<popart::TensorId> inputs_;
   std::vector<popart::TensorId> outputs_;
+
+  // weights info map
+  std::vector<IdToInfo> weights_info_;
 };
 
 }  // namespace ipu

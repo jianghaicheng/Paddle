@@ -18,7 +18,7 @@ limitations under the License. */
 #include <popart/names.hpp>
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/ipu/compiler.h"
+#include "paddle/fluid/framework/ipu/ipu_compiler.h"
 #include "paddle/fluid/framework/ipu/device.h"
 #include "paddle/fluid/framework/ipu/ipu_executor.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <popart/names.hpp>
 #include <popart/session.hpp>
 
+#include "paddle/fluid/framework/ipu/common.h"
 #include "paddle/fluid/framework/ipu/ipu_optimizer.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
 #include "paddle/fluid/framework/ipu/ipu_utils.h"
@@ -48,6 +49,9 @@ class Executor {
   void SetLR(float lr_rate);
   void SetLRVarName(const std::string &name);
 
+  void SetWeightsInfo(const std::vector<IdToInfo> &info);
+  void UpdateHostOptimizer();
+
   // Scope
   void SetScope(Scope *scope) { scope_ = scope; }
 
@@ -68,6 +72,7 @@ class Executor {
  private:
   Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
+  std::vector<IdToInfo> weights_info_;
   std::map<std::string, std::vector<int64_t>> outputs_shape_;
 };
 

@@ -55,12 +55,15 @@ class OptmizerMetaInfo {
   std::map<std::string, float> attrs_;
 
   // learning rate
-  float lr_rate_;
+  float lr_rate_ = 1.0;
   std::string lr_var_name_;
 };
 
 std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
     const OptmizerMetaInfo &info);
+
+std::vector<std::pair<std::string, std::string>>
+GetOptPrePostfix(const std::string& opt_type);
 
 }  // namespace ipu
 }  // namespace framework
