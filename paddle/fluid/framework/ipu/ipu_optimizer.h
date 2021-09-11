@@ -24,13 +24,15 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
+enum class OptimizerType { SGD = 0, Adam, Undefined };
+
 class OptmizerMetaInfo {
  public:
   OptmizerMetaInfo();
   ~OptmizerMetaInfo();
 
-  void SetType(const std::string &type) { type_ = type; }
-  std::string GetType() const { return type_; }
+  void SetType(const std::string &type);
+  OptimizerType GetType() const { return type_; }
 
   void SetAttr(const std::string &attr, float value);
   float GetAttr(const std::string &attr, float default_value = 0.0f) const;
@@ -46,7 +48,7 @@ class OptmizerMetaInfo {
 
  private:
   // type: adam, sgd, ...
-  std::string type_;
+  OptimizerType type_ = OptimizerType::Undefined;
 
   // loss: loss TensorId
   std::string loss_;
@@ -59,11 +61,14 @@ class OptmizerMetaInfo {
   std::string lr_var_name_;
 };
 
+OptimizerType OptTypeStr2Enum(const std::string type);
+std::string OptTypeEnum2Str(OptimizerType type);
+
 std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
     const OptmizerMetaInfo &info);
 
-std::vector<std::pair<std::string, std::string>>
-GetOptPrePostfix(const std::string& opt_type);
+std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
+    OptimizerType type);
 
 }  // namespace ipu
 }  // namespace framework

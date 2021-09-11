@@ -22,6 +22,10 @@ OptmizerMetaInfo::OptmizerMetaInfo() {}
 
 OptmizerMetaInfo::~OptmizerMetaInfo() {}
 
+void OptmizerMetaInfo::SetType(const std::string &type) {
+  type_ = OptTypeStr2Enum(type);
+}
+
 float OptmizerMetaInfo::GetAttr(const std::string &attr,
                                 float default_value) const {
   if (attrs_.count(attr) == 0) {
@@ -34,13 +38,34 @@ void OptmizerMetaInfo::SetAttr(const std::string &attr, float value) {
   attrs_[attr] = value;
 }
 
+OptimizerType OptTypeStr2Enum(const std::string type) {
+  if (type == "sgd") {
+    return OptimizerType::SGD;
+  } else if (type == "adam") {
+    return OptimizerType::Adam;
+  } else {
+    return OptimizerType::Undefined;
+  }
+}
+
+std::string OptTypeEnum2Str(OptimizerType type) {
+  if (type == OptimizerType::SGD) {
+    return "sgd";
+  } else if (type == OptimizerType::Adam) {
+    return "adam";
+  } else {
+    return "undefined";
+  }
+}
+
 std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
     const OptmizerMetaInfo &opt_meta_info) {
   auto opt_type = opt_meta_info.GetType();
-  PADDLE_ENFORCE_NE(opt_type, "", platform::errors::InvalidArgument(
-                                      "Optimizer type have not been set."));
+  PADDLE_ENFORCE_NE(
+      opt_type, OptimizerType::Undefined,
+      platform::errors::InvalidArgument("Optimizer type have not been set."));
 
-  if (opt_type == "sgd") {
+  if (opt_type == OptimizerType::SGD) {
     auto optimizer = std::make_unique<popart::SGD>(
         popart::OptimizerValue(opt_meta_info.GetLR(), false),
         popart::OptimizerValue(popart::SGD::getUnsetWeightDecay()),
@@ -49,7 +74,7 @@ std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
         popart::OptimizerValue(popart::SGD::getUnsetVelocityScaling()),
         popart::OptimizerValue(popart::SGD::getUnsetLossScaling()));
     return optimizer;
-  } else if (opt_type == "adam") {
+  } else if (opt_type == OptimizerType::Adam) {
     auto optimizer = std::make_unique<popart::Adam>(
         popart::OptimizerValue(opt_meta_info.GetLR(), false),
         popart::OptimizerValue(popart::Adam::getUnsetWeightDecay()),
@@ -63,18 +88,18 @@ std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
     return optimizer;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Optimizer %s is not implemented now.", opt_type));
+        "Optimizer %s is not implemented now.", OptTypeEnum2Str(opt_type)));
   }
 }
 
-std::vector<std::pair<std::string, std::string>>
-GetOptPrePostfix(const std::string& opt_type) {
+std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
+    OptimizerType opt_type) {
   // format: {popart_tensor_id, paddle_tensor_id}, ...
   std::vector<std::pair<std::string, std::string>> pre_post_fix;
 
   pre_post_fix.push_back(std::make_pair("", ""));
-  if (opt_type == "sgd") {
-  } else if (opt_type == "adam") {
+  if (opt_type == OptimizerType::SGD) {
+  } else if (opt_type == OptimizerType::Adam) {
     pre_post_fix.push_back(std::make_pair("Accl1___", "_moment1_0"));
     pre_post_fix.push_back(std::make_pair("Accl2___", "_moment2_0"));
     pre_post_fix.push_back(std::make_pair("Step___", "_beta1_pow_acc_0"));

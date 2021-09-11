@@ -152,7 +152,7 @@ void Executor::SetWeightsIO() {
     for (const auto &pair : pre_post_fix) {
       // TODO(xiaobingw): add more optimizer support
       // only support adam/sgd currently, skip opt state if not adam
-      if (opt_type != "adam" && opt_type != "sgd") {
+      if (opt_type != OptimizerType::Adam && opt_type != OptimizerType::SGD) {
         continue;
       }
 
@@ -173,7 +173,7 @@ void Executor::SetWeightsIO() {
         auto beta1 = opt_info.GetAttr("beta1");
         int step = 0;
         float beta1_acc = beta1;
-        while(beta1_acc < data_ptr[0]) {
+        while (beta1_acc < data_ptr[0]) {
           beta1_acc *= beta1;
           step += 1;
         }
@@ -185,13 +185,9 @@ void Executor::SetWeightsIO() {
   }
 }
 
-void Executor::WeightsFromPaddle() {
-  session_->writeWeights(weights_io_);
-}
+void Executor::WeightsFromPaddle() { session_->writeWeights(weights_io_); }
 
-void Executor::WeightsToPaddle() {
-  session_->readWeights(weights_io_);
-}
+void Executor::WeightsToPaddle() { session_->readWeights(weights_io_); }
 
 void Executor::SetIpuStrategy(const IpuStrategy &strategy) {
   ipu_strategy_ = &strategy;
