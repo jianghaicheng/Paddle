@@ -60,7 +60,7 @@ void IpuBackend::Compile(ir::Graph* graph,
   compiler_->LowerBody(graph);
   compiler_->InitOutputs(fetch_list);
   executor_->SetOutputsShape(compiler_->GetOutputsShape());
-  executor_->SetWeightsInfo(compiler_->GetWeightsInfo());
+  executor_->SetWeights(compiler_->GetWeights());
   VLOG(10) << "leave IpuBackend::Compile";
 }
 

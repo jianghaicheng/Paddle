@@ -49,8 +49,11 @@ class Executor {
   void SetLR(float lr_rate);
   void SetLRVarName(const std::string &name);
 
-  void SetWeightsInfo(const std::vector<IdToInfo> &info);
-  void UpdateHostOptimizer();
+  void SetWeights(const std::vector<popart::TensorId> &info);
+
+  void SetWeightsIO();
+  void WeightsFromPaddle();
+  void WeightsToPaddle();
 
   // Scope
   void SetScope(Scope *scope) { scope_ = scope; }
@@ -72,7 +75,8 @@ class Executor {
  private:
   Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
-  std::vector<IdToInfo> weights_info_;
+  popart::WeightsIO weights_io_;
+  std::vector<popart::TensorId> weights_;
   std::map<std::string, std::vector<int64_t>> outputs_shape_;
 };
 

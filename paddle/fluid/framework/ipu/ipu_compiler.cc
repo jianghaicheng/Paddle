@@ -251,7 +251,7 @@ void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope_) {
           popart::TensorId result =
               builder_->addInitializedInputTensor(const_data, var_name);
           tensors_.emplace(var_name, result);
-          weights_info_.push_back({result, tensor_info});
+          weights_.push_back(result);
         }
       }
     }
@@ -326,8 +326,8 @@ std::map<std::string, std::vector<int64_t>> Compiler::GetOutputsShape() {
   return outputs_shape;
 }
 
-std::vector<IdToInfo>& Compiler::GetWeightsInfo() {
-  return weights_info_;
+std::vector<popart::TensorId>& Compiler::GetWeights() {
+  return weights_;
 }
 
 std::string Compiler::GetModelProto() { return builder_->getModelProto(); }

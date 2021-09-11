@@ -65,9 +65,19 @@ void Executor::Prepare(const std::string &proto,
   session_->prepareDevice();
   VLOG(10) << "Preparing session device...done";
 
+  SetWeightsIO();
+
+  VLOG(10) << "Copy weights from paddle to popart...";
+  WeightsFromPaddle();
+  VLOG(10) << "Copy weights from paddle to popart...done";
+
   VLOG(10) << "Copy weights from host to device...";
   session_->weightsFromHost();
   VLOG(10) << "Copy weights from host to device...done";
+
+  if (ipu_strategy_->save_init_onnx) {
+    session_->modelToHost("test_init.onnx");
+  }
 }
 
 void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
@@ -106,7 +116,12 @@ void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
   VLOG(10) << "Running...done";
 
   if (ipu_strategy_ != nullptr && ipu_strategy_->is_training) {
-    UpdateHostOptimizer();
+    session_->weightsToHost();
+    WeightsToPaddle();
+    // TODO(xiaobingw): save onnx each run, will del future
+    if (ipu_strategy_->save_last_onnx) {
+      session_->modelToHost("test_last.onnx");
+    }
   }
 }
 
@@ -126,35 +141,56 @@ void Executor::SetLRVarName(const std::string &name) {
   opt_info.SetLRVarName(name);
 }
 
-void Executor::SetWeightsInfo(const std::vector<IdToInfo> &info) {
-  weights_info_ = info;
+void Executor::SetWeights(const std::vector<popart::TensorId> &weights) {
+  weights_ = weights;
 }
 
-void Executor::UpdateHostOptimizer() {
-  // only support adam currently
-  if (opt_info.GetType() != "adam") {
-    return;
-  }
-
-  session_->weightsToHost();
-
-  popart::WeightsIO weights_read;
-  auto pre_post_fix = GetOptPrePostfix(opt_info.GetType());
-  for (const auto &id_to_info : weights_info_) {
+void Executor::SetWeightsIO() {
+  auto opt_type = opt_info.GetType();
+  auto pre_post_fix = GetOptPrePostfix(opt_type);
+  for (const auto &weight_id : weights_) {
     for (const auto &pair : pre_post_fix) {
-      auto var_name = id_to_info.first + pair.second;
-      if (scope_->FindVar(var_name) == nullptr) {
+      // TODO(xiaobingw): add more optimizer support
+      // only support adam/sgd currently, skip opt state if not adam
+      if (opt_type != "adam" && opt_type != "sgd") {
         continue;
       }
 
-      auto var = scope_->GetVar(var_name);
-      auto data_ptr = var->GetMutable<framework::LoDTensor>()->data<void>();
-      weights_read.insert(pair.first + id_to_info.first,
-                          {data_ptr, id_to_info.second});
+      // pair.first : popart prefix, pair.second : paddle postfix
+      auto popart_var_name = pair.first + weight_id;
+      auto paddle_var_name = weight_id + pair.second;
+
+      if (scope_->FindVar(paddle_var_name) == nullptr) {
+        continue;
+      }
+
+      auto var = scope_->GetVar(paddle_var_name);
+      auto data_ptr = var->GetMutable<framework::LoDTensor>()->data<float>();
+
+      if (pair.first == "Step___" && data_ptr[0] < 1.0f) {
+        // TODO(xiaobingw): workround, will implement with pass or other way
+        // python side maybe better
+        auto beta1 = opt_info.GetAttr("beta1");
+        int step = 0;
+        float beta1_acc = beta1;
+        while(beta1_acc < data_ptr[0]) {
+          beta1_acc *= beta1;
+          step += 1;
+        }
+        data_ptr[0] = (float)step;
+      }
+      auto tensor_info = session_->getInfo(popart_var_name);
+      weights_io_.insert(popart_var_name, {data_ptr, tensor_info});
     }
   }
-  session_->readWeights(weights_read);
-  //session_->modelToHost("paddle_model.onnx");
+}
+
+void Executor::WeightsFromPaddle() {
+  session_->writeWeights(weights_io_);
+}
+
+void Executor::WeightsToPaddle() {
+  session_->readWeights(weights_io_);
 }
 
 void Executor::SetIpuStrategy(const IpuStrategy &strategy) {

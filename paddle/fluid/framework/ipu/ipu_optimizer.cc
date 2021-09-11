@@ -77,9 +77,8 @@ GetOptPrePostfix(const std::string& opt_type) {
   } else if (opt_type == "adam") {
     pre_post_fix.push_back(std::make_pair("Accl1___", "_moment1_0"));
     pre_post_fix.push_back(std::make_pair("Accl2___", "_moment2_0"));
+    pre_post_fix.push_back(std::make_pair("Step___", "_beta1_pow_acc_0"));
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Optimizer %s is not implemented now.", opt_type));
   }
   return pre_post_fix;
 }
