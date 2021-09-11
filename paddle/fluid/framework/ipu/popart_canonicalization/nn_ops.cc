@@ -82,11 +82,28 @@ Node *batch_norm_handler(Graph *graph, Node *node) {
 
 Node *pool2d_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
+  auto pooling_type = BOOST_GET_CONST(std::string, op->GetAttr("pooling_type"));
   auto global_pooling = BOOST_GET_CONST(bool, op->GetAttr("global_pooling"));
   if (global_pooling) {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("op pool2d with global_pooling"));
+    if (pooling_type == "max") {
+      return CreateBaseOp(graph, node, "popart_globalmaxpool", node->inputs,
+                          node->outputs);
+    } else if (pooling_type == "avg") {
+      return CreateBaseOp(graph, node, "popart_globalaveragepool", node->inputs,
+                          node->outputs);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "op pool2d with unkonwn pooling_type: %s", pooling_type));
+    }
   }
+  auto padding_algorithm =
+      BOOST_GET_CONST(std::string, op->GetAttr("padding_algorithm"));
+  if (padding_algorithm != "EXPLICIT") {
+    // TODO(alleng) Fix this
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "op pool2d with unkonwn padding_algorithm: %s", padding_algorithm));
+  }
+
   auto ksize = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
   auto kernel_shape = std::vector<int64_t>{ksize.begin(), ksize.end()};
   auto ceil_mode_ = BOOST_GET_CONST(bool, op->GetAttr("ceil_mode"));
@@ -99,7 +116,6 @@ Node *pool2d_handler(Graph *graph, Node *node) {
   }
   auto strides_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("strides"));
   auto strides = std::vector<int64_t>{strides_.begin(), strides_.end()};
-  auto pooling_type = BOOST_GET_CONST(std::string, op->GetAttr("pooling_type"));
   if (pooling_type == "max") {
     int64_t num_outputs = 1;
     auto dilations = std::vector<int64_t>{};

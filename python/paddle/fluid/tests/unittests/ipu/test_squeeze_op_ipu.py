@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
 import paddle.optimizer
 import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, np_dtype_to_fluid_str
 
 paddle.enable_static()
 
@@ -32,27 +32,23 @@ class TestBase(IPUOpTest):
         self.set_atol()
         self.set_training()
         self.set_feed()
+        self.set_feed_attr()
         self.set_attrs()
 
     def set_feed(self):
-        self.feed_shape = []
-        self.feed_shape.append([1, 3, 10, 10])
+        self.feed = {
+            "x": np.random.uniform(size=[1, 3, 1, 5]).astype('float32'),
+        }
 
-        self.feed = {}
-        self.feed["in_0"] = np.random.uniform(
-            size=self.feed_shape[0]).astype(np.float32)
-
+    def set_feed_attr(self):
+        self.feed_shape = [x.shape for x in self.feed.values()]
         self.feed_list = list(self.feed.keys())
+        self.feed_dtype = [
+            np_dtype_to_fluid_str(x.dtype) for x in self.feed.values()
+        ]
 
     def set_attrs(self):
-        self.attrs = {}
-        self.attrs['num_filters'] = 3
-        self.attrs['filter_size'] = 3
-        self.attrs['stride'] = 1
-        self.attrs['padding'] = 0
-        self.attrs['dilation'] = 1
-        self.attrs['groups'] = 1
-        self.attrs['data_format'] = 'NCHW'
+        self.attrs = {"axes": [0]}
 
     def _test_base(self, run_ipu=True):
         scope = fluid.core.Scope()
@@ -64,11 +60,11 @@ class TestBase(IPUOpTest):
 
         with fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                image = paddle.static.data(
+                x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
-                    dtype='float32')
-                out = paddle.fluid.layers.conv2d(image, **self.attrs)
+                    dtype=self.feed_dtype[0])
+                out = paddle.fluid.layers.squeeze(x, **self.attrs)
 
                 fetch_list = [out.name]
 
@@ -93,66 +89,24 @@ class TestBase(IPUOpTest):
             return result[0]
 
     def test_base(self):
-        res0 = self._test_base(True)
-        res1 = self._test_base(False)
+        res0 = self._test_base(False)
+        res1 = self._test_base(True)
 
         self.assertTrue(
             np.allclose(
                 res0.flatten(), res1.flatten(), atol=self.atol))
 
+        self.assertTrue(res0.shape == res1.shape)
+
 
 class TestCase1(TestBase):
     def set_attrs(self):
-        super().set_attrs()
-        self.attrs['num_filters'] = 1
+        self.attrs = {"axes": []}
 
 
 class TestCase2(TestBase):
     def set_attrs(self):
-        super().set_attrs()
-        self.attrs['filter_size'] = [3, 3]
-
-
-class TestCase2_1(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
-        self.attrs['filter_size'] = [3, 2]
-
-
-class TestCase3(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
-        self.attrs['stride'] = [2, 3]
-
-
-class TestCase4(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
-        self.attrs['dilation'] = [2, 2]
-
-
-class TestCase5(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
-        self.attrs['groups'] = 3
-
-
-class TestCase6(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
-        self.attrs['padding'] = 2
-
-
-class TestCase7(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
-        self.attrs['padding'] = [2, 3]
-
-
-class TestCase8(TestBase):
-    def set_attrs(self):
-        super().set_attrs()
-        self.attrs['padding'] = [1, 2, 2, 3]
+        self.attrs = {"axes": [-2]}
 
 
 if __name__ == "__main__":
