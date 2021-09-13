@@ -24,7 +24,7 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
-enum class OptimizerType { SGD = 0, Adam, Undefined };
+enum class OptimizerType { SGD = 0, Adam, Lamb, Undefined };
 
 class OptmizerMetaInfo {
  public:
@@ -66,6 +66,8 @@ std::string OptTypeEnum2Str(OptimizerType type);
 
 std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
     const OptmizerMetaInfo &info);
+
+bool IsOptimizerSupported(OptimizerType type);
 
 std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
     OptimizerType type);

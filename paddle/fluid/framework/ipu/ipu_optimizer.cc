@@ -43,18 +43,23 @@ OptimizerType OptTypeStr2Enum(const std::string type) {
     return OptimizerType::SGD;
   } else if (type == "adam") {
     return OptimizerType::Adam;
+  } else if (type == "lamb") {
+    return OptimizerType::Lamb;
   } else {
     return OptimizerType::Undefined;
   }
 }
 
 std::string OptTypeEnum2Str(OptimizerType type) {
-  if (type == OptimizerType::SGD) {
-    return "sgd";
-  } else if (type == OptimizerType::Adam) {
-    return "adam";
-  } else {
-    return "undefined";
+  switch (type) {
+    case OptimizerType::SGD:
+      return "sgd";
+    case OptimizerType::Adam:
+      return "adam";
+    case OptimizerType::Lamb:
+      return "lamb";
+    default:
+      return "undefined";
   }
 }
 
@@ -86,9 +91,32 @@ std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
         popart::DataType::FLOAT, popart::DataType::FLOAT,
         popart::DataType::FLOAT);
     return optimizer;
+  } else if (opt_type == OptimizerType::Lamb) {
+    auto optimizer = std::make_unique<popart::Adam>(
+        popart::OptimizerValue(opt_meta_info.GetLR(), false),
+        popart::OptimizerValue(opt_meta_info.GetAttr("weight_decay"), false),
+        popart::OptimizerValue(opt_meta_info.GetAttr("beta1"), false),
+        popart::OptimizerValue(opt_meta_info.GetAttr("beta2"), false),
+        popart::OptimizerValue(opt_meta_info.GetAttr("epsilon"), false),
+        popart::OptimizerValue(popart::Adam::getUnsetLossScaling()),
+        popart::AdamMode::Lamb, popart::WeightDecayMode::Decay,
+        popart::DataType::FLOAT, popart::DataType::FLOAT,
+        popart::DataType::FLOAT);
+    return optimizer;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Optimizer %s is not implemented now.", OptTypeEnum2Str(opt_type)));
+  }
+}
+
+bool IsOptimizerSupported(OptimizerType type) {
+  switch (type) {
+    case OptimizerType::SGD:
+    case OptimizerType::Adam:
+    case OptimizerType::Lamb:
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -97,14 +125,22 @@ std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
   // format: {popart_tensor_id, paddle_tensor_id}, ...
   std::vector<std::pair<std::string, std::string>> pre_post_fix;
 
-  pre_post_fix.push_back(std::make_pair("", ""));
-  if (opt_type == OptimizerType::SGD) {
-  } else if (opt_type == OptimizerType::Adam) {
-    pre_post_fix.push_back(std::make_pair("Accl1___", "_moment1_0"));
-    pre_post_fix.push_back(std::make_pair("Accl2___", "_moment2_0"));
-    pre_post_fix.push_back(std::make_pair("Step___", "_beta1_pow_acc_0"));
-  } else {
+  switch (opt_type) {
+    case OptimizerType::SGD:
+      pre_post_fix.push_back(std::make_pair("", ""));
+      break;
+    case OptimizerType::Adam:
+    case OptimizerType::Lamb:
+      pre_post_fix.push_back(std::make_pair("", ""));
+      pre_post_fix.push_back(std::make_pair("Accl1___", "_moment1_0"));
+      pre_post_fix.push_back(std::make_pair("Accl2___", "_moment2_0"));
+      pre_post_fix.push_back(std::make_pair("Step___", "_beta1_pow_acc_0"));
+      break;
+    default:
+      pre_post_fix.push_back(std::make_pair("", ""));
+      break;
   }
+
   return pre_post_fix;
 }
 

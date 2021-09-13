@@ -81,6 +81,9 @@ class TestBase(IPUOpTest):
                         elif self.attrs['opt_type'] == 'adam':
                             adam = paddle.optimizer.Adam(learning_rate=1e-2)
                             adam.minimize(loss)
+                        elif self.attrs['opt_type'] == 'lamb':
+                            lamb = paddle.optimizer.Lamb(learning_rate=1e-2)
+                            lamb.minimize(loss)
                     fetch_list = [loss.name]
 
                 place = paddle.IPUPlace()
@@ -135,6 +138,15 @@ class TestAdam(TestBase):
         self.attrs['save_at_step'] = 20
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'adam'
+
+
+class TestLamb(TestBase):
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['steps'] = 100
+        self.attrs['save_at_step'] = 20
+        self.attrs['is_training'] = True
+        self.attrs['opt_type'] = 'lamb'
 
 
 if __name__ == "__main__":

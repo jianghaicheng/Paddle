@@ -150,9 +150,7 @@ void Executor::SetWeightsIO() {
   auto pre_post_fix = GetOptPrePostfix(opt_type);
   for (const auto &weight_id : weights_) {
     for (const auto &pair : pre_post_fix) {
-      // TODO(xiaobingw): add more optimizer support
-      // only support adam/sgd currently, skip opt state if not adam
-      if (opt_type != OptimizerType::Adam && opt_type != OptimizerType::SGD) {
+      if (!IsOptimizerSupported(opt_type)) {
         continue;
       }
 

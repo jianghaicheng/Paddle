@@ -24,8 +24,6 @@ static constexpr const char *sIpuIndexAttr = "ipu_index";
 static constexpr const char *sIpuStageAttr = "ipu_stage";
 static constexpr const char *sOpIdentifyIdAttr = "op_identify_id";
 
-using IdToInfo = std::pair<popart::TensorId, popart::TensorInfo>;
-
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle
