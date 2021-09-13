@@ -20,26 +20,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-Node *GetInVarNode(const std::string &var_name, const ir::Node *node) {
-  PADDLE_ENFORCE_EQ(node->IsOp(), true,
-                    platform::errors::InvalidArgument("node is not Op"));
-  for (auto *n : node->inputs) {
-    if (n->Name() == var_name) {
-      return n;
-    }
-  }
-  return nullptr;
-}
-
-Node *GetOutVarNode(const std::string &var_name, const ir::Node *node) {
-  PADDLE_ENFORCE_EQ(node->IsOp(), true,
-                    platform::errors::InvalidArgument("node is not Op"));
-  for (auto *n : node->outputs) {
-    if (n->Name() == var_name) {
-      return n;
-    }
-  }
-  return nullptr;
+std::string GenerateVarName(Node *node) {
+  return node->Name() + "_" + std::to_string(node->id());
 }
 
 void IpuInplacePass::ApplyImpl(ir::Graph *graph) const {
@@ -49,62 +31,57 @@ void IpuInplacePass::ApplyImpl(ir::Graph *graph) const {
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
+  // graph_viz_pass
+  // auto graph_viz_pass = PassRegistry::Instance().Get("graph_viz_pass");
+  // graph_viz_pass->Set("graph_viz_path",
+  //                     new std::string("before_pass.dot"));
+  // graph_viz_pass->Apply(graph);
+
   std::vector<std::string> feed_list;
   feed_list = Get<std::vector<std::string>>("feed_list");
   std::vector<std::string> fetch_list;
   fetch_list = Get<std::vector<std::string>>("fetch_list");
 
-  bool is_feed = false;
-  bool is_fetch = false;
-  ir::Node *var = nullptr;
-  auto RenameInplaceVar = [&](ir::Node *node) {
-    auto *op = node->Op();
-    for (auto name : op->Input("__inputs__")) {
-      for (auto name_out : op->Output("__outputs__")) {
-        if (name == name_out) {
-          is_feed = std::find(feed_list.begin(), feed_list.end(), name) !=
-                    feed_list.end();
-          is_fetch = std::find(fetch_list.begin(), fetch_list.end(), name) !=
-                     fetch_list.end();
-          auto new_name = name + "__inplace_1";
-          if (!is_feed && !is_fetch) {
-            VLOG(10) << "replace op node: " << node->Name()
-                     << " output var: " << name << " to " << new_name;
-            var = GetOutVarNode(name, node);
-          } else if (is_feed) {
-            VLOG(10) << "replace op node: " << node->Name()
-                     << " output var: " << name << " to " << new_name;
-            var = GetOutVarNode(name, node);
-          } else if (is_fetch) {
-            VLOG(10) << "replace op node: " << node->Name()
-                     << " input var: " << name << " to " << new_name;
-            var = GetInVarNode(name, node);
-          } else {
-            PADDLE_THROW(platform::errors::Unimplemented(
-                "found inplace op: %s, i/o var: %s, i/o are both feed/fetch "
-                "vars",
-                op->Type(), name));
-          }
+  std::map<std::string, int> var_name;
+  for (auto *node : graph->Nodes()) {
+    if (node->IsVar()) {
+      if (var_name.find(node->Name()) == var_name.end()) {
+        var_name.emplace(node->Name(), 1);
+      } else {
+        var_name[node->Name()]++;
+      }
+    }
+  }
 
-          var->RenameVar(new_name);
-          for (auto *op_in : var->inputs) {
-            op_in->Op()->RenameOutput(name, new_name);
+  for (auto *node : graph->Nodes()) {
+    if (node->IsVar()) {
+      if (var_name[node->Name()] > 1) {
+        auto is_feed = (std::find(feed_list.begin(), feed_list.end(),
+                                  node->Name()) != feed_list.end()) &&
+                       (node->inputs.size() == 0);
+        auto is_fetch = (std::find(fetch_list.begin(), fetch_list.end(),
+                                   node->Name()) != fetch_list.end()) &&
+                        (node->outputs.size() == 0);
+        if (!is_feed && !is_fetch && !node->Var()->Persistable()) {
+          auto old_name = node->Name();
+          auto new_name = GenerateVarName(node);
+          node->RenameVar(new_name);
+          for (auto *op_in : node->inputs) {
+            op_in->Op()->RenameOutput(old_name, new_name);
           }
-          for (auto *op_out : var->outputs) {
-            op_out->Op()->RenameInput(name, new_name);
+          for (auto *op_out : node->outputs) {
+            op_out->Op()->RenameInput(old_name, new_name);
           }
-          return;
         }
       }
     }
-  };
-
-  for (auto *node : graph->Nodes()) {
-    if (!node->IsOp()) {
-      continue;
-    }
-    RenameInplaceVar(node);
   }
+
+  // graph_viz_pass
+  // graph_viz_pass->Erase("graph_viz_path");
+  // graph_viz_pass->Set("graph_viz_path",
+  //                     new std::string("after_pass.dot"));
+  // graph_viz_pass->Apply(graph);
 
   VLOG(10) << "Post Graph: ";
   VLOG(10) << DebugString(graph);

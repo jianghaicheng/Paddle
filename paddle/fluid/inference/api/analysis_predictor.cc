@@ -104,6 +104,14 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
     std::memcpy(static_cast<void *>(input_ptr), pt.data.data(),
                 pt.data.length());
+  } else if (platform::is_ipu_place(place)) {
+#ifdef PADDLE_WITH_IPU
+    std::memcpy(static_cast<void *>(input_ptr), pt.data.data(),
+                pt.data.length());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Not compile with WITH_IPU, should not reach here."));
+#endif
   } else if (platform::is_gpu_place(place)) {
     PADDLE_ENFORCE_EQ(platform::is_xpu_place(place), false,
                       platform::errors::InvalidArgument(
@@ -559,6 +567,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetIpuDeviceNum(config_.ipu_device_num());
   argument_.SetIpuEnablePipelining(config_.ipu_enable_pipelining_);
   argument_.SetIpuBatchesPerStep(config_.ipu_batches_per_step_);
+  argument_.SetIpuBatchSize(config_.ipu_batch_size_);
 #endif
 
   if (config_.use_mkldnn_) {

@@ -30,31 +30,47 @@ void InferenceGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
   //                    new std::string("before_pass.dot"));
   // graph_viz_pass->Apply(graph);
 
-  // save feed and fetch nodes
   std::unique_ptr<ir::Node> feed_var;
   std::unique_ptr<ir::Node> fetch_var;
   std::map<std::string, std::unique_ptr<ir::Node>> feed_ops = {};
   std::map<std::string, std::unique_ptr<ir::Node>> fetch_ops = {};
 
-  // Get feed_list and fetch_list
   std::vector<std::string> feed_list = {};
   std::vector<std::string> fetch_list = {};
   std::unordered_set<ir::Node*> feed_fetch_nodes = {};
+
+  // Get feed_list and fetch_list
+  auto batch_size = int64_t(graph->Get<int>("batch_size"));
   for (auto node : graph->Nodes()) {
     if (node->Name() == "feed") {
       if (node->IsOp()) {
         feed_list.push_back(node->outputs[0]->Name());
+        // Make the batch_size fixed
+        auto input_shape = node->outputs[0]->Var()->GetShape();
+        input_shape[0] = batch_size;
+        node->outputs[0]->Var()->SetShape(input_shape);
       }
       feed_fetch_nodes.insert(node);
-    }
-    if (node->Name() == "fetch") {
+    } else if (node->Name() == "fetch") {
       if (node->IsOp()) {
         fetch_list.push_back(node->inputs[0]->Name());
       }
       feed_fetch_nodes.insert(node);
+    } else {
+      // TODO(yaozhixin): workaround for Paddle inference
+      // if (node->IsVar()) {
+      //   if (node->Var()->Persistable() && node->inputs.size() > 0) {
+      //     std::cout<<node->Name()<<std::endl;
+      //     auto input_shape = node->Var()->GetShape();
+      //     input_shape[0] = -1;
+      //     node->Var()->SetShape(input_shape);
+      //     node->Var()->SetPersistable(false);
+      //   }
+      // }
     }
   }
 
+  // save feed and fetch nodes
   for (auto node : feed_fetch_nodes) {
     if (node->Name() == "feed") {
       if (node->IsOp()) {
@@ -77,15 +93,6 @@ void InferenceGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
       }
     }
   }
-
-  // Remove useless nodes
-  std::unordered_set<const Node*> useless_nodes;
-  for (auto node : graph->Nodes()) {
-    if ((!node->inputs.size() && !node->outputs.size())) {
-      useless_nodes.insert(node);
-    }
-  }
-  GraphSafeRemoveNodes(graph, useless_nodes);
 
   auto inference_compile_pass =
       PassRegistry::Instance().Get("inference_compile_pass");
@@ -119,7 +126,7 @@ void InferenceGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
   // // graph_viz_pass
   // graph_viz_pass->Erase("graph_viz_path");
   // graph_viz_pass->Set("graph_viz_path",
-  //                     new std::string("/paddle/after_pass.dot"));
+  //                     new std::string("after_pass.dot"));
   // graph_viz_pass->Apply(graph);
 
   VLOG(10) << "leave InferenceGraphExtractPass::ApplyImpl";

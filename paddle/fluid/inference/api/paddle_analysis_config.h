@@ -183,7 +183,7 @@ struct PD_INFER_DECL AnalysisConfig {
                  bool adaptive_seqlen = false);
 
   void EnableIpu(int device_num = 1, bool ipu_enable_pipelining = false,
-                 int ipu_batches_per_step = 1);
+                 int ipu_batches_per_step = 1, int ipu_batch_size = 1);
   ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
@@ -705,6 +705,7 @@ struct PD_INFER_DECL AnalysisConfig {
 
   bool ipu_enable_pipelining_{false};
   int ipu_batches_per_step_{1};
+  int ipu_batch_size_{1};
 
   // If the config is already used on a predictor, it becomes invalid.
   // Any config can only be used with one predictor.

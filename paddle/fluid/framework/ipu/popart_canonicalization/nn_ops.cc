@@ -191,6 +191,13 @@ Node *layer_norm_handler(Graph *graph, Node *node) {
     }
   }
 
+  // TODO(yaozhixin): workaround for Paddle inference
+  // if (norm_shape_[0] < -1) {
+  //   norm_shape_[0] = -1;
+  // }
+  // input_shape_[0] = 1;
+  // input_shape_[1] = -1;
+
   auto attrs1 = AttributeMap{
       {"value", norm_shape_},
       {"dims", std::vector<int64_t>{static_cast<int64_t>(norm_shape_.size())}},
@@ -225,12 +232,37 @@ Node *layer_norm_handler(Graph *graph, Node *node) {
   return new_node_reshape2;
 }
 
+Node *dropout_handler(Graph *graph, Node *node) {
+  // TODO(yaozhixin): support training
+  auto *op = node->Op();
+  auto dropout_implementation_ =
+      BOOST_GET_CONST(std::string, op->GetAttr("dropout_implementation"));
+  auto dropout_prob_ = BOOST_GET_CONST(float, op->GetAttr("dropout_prob"));
+  if (dropout_implementation_ == "upscale_in_train") {
+    return CreateBaseOp(graph, node, "popart_identity",
+                        {GetInputNode("X", node)}, {GetOutputNode("Out", node)},
+                        {});
+  } else if (dropout_implementation_ == "downgrade_in_infer") {
+    auto scale = CreateConst(graph, node, {}, {},
+                             {{"value", std::vector<float>{1 - dropout_prob_}},
+                              {"dims", std::vector<int64_t>{1}},
+                              {"dtype", ONNXDataType::FLOAT}});
+    return CreateBaseOp(graph, node, "popart_mul",
+                        {GetInputNode("X", node), scale->outputs[0]},
+                        {GetOutputNode("Out", node)}, {});
+  } else {
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("Invalid dropout_implementation"));
+  }
+}
+
 REGISTER_HANDLER(pool2d, pool2d_handler);
 REGISTER_HANDLER(batch_norm, batch_norm_handler);
 REGISTER_HANDLER(group_norm, group_norm_handler);
 REGISTER_HANDLER(instance_norm, instance_norm_handler);
 REGISTER_HANDLER(layer_norm, layer_norm_handler);
 REGISTER_HANDLER(conv2d, conv2d_handler);
+REGISTER_HANDLER(dropout, dropout_handler);
 
 }  // namespace
 }  // namespace ipu

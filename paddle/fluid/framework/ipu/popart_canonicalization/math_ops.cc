@@ -89,6 +89,10 @@ Node *mul_handler(Graph *graph, Node *node) {
       CreateBaseOp(graph, node, "popart_matmul",
                    {x_flatten->outputs[0], y_flatten->outputs[0]}, {}, {});
 
+  // TODO(yaozhixin): workaround for Paddle inference
+  // reshape_shape_[0] = 1;
+  // reshape_shape_[1] = -1;
+
   auto reshape_const = CreateConst(
       graph, node, {}, {},
       {{"value", reshape_shape_},

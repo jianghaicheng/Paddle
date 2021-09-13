@@ -114,13 +114,14 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
 }
 
 void AnalysisConfig::EnableIpu(int device_num, bool ipu_enable_pipelining,
-                               int ipu_batches_per_step) {
+                               int ipu_batches_per_step, int ipu_batch_size) {
   enable_ir_optim_ = true;
 
   use_ipu_ = true;
   ipu_device_num_ = device_num;
   ipu_enable_pipelining_ = ipu_enable_pipelining;
   ipu_batches_per_step_ = ipu_batches_per_step;
+  ipu_batch_size_ = ipu_batch_size;
 
   Update();
 }
@@ -213,6 +214,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(ipu_device_num_);
   CP_MEMBER(ipu_enable_pipelining_);
   CP_MEMBER(ipu_batches_per_step_);
+  CP_MEMBER(ipu_batch_size_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_, false,
@@ -613,6 +615,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ipu_device_num_;
   ss << ipu_enable_pipelining_;
   ss << ipu_batches_per_step_;
+  ss << ipu_batch_size_;
 
   return ss.str();
 }

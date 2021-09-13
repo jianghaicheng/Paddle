@@ -682,3 +682,12 @@ endif()
 if(ON_INFER OR WITH_GPU)
     set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT 120)
 endif()
+
+# IPU
+if (WITH_IPU)  
+    set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_inference_io ir_pass_manager analysis_predictor benchmark)
+    # ERNIE from test_analyzer_ernie
+    set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
+    inference_analysis_api_test(test_analyzer_ipu_ernie ${ERNIE_INSTALL_DIR} analyzer_ernie_ipu_tester.cc)
+    set_tests_properties(test_analyzer_ipu_ernie PROPERTIES TIMEOUT 120)
+endif()

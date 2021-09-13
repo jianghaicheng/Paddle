@@ -254,6 +254,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(ipu_device_num, IpuDeviceNum, int);
   DECL_ARGUMENT_FIELD(ipu_enable_pipelining, IpuEnablePipelining, bool);
   DECL_ARGUMENT_FIELD(ipu_batches_per_step, IpuBatchesPerStep, int);
+  DECL_ARGUMENT_FIELD(ipu_batch_size, IpuBatchSize, int);
 
  private:
   std::unordered_set<std::string> valid_fields_;

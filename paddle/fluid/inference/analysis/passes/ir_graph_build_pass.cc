@@ -74,6 +74,8 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
                                        &argument->ipu_enable_pipelining());
     argument->main_graph().SetNotOwned("batches_per_step",
                                        &argument->ipu_batches_per_step());
+    argument->main_graph().SetNotOwned("batch_size",
+                                       &argument->ipu_batch_size());
 #else
     PADDLE_THROW(
         platform::errors::Unimplemented("Please compile with WITH_IPU"));
