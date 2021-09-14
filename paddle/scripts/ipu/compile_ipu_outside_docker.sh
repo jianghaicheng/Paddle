@@ -19,7 +19,7 @@ PATH=/usr/local/gcc-8.2/bin:$PATH cmake .. -DPYTHON_EXECUTABLE:FILEPATH=$(which 
           -DPYTHON_LIBRARY:FILEPATH=$PYTHON_LIBRARY \
           -DWITH_GPU=OFF \
           -DWITH_TESTING=OFF \
-         -DWITH_NCCL=OFF \
+          -DWITH_NCCL=OFF \
           -DWITH_RCCL=OFF \
          `-DProtobuf_INCLUDE_DIR=${BUILD}/third_party/install/protobuf/include` \
           -DCMAKE_BUILD_TYPE=Release

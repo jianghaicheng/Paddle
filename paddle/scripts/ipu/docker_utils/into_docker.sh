@@ -18,10 +18,10 @@ if ! [ -x "$(command -v ${DOCKER_CMD})" ]; then
   DOCKER_CMD="docker"
 fi
 
-IMG=$PADDLE_DOCKER_REPO:ipu-ubuntu18.04-gcc82-dev
+IMG=$PADDLE_DOCKER_REPO:ipu-ubuntu18.04-gcc82-dev_v0.1
 
 # container id
-CONTAINER_ID=paddle_ipu_dev-test0.1
+CONTAINER_ID=paddle_ipu_dev_v0.1
 
 # used to update from image registry
 VERSION=
@@ -76,10 +76,6 @@ _run_container_with_root() {
     -v /etc/timezone:/etc/timezone:ro \
     -v /etc/resolv.conf:/etc/resolv.conf:ro \
     -v /etc/hosts:/etc/hosts:ro \
-    -v /etc/passwd:/etc/passwd:ro \
-    -v /etc/group:/etc/group:ro \
-    -v /etc/sudoers.d:/etc/sudoers.d:ro \
-    -v /etc/sudoers:/etc/sudoers:ro \
     -v /run/user/$USER_ID/keyring/ssh:/ssh-agent:rw \
     -v /dev/snd:/dev/snd:rw \
     --group-add sudo \
@@ -94,7 +90,7 @@ _run_container_with_root() {
     set +x
   else
     set -x
-    $DOCKER_CMD run run --ulimit memlock=-1:-1 --net=host --cap-add=IPC_LOCK --device=/dev/infiniband/ "${docker_args[@]}"
+    $DOCKER_CMD run --ulimit memlock=-1:-1 --net=host --cap-add=IPC_LOCK --device=/dev/infiniband/ "${docker_args[@]}"
     set +x
   fi 
 }
@@ -148,6 +144,7 @@ _run_container() {
       -e PADDLE_INSTALL='/paddle' \
       -e LC_ALL='' \
       -e SSH_AUTH_SOCK=$SSH_AUTH_SOCK \
+      -e HOME=/home/$USER \
       -u $USER_ID:$GRP_ID \
       ${DOCKER_ARGS[@]} \
       -v /media:/media \
@@ -185,10 +182,11 @@ _run_container() {
   fi
  
   echo "starting container $container_id"
+  
   if [ "$DRY_RUN" == "true" ]; then
-    echo "docker container start -a -i  $container_id"
+    echo "docker container start -a -i $container_id"
   else 
-    docker container start -a -i  $container_id
+    docker container start -a -i $container_id
   fi
 }
 
@@ -263,7 +261,7 @@ main() {
         shift 
         ;;
       --) 
-        DOCKER_ARGS="${@:2}"
+        DOCKER_ARGS="$DOCKER_ARGS ${@:2}"
         break 2
         ;;
       *)

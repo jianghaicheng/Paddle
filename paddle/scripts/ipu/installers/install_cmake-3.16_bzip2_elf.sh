@@ -17,9 +17,8 @@ cmake_pkg_source="https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz
 if [ ! -f cmake-3.16.0-Linux-x86_64.tar.gz ]; then
   wget --no-check-certificate https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz
   tar -zxvf cmake-3.16.0-Linux-x86_64.tar.gz
-  mv cmake-3.16.0-Linux-x86_64 cmake && \
   mkdir temp_cmake && cd temp_cmake && \
-  ../cmake/boostrap --system-curl && \
+  ../cmake-3.16.0-Linux-x86_64/boostrap --system-curl && \
   make -j$num_cores && sudo make install
 fi
   

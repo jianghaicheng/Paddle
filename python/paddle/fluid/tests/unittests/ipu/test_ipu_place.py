@@ -37,6 +37,14 @@ class TestIpuPlace(unittest.TestCase):
             p.set_place(place)
             self.assertTrue(p.is_ipu_place())
 
+    def test_ipu_set_device(self):
+        num_devices = fluid.core.get_ipu_device_count()
+        self.assertGreater(num_devices, 0)
+
+        for i in range(num_devices):
+            paddle.set_device('ipu')
+            device = paddle.get_device()
+            self.assertTrue(device == "ipus:{{0-{}}}".format(num_devices-1))
 
 if __name__ == '__main__':
     unittest.main()
