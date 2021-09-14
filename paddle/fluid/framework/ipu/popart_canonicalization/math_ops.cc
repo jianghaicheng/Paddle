@@ -174,46 +174,46 @@ Node *scale_handler(Graph *graph, Node *node) {
       BOOST_GET_CONST(bool, op->GetAttr("bias_after_scale"));
   auto data_type_ = op->Block()->FindVar(op->Input("X")[0])->GetDataType();
 
-  // TODO(yaozhixin): support tensor as scale input
-  if (abs(scale_ - 1.0) < 1e-06 && abs(bias_ - 0.0) < 1e-06) {
-    auto new_node_identity =
-        CreateBaseOp(graph, node, "popart_identity", {GetInputNode("X", node)},
-                     node->outputs, {});
-    return new_node_identity;
+  auto new_node_bias_var =
+      CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{bias_}},
+                                        {"dims", std::vector<int64_t>{1}},
+                                        {"dtype", ONNXDataType::FLOAT}});
+  new_node_bias_var = new_node_bias_var->outputs[0];
+
+  Node *new_node_scale_var = nullptr;
+  if (op->HasInput("ScaleTensor") && !op->Input("ScaleTensor").empty()) {
+    new_node_scale_var = GetInputNode("ScaleTensor", node);
   } else {
-    auto new_node_bias =
-        CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{bias_}},
-                                          {"dims", std::vector<int64_t>{1}},
-                                          {"dtype", ONNXDataType::FLOAT}});
-    auto new_node_scale =
+    new_node_scale_var =
         CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{scale_}},
                                           {"dims", std::vector<int64_t>{1}},
                                           {"dtype", ONNXDataType::FLOAT}});
-    // convert to float32
-    auto new_node_cast = CreateCast(graph, node, {GetInputNode("X", node)}, {},
-                                    static_cast<int>(proto::VarType::FP32));
-
-    Node *result = nullptr;
-    if (bias_after_scale_) {
-      auto new_node_mul = CreateBaseOp(
-          graph, node, "popart_mul",
-          {new_node_cast->outputs[0], new_node_scale->outputs[0]}, {}, {});
-      result = CreateBaseOp(
-          graph, node, "popart_add",
-          {new_node_mul->outputs[0], new_node_bias->outputs[0]}, {}, {});
-    } else {
-      auto new_node_add = CreateBaseOp(
-          graph, node, "popart_add",
-          {new_node_cast->outputs[0], new_node_bias->outputs[0]}, {}, {});
-      result = CreateBaseOp(
-          graph, node, "popart_mul",
-          {new_node_add->outputs[0], new_node_scale->outputs[0]}, {}, {});
-    }
-    auto result_after_cast =
-        CreateCast(graph, node, result->outputs, node->outputs,
-                   static_cast<int>(data_type_));
-    return result_after_cast;
+    new_node_scale_var = new_node_scale_var->outputs[0];
   }
+
+  // convert to float32
+  auto new_node_cast = CreateCast(graph, node, {GetInputNode("X", node)}, {},
+                                  static_cast<int>(proto::VarType::FP32));
+  Node *result = nullptr;
+  if (bias_after_scale_) {
+    auto new_node_mul =
+        CreateBaseOp(graph, node, "popart_mul",
+                     {new_node_cast->outputs[0], new_node_scale_var}, {}, {});
+    result =
+        CreateBaseOp(graph, node, "popart_add",
+                     {new_node_mul->outputs[0], new_node_bias_var}, {}, {});
+  } else {
+    auto new_node_add =
+        CreateBaseOp(graph, node, "popart_add",
+                     {new_node_cast->outputs[0], new_node_bias_var}, {}, {});
+    result =
+        CreateBaseOp(graph, node, "popart_mul",
+                     {new_node_add->outputs[0], new_node_scale_var}, {}, {});
+  }
+  auto result_after_cast =
+      CreateCast(graph, node, result->outputs, node->outputs,
+                 static_cast<int>(data_type_));
+  return result_after_cast;
 }
 
 Node *cross_entropy2_handler(Graph *graph, Node *node) {

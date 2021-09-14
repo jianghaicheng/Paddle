@@ -56,6 +56,8 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
       VLOG(11) << new_node->Op()->Proto()->DebugString();
       ipu::ClearNode(node);
       graph->RemoveNode(node);
+    } else {
+      LOG(ERROR) << "Can not find OpHandler for op_type: " << op_type;
     }
   }
 

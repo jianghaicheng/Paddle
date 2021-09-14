@@ -317,6 +317,7 @@ Node *slice_handler(Graph *graph, Node *node) {
     auto dim = int64_t(starts_.size());
     auto attr = MakeConstAttrMap<int>(starts_, {dim}, ONNXDataType::INT32);
     starts = CreateConst(graph, node, {}, {}, attr);
+    starts = starts->outputs[0];
   }
   Node *ends = nullptr;
   if (op->HasInput("EndsTensor") && !op->Input("EndsTensor").empty()) {
@@ -326,6 +327,7 @@ Node *slice_handler(Graph *graph, Node *node) {
     auto dim = int64_t(ends_.size());
     auto attr = MakeConstAttrMap<int>(ends_, {dim}, ONNXDataType::INT32);
     ends = CreateConst(graph, node, {}, {}, attr);
+    ends = ends->outputs[0];
   }
   Node *axes = nullptr;
   {
@@ -334,21 +336,10 @@ Node *slice_handler(Graph *graph, Node *node) {
     auto attr = MakeConstAttrMap<int>(axes_, {dim}, ONNXDataType::INT32);
     axes = CreateConst(graph, node, {}, {}, attr);
   }
-  Node *steps = nullptr;
-  {
-    auto size =
-        BOOST_GET_CONST(std::vector<int64_t>, ends->Op()->GetAttr("dims"))
-            .front();
-    auto steps_ = std::vector<int>(size, 1);
-    auto dim = int64_t(size);
-    auto attr = MakeConstAttrMap<int>(steps_, {dim}, ONNXDataType::INT32);
-    steps = CreateConst(graph, node, {}, {}, attr);
-  }
-  auto new_node =
-      CreateBaseOp(graph, node, "popart_slice",
-                   {GetInputNode("Input", node), starts->outputs[0],
-                    ends->outputs[0], axes->outputs[0], steps->outputs[0]},
-                   node->outputs);
+  auto new_node = CreateBaseOp(
+      graph, node, "popart_slice",
+      {GetInputNode("Input", node), starts, ends, axes->outputs[0]},
+      node->outputs);
   return new_node;
 }
 
