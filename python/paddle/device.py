@@ -154,12 +154,18 @@ def _convert_to_place(device):
         selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
         device_id = int(selected_xpus[0])
         place = core.XPUPlace(device_id)
+    elif lower_device == 'ipu':
+        if not core.is_compiled_with_ipu():
+            raise ValueError(
+                "The device should not be 'ipu', " \
+                "since PaddlePaddle is not compiled with IPU")
+        place = core.IPUPlace()
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
         if not avaliable_gpu_device and not avaliable_xpu_device:
             raise ValueError(
-                "The device must be a string which is like 'cpu', 'gpu', 'gpu:x', 'xpu' or 'xpu:x'"
+                "The device must be a string which is like 'cpu', 'gpu', 'gpu:x', 'xpu', 'xpu:x' or 'ipu'"
             )
         if avaliable_gpu_device:
             if not core.is_compiled_with_cuda():
@@ -184,13 +190,13 @@ def _convert_to_place(device):
 
 def set_device(device):
     """
-    Paddle supports running calculations on various types of devices, including CPU, GPU and XPU.
+    Paddle supports running calculations on various types of devices, including CPU, GPU, XPU and IPU.
     They are represented by string identifiers. This function can specify the global device
     which the OP will run.
 
     Parameters:
         device(str): This parameter determines the specific running device.
-            It can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the 
+            It can be ``cpu``, ``gpu``, ``gpu:x``, ``xpu``, ``xpu:x`` and ``ipu``, where ``x`` is the 
             index of the GPUs or XPUs. 
 
     Examples:
@@ -234,5 +240,14 @@ def get_device():
     elif isinstance(place, core.XPUPlace):
         device_id = place.get_device_id()
         device = 'xpu:' + str(device_id)
+    elif isinstance(place, core.IPUPlace):
+        # TODO(yiakwy) : ipu_place.get_device_id() always returns 0 without telling whold IpuPodX infos
+        # device_id = place.get_device_id()
+        # device = 'ipu:' + str(device_id)
+        num_devices = core.get_ipu_device_count()
+        device = "ipus:{{0-{}}}".format(num_devices-1)
+    else:
+        raise ValueError(
+            "The device specification {} is invalid".format(place))
 
     return device

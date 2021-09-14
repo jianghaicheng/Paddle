@@ -1859,6 +1859,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::IPUPlace, platform::IPUPlace>)
       .def("_equals",
            &IsSamePlace<platform::IPUPlace, platform::CUDAPinnedPlace>)
+#ifdef PADDLE_WITH_IPU
+      .def("get_device_id",
+           [](const platform::IPUPlace &self) { return self.GetDeviceId(); })
+#endif
       .def("__str__", string::to_string<const platform::IPUPlace &>);
 
   py::class_<platform::Place>(m, "Place")

@@ -18,7 +18,7 @@ export PYTHON_INCLUDE_DIR=$PYTHON_INCLUDE_DIR
 ### build essentials
 
 NOCMAKE_PATH=$PATH
-PATH=installers/cmake-3.16.0-Linux-x86_64/bin:$PATH
+PATH=$ROOT/paddle/scripts/ipu/installers/cmake-3.16.0-Linux-x86_64/bin:$PATH
 export PATH
 export NOCMAKE_PATH
 
