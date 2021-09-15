@@ -191,7 +191,6 @@ __all__ = [
     'gather_tree',
     'uniform_random',
     'unbind',
-    'gctest',
 ]
 
 
@@ -15191,90 +15190,3 @@ def unbind(input, axis=0):
         outputs={"Out": outs},
         attrs={"axis": axis})
     return outs
-
-
-def gctest(input, x, y, beta=1.0, alpha=1.0, name=None):
-    """
-    **gctest**
-
-    This operator is used to test.
-    $input$ is added to the final result.
-    The equation is:
-
-    ..  math::
-        Out = alpha * x * y + beta * input
-
-    $Input$, $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $input$.
-
-    Args:
-        input (Tensor): The input Tensor to be added to the final result.
-        x (Tensor): The first input Tensor for matrix multiplication.
-        y (Tensor): The second input Tensor for matrix multiplication.
-        beta (float): Coefficient of $input$.
-        alpha (float): Coefficient of $x*y$.
-        name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
-
-    Returns:
-        Tensor: The output Tensor of test op.
-
-    Examples:
-        ..  code-block:: python
-
-            import paddle
-
-            x = paddle.ones([2,2])
-            y = paddle.ones([2,2])
-            input = paddle.ones([2,2])
-
-            out = paddle.test( input=input, x=x, y=y, beta=0.5, alpha=5.0 )
-
-            print(out)
-            # [[10.5 10.5]
-            # [10.5 10.5]]
-    """
-    input_shape = input.shape
-    x_shape = x.shape
-    y_shape = y.shape
-    if not len(input_shape) == len(x_shape) == len(y_shape) == 2:
-        raise ValueError(
-            "The dimention of input, x, y should be 2 but receive input's shape: {}, x's shape: {}, y's shape: {}".
-            format(input_shape, x_shape, y_shape))
-    if input_shape[0] != x_shape[0]:
-        if input_shape[0] != 1:
-            raise ValueError(
-                "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".
-                format(input_shape[0]))
-        if input_shape[1] != y_shape[1] and input_shape[1] != 1:
-            raise ValueError(
-                "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".
-                format(input_shape[1]))
-    if input_shape[1] != y_shape[1]:
-        if input_shape[1] != 1:
-            raise ValueError(
-                "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".
-                format(input_shape[1]))
-        if input_shape[0] != x_shape[0] and input_shape[0] != 1:
-            raise ValueError(
-                "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".
-                format(input_shape[0]))
-    if x_shape[1] != y_shape[0]:
-        raise ValueError(
-            "The input Variable x's width must be equal with Variable y' height. But received x's shape = {}, y's shape = {}.".
-            format(x_shape, y_shape))
-
-    if in_dygraph_mode():
-        out = core.ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
-        return out
-
-    inputs = {'Input': input, "X": x, "Y": y}
-    attrs = {'Alpha': alpha, 'Beta': beta}
-
-    helper = LayerHelper("gctest", **locals())
-    check_variable_and_dtype(input, 'Input', ['float32', 'float64'], 'gctest')
-    check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'gctest')
-    check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'gctest')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type="gctest", inputs=inputs, attrs=attrs, outputs={"Out": out})
-    return out

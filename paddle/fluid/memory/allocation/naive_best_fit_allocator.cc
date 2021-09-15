@@ -116,9 +116,8 @@ size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
 // For Graphcore IPU
 template <>
 void *Alloc<platform::IPUPlace>(const platform::IPUPlace &place, size_t size) {
-  VLOG(10) << "Currently, I allocate nothing...";
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
-  VLOG(10) << "Emmm, In fact i allocate on cpu ...";
+  VLOG(10) << "IPUPlace, Allocate on cpu.";
 
   void *p = GetCPUBuddyAllocator()->Alloc(size);
   if (FLAGS_init_allocated_mem) {
@@ -130,17 +129,16 @@ void *Alloc<platform::IPUPlace>(const platform::IPUPlace &place, size_t size) {
 template <>
 void Free<platform::IPUPlace>(const platform::IPUPlace &place, void *p,
                               size_t size) {
-  VLOG(10) << "Currently, I free nothing...";
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  GetCPUBuddyAllocator()->Free(p);
 }
 template <>
 uint64_t Release<platform::IPUPlace>(const platform::IPUPlace &place) {
-  VLOG(10) << "Currently, I Release nothing...";
-  return 0;
+  return GetCPUBuddyAllocator()->Release();
 }
 template <>
 size_t Used<platform::IPUPlace>(const platform::IPUPlace &place) {
-  VLOG(10) << "Currently, do nothing in the framework of paddle...";
-  return 0;
+  return GetCPUBuddyAllocator()->Used();
 }
 
 // For kunlun XPU
