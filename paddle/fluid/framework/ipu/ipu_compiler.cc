@@ -355,9 +355,7 @@ std::map<std::string, std::vector<int64_t>> Compiler::GetOutputsShape() {
   return outputs_shape;
 }
 
-std::vector<popart::TensorId>& Compiler::GetWeights() {
-  return weights_;
-}
+std::vector<popart::TensorId>& Compiler::GetWeights() { return weights_; }
 
 std::string Compiler::GetModelProto() { return builder_->getModelProto(); }
 
@@ -385,7 +383,7 @@ std::vector<std::string> Compiler::GetOpInputs(const OpDesc* op) {
   return inputs;
 }
 
-std::vector<std::string> Compiler::GetOpOutputs(const OpDesc* op) {
+const std::vector<std::string>& Compiler::GetOpOutputs(const OpDesc* op) {
   return op->Output("__outputs__");
 }
 

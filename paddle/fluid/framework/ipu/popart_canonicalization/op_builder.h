@@ -37,6 +37,16 @@ AttributeMap MakeConstAttrMapFromValue(T v, std::vector<int64_t> dims,
   return MakeConstAttrMap<T>(std::vector<T>(size, v), dims, dtype);
 }
 
+// https://stackoverflow.com/questions/21216909/these-python-functions-in-c
+template <typename T>
+std::vector<T> arange(T start, T stop, T step = 1) {
+  std::vector<T> values;
+  for (T value = start; value < stop; value += step) {
+    values.push_back(value);
+  }
+  return values;
+}
+
 std::string GenerateVarName();
 
 Node *MakeVarNode(Graph *graph, Node *node);
@@ -72,6 +82,10 @@ Node *CreateConv(Graph *graph, Node *node, const std::vector<Node *> &inputs,
                  const std::vector<int64_t> &kernel_shape = {},
                  const std::vector<int64_t> &pads = {0, 0, 0, 0},
                  const std::vector<int64_t> &strides = {1, 1});
+
+Node *CreateSoftmaxOpset11(Graph *graph, Node *node,
+                           const std::vector<Node *> &inputs,
+                           const std::vector<Node *> &outputs, int64_t axis);
 
 }  // namespace ipu
 }  // namespace framework

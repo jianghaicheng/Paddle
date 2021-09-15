@@ -52,9 +52,10 @@ Node *gelu_handler(Graph *graph, Node *node) {
 }
 
 Node *log_softmax_handler(Graph *graph, Node *node) {
-  auto axis_ = BOOST_GET_CONST(int, node->Op()->GetAttr("axis"));
-  return CreateBaseOp(graph, node, "popart_logsoftmax", node->inputs,
-                      node->outputs, {{"axis", int64_t{axis_}}});
+  auto axis = BOOST_GET_CONST(int, node->Op()->GetAttr("axis"));
+  auto new_softmax = CreateSoftmaxOpset11(graph, node, node->inputs, {}, axis);
+  return CreateBaseOp(graph, node, "popart_log", new_softmax->outputs,
+                      node->outputs);
 }
 
 REGISTER_HANDLER(relu, relu_handler);

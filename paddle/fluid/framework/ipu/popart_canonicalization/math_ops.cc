@@ -160,10 +160,8 @@ Node *sum_handler(Graph *graph, Node *node) {
 
 Node *softmax_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto axis_ = BOOST_GET_CONST(int, op->GetAttr("axis"));
-  auto axis = int64_t{axis_};
-  return CreateBaseOp(graph, node, "popart_softmax", node->inputs,
-                      node->outputs, {{"axis", axis}});
+  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  return CreateSoftmaxOpset11(graph, node, node->inputs, node->outputs, axis);
 }
 
 Node *scale_handler(Graph *graph, Node *node) {

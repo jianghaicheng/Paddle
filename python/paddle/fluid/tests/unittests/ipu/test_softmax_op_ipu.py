@@ -99,11 +99,9 @@ class TestBase(IPUOpTest):
         self.assertTrue(res0.shape == res1.shape)
 
 
-@unittest.skip('axis not work')
-# TODO(alleng) fix it
 class TestCase1(TestBase):
     def set_attrs(self):
-        self.attrs = {"axis": 0}
+        self.attrs = {"axis": 2}
 
 
 if __name__ == "__main__":

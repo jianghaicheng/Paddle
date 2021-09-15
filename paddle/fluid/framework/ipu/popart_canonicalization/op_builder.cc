@@ -145,6 +145,31 @@ Node *CreateConv(Graph *graph, Node *node, const std::vector<Node *> &inputs,
   return CreateBaseOp(graph, node, "popart_conv", inputs, outputs, attrs);
 }
 
+Node *CreateSoftmaxOpset11(Graph *graph, Node *node,
+                           const std::vector<Node *> &inputs,
+                           const std::vector<Node *> &outputs, int64_t axis) {
+  auto x_shape = node->Op()->Block()->FindVar(inputs[0]->Name())->GetShape();
+  int x_rank = x_shape.size();
+  if (axis < 0) {
+    axis = axis + x_rank;
+  }
+  if (axis == x_rank - 1) {
+    return CreateBaseOp(graph, node, "popart_softmax", inputs, outputs,
+                        {{"axis", int64_t{-1}}});
+  } else {
+    auto perm = arange<int64_t>(0, x_rank);
+    perm[x_rank - 1] = axis;
+    perm[axis] = x_rank - 1;
+    auto new_transpose_pre = CreateBaseOp(graph, node, "popart_transpose",
+                                          inputs, {}, {{"perm", perm}});
+    auto new_softmax =
+        CreateBaseOp(graph, node, "popart_softmax", new_transpose_pre->outputs,
+                     {}, {{"axis", int64_t{-1}}});
+    return CreateBaseOp(graph, node, "popart_transpose", new_softmax->outputs,
+                        outputs, {{"perm", perm}});
+  }
+}
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

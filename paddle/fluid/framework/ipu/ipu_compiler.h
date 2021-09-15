@@ -48,7 +48,7 @@ class Compiler {
   std::map<std::string, popart::TensorId> GetTensors() { return tensors_; }
   std::vector<int64_t> GetTensorShape(const std::string &name);
   std::map<std::string, std::vector<int64_t>> GetOutputsShape();
-  std::vector<popart::TensorId>& GetWeights();
+  std::vector<popart::TensorId> &GetWeights();
 
   std::string GetModelProto();
   void SaveModelProto(const std::string &path);
@@ -56,7 +56,7 @@ class Compiler {
 
  private:
   std::vector<std::string> GetOpInputs(const OpDesc *op);
-  std::vector<std::string> GetOpOutputs(const OpDesc *op);
+  const std::vector<std::string> &GetOpOutputs(const OpDesc *op);
   popart::DebugContext BuildDebugContext(const OpDesc *op);
 
  private:
