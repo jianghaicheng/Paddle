@@ -49,7 +49,7 @@ class TestBase(IPUOpTest):
 
     def set_attrs(self):
         self.attrs = {
-            "pool_size": 1,
+            "pool_size": 3,
             "pool_type": 'avg',
             "pool_stride": 1,
             "pool_padding": 0,
@@ -132,11 +132,30 @@ class TestCase2_2(TestBase):
         self.attrs['pool_stride'] = [2, 1]
 
 
-@unittest.skip('wrong result')
-# TODO(alleng) fix it
 class TestCase3(TestBase):
     def set_attrs(self):
         super().set_attrs()
+        self.attrs['pool_padding'] = [1, 1]
+
+
+class TestCase3_2(TestBase):
+    def set_attrs(self):
+        super().set_attrs()
+        self.attrs['pool_padding'] = [1, 1, 2, 2]
+
+
+@unittest.skip('the results has a positional offset')
+class TestCase3_3(TestBase):
+    def set_attrs(self):
+        super().set_attrs()
+        self.attrs['pool_padding'] = [1, 2, 1, 1]
+
+
+@unittest.skip('paddle output has nan')
+class TestCase3_4(TestBase):
+    def set_attrs(self):
+        super().set_attrs()
+        self.attrs['pool_size'] = 1
         self.attrs['pool_padding'] = 1
 
 

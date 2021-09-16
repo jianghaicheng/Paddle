@@ -49,7 +49,7 @@ class TestBase(IPUOpTest):
 
     def set_attrs(self):
         self.attrs = {
-            "pool_size": 1,
+            "pool_size": 3,
             "pool_type": 'max',
             "pool_stride": 1,
             "pool_padding": 0,
@@ -132,25 +132,30 @@ class TestCase2_2(TestBase):
         self.attrs['pool_stride'] = [2, 1]
 
 
-@unittest.skip('wrong result')
-# TODO(alleng) fix it
 class TestCase3(TestBase):
     def set_attrs(self):
         super().set_attrs()
-        self.attrs['pool_padding'] = [1, 1, 1, 1]
-        # self.attrs['pool_padding'] = [1, 1]
-        # self.attrs['ceil_mode'] = True
-        # self.attrs['exclusive'] = False
+        self.attrs['pool_padding'] = [1, 1]
 
-    def test_base(self):
-        res0 = self._test_base(False)
-        res1 = self._test_base(True)
 
-        self.assertTrue(
-            np.allclose(
-                res0.flatten(), res1.flatten(), atol=self.atol))
+class TestCase3_2(TestBase):
+    def set_attrs(self):
+        super().set_attrs()
+        self.attrs['pool_padding'] = [1, 1, 2, 2]
 
-        self.assertTrue(res0.shape == res1.shape)
+
+@unittest.skip('auto_pad is not currently supported')
+class TestCase3_3(TestBase):
+    def set_attrs(self):
+        super().set_attrs()
+        self.attrs['pool_padding'] = 'VALID'
+
+
+@unittest.skip('auto_pad is not currently supported')
+class TestCase3_4(TestBase):
+    def set_attrs(self):
+        super().set_attrs()
+        self.attrs['pool_padding'] = 'SAME'
 
 
 class TestCase4(TestBase):
