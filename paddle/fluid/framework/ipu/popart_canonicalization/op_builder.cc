@@ -19,10 +19,28 @@ namespace framework {
 namespace ipu {
 
 // singleton
-static int var_count = 0;
+static int var_count = -1;
+static int op_count = -1;
 
-std::string GenerateVarName() {
-  return std::string("_popart_gen_") + std::to_string(var_count++);
+const std::string GenerateVarName() {
+  return std::string("_gen_var_") + std::to_string(var_count++);
+}
+
+const std::string GenerateOpName() {
+  return std::string("_gen_op_") + std::to_string(op_count++);
+}
+
+const std::string CreateOpIdentifyId(Node *node) {
+  // format: op_type|out_var0|out_var1|...|_gen_*
+  // this name will be used as op name when exporting onnx model from popart
+  // TODO(alleng) limit string length
+  auto op_type = node->Name();
+  std::string op_out = "";
+  for (auto *out_node : node->outputs) {
+    op_out += "|";
+    op_out += out_node->Name();
+  }
+  return {op_type + op_out + "|" + GenerateOpName()};
 }
 
 Node *MakeVarNode(Graph *graph, Node *node) {

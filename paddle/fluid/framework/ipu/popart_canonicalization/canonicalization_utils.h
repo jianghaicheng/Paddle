@@ -59,8 +59,6 @@ std::vector<int64_t> GetInputNodeShape(const std::string &name,
 std::vector<int64_t> GetOutputNodeShape(const std::string &name,
                                         const Node *op_node, const int id = 0);
 
-std::string CreateOpIdentifyId(Node *node);
-
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

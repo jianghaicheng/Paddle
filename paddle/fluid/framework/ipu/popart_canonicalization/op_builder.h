@@ -47,7 +47,8 @@ std::vector<T> arange(T start, T stop, T step = 1) {
   return values;
 }
 
-std::string GenerateVarName();
+const std::string GenerateVarName();
+const std::string CreateOpIdentifyId(Node *node);
 
 Node *MakeVarNode(Graph *graph, Node *node);
 Node *MakeOpNode(Graph *graph, Node *node, const std::string &type,

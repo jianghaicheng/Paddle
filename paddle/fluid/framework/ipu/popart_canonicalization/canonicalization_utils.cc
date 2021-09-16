@@ -184,17 +184,6 @@ std::vector<int64_t> GetOutputNodeShape(const std::string &name,
   return op_node->Op()->Block()->FindVar(output_node->Name())->GetShape();
 }
 
-std::string CreateOpIdentifyId(Node *node) {
-  // format: op_type|out_var0|out_var1|...
-  auto op_type = node->Name();
-  std::string op_out = "";
-  for (auto *out_node : node->outputs) {
-    op_out += "|";
-    op_out += out_node->Name();
-  }
-  return {op_type + op_out + "|"};
-}
-
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

@@ -110,7 +110,7 @@ class TestCase1(TestBase):
         }
 
 
-@unittest.skip('popart report error')  # TODO(alleng)
+@unittest.skip('dynamic graph is not support on IPU')
 class TestCase2(TestBase):
     def set_feed(self):
         self.feed = {
@@ -168,16 +168,6 @@ class TestCase2(TestBase):
 
             result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
             return result[0]
-
-    def test_base(self):
-        res0 = self._test_base(False)
-        res1 = self._test_base(True)
-
-        self.assertTrue(
-            np.allclose(
-                res0.flatten(), res1.flatten(), atol=self.atol))
-
-        self.assertTrue(res0.shape == res1.shape)
 
 
 if __name__ == "__main__":
