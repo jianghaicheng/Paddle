@@ -56,17 +56,6 @@ void InferenceGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
         fetch_list.push_back(node->inputs[0]->Name());
       }
       feed_fetch_nodes.insert(node);
-    } else {
-      // TODO(yaozhixin): workaround for Paddle inference
-      // if (node->IsVar()) {
-      //   if (node->Var()->Persistable() && node->inputs.size() > 0) {
-      //     std::cout<<node->Name()<<std::endl;
-      //     auto input_shape = node->Var()->GetShape();
-      //     input_shape[0] = -1;
-      //     node->Var()->SetShape(input_shape);
-      //     node->Var()->SetPersistable(false);
-      //   }
-      // }
     }
   }
 

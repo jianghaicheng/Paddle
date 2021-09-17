@@ -28,7 +28,7 @@ void InferenceCompilePass::ApplyImpl(ir::Graph* graph) const {
   // // graph_viz_pass
   // auto graph_viz_pass = PassRegistry::Instance().Get("graph_viz_pass");
   // graph_viz_pass->Set("graph_viz_path",
-  //                    new std::string("/before_pass.dot"));
+  //                    new std::string("before_pass.dot"));
   // graph_viz_pass->Apply(graph);
 
   std::vector<std::string> feed_list;
@@ -36,13 +36,13 @@ void InferenceCompilePass::ApplyImpl(ir::Graph* graph) const {
   std::vector<std::string> fetch_list;
   fetch_list = Get<std::vector<std::string>>("fetch_list");
 
-  auto forward_graph_extract_pass =
-      PassRegistry::Instance().Get("forward_graph_extract_pass");
-  forward_graph_extract_pass->Apply(graph);
-
-  auto popart_canonicalization_pass =
-      PassRegistry::Instance().Get("popart_canonicalization_pass");
-  popart_canonicalization_pass->Apply(graph);
+  std::vector<std::string> graph_pass = {"forward_graph_extract_pass",
+                                         "infer_shape_pass", "avg_shard_pass",
+                                         "popart_canonicalization_pass"};
+  for (auto pass_name : graph_pass) {
+    auto pass = PassRegistry::Instance().Get(pass_name);
+    pass->Apply(graph);
+  }
 
   std::vector<std::string> compile_pass = {"ipu_inplace_pass",
                                            "ipu_graph_builder_pass",
@@ -56,7 +56,7 @@ void InferenceCompilePass::ApplyImpl(ir::Graph* graph) const {
     pass->Apply(graph);
   }
 
-  // // graph_viz_pass
+  // graph_viz_pass
   // graph_viz_pass->Erase("graph_viz_path");
   // graph_viz_pass->Set("graph_viz_path",
   //                     new std::string("after_pass.dot"));

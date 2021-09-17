@@ -142,7 +142,7 @@ Node *gather_handler(Graph *graph, Node *node) {
 Node *squeeze_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axes"));
-  auto input_shape_ = op->Block()->FindVar(op->Input("X")[0])->GetShape();
+  auto input_shape_ = GetInputNode("X", node)->Var()->GetShape();
 
   std::vector<int64_t> axes{axes_.begin(), axes_.end()};
   if (axes_.empty()) {
@@ -170,7 +170,7 @@ Node *cast_handler(Graph *graph, Node *node) {
 Node *lookup_table_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto padding_idx_ = BOOST_GET_CONST(int64_t, op->GetAttr("padding_idx"));
-  auto w_shape_ = op->Block()->FindVar(op->Input("W")[0])->GetShape();
+  auto w_shape_ = GetInputNode("W", node)->Var()->GetShape();
   auto table_size_ = w_shape_[0];
   auto emb_size_ = w_shape_[1];
 

@@ -63,6 +63,9 @@ void InferenceAttrExtractPass::ApplyImpl(ir::Graph* graph) const {
                                           "greater than the number of IPUs"));
     ipu_strategy_instance_->batches_per_step = batches_per_step;
   }
+  ipu_strategy_instance_->need_infer_shape =
+      graph->Get<bool>("need_infer_shape");
+  ipu_strategy_instance_->need_avg_shard = graph->Get<bool>("need_avg_shard");
 
   ipu_backend->SetIpuStrategy(*(ipu_strategy_instance_.get()));
 

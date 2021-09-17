@@ -3271,6 +3271,24 @@ All parameter, weight, gradient are variables in Paddle.
                     R"DOC(
             Bool type, True enable model sharding, otherwise disable. Default "
             "False.
+          )DOC")
+      .def_property(
+          "need_infer_shape",
+          [](const ipu::IpuStrategy &self) { return self.need_infer_shape; },
+          [](ipu::IpuStrategy &self, bool need_infer_shape) {
+            self.need_infer_shape = need_infer_shape;
+          },
+          R"DOC(
+            Bool type, True enable infer shape, otherwise disable. Default False.
+          )DOC")
+      .def_property(
+          "need_avg_shard",
+          [](const ipu::IpuStrategy &self) { return self.need_avg_shard; },
+          [](ipu::IpuStrategy &self, bool need_avg_shard) {
+            self.need_avg_shard = need_avg_shard;
+          },
+          R"DOC(
+            Bool type, True enable avg shard, otherwise disable. Default False.
           )DOC");
 #endif
 

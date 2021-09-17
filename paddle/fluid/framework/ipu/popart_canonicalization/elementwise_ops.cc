@@ -24,9 +24,9 @@ namespace {
 Node *elementwise_op_handler(Graph *graph, Node *node,
                              const std::string &type) {
   auto *op = node->Op();
-  auto x_shape = op->Block()->FindVar(op->Input("X").front())->GetShape();
+  auto x_shape = GetInputNode("X", node)->Var()->GetShape();
   int64_t x_rank = x_shape.size();
-  auto y_shape = op->Block()->FindVar(op->Input("Y").front())->GetShape();
+  auto y_shape = GetInputNode("Y", node)->Var()->GetShape();
   int64_t y_rank = y_shape.size();
 
   auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));

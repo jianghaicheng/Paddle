@@ -180,7 +180,7 @@ Node *instance_norm_handler(Graph *graph, Node *node) {
 Node *layer_norm_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto begin_norm_axis_ = BOOST_GET_CONST(int, op->GetAttr("begin_norm_axis"));
-  auto input_shape_ = op->Block()->FindVar(op->Input("X")[0])->GetShape();
+  auto input_shape_ = GetInputNode("X", node)->Var()->GetShape();
 
   std::vector<int64_t> norm_shape_{1, 1};
   for (int i = 0; i < input_shape_.size(); i++) {
@@ -190,13 +190,6 @@ Node *layer_norm_handler(Graph *graph, Node *node) {
       norm_shape_[1] *= input_shape_[i];
     }
   }
-
-  // TODO(yaozhixin): workaround for Paddle inference
-  // if (norm_shape_[0] < -1) {
-  //   norm_shape_[0] = -1;
-  // }
-  // input_shape_[0] = 1;
-  // input_shape_[1] = -1;
 
   auto attrs1 = AttributeMap{
       {"value", norm_shape_},

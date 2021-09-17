@@ -133,8 +133,9 @@ bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs) {
 void SetConfig(AnalysisConfig *cfg, bool use_ipu = false) {
   cfg->SetModel(FLAGS_infer_model);
   if (use_ipu) {
-    // num_ipu, enable_pipelining, batches_per_step, batch_size
-    cfg->EnableIpu(4, false, 1, 1);
+    // num_ipu, enable_pipelining, batches_per_step, batch_size,
+    // need_infer_shape, need_avg_shard
+    cfg->EnableIpu(4, false, 1, 1, true, true);
   }
 }
 
@@ -159,8 +160,8 @@ void profile(bool use_ipu = false) {
 
 //   std::vector<std::vector<PaddleTensor>> input_slots_all;
 //   LoadInputData(&input_slots_all);
-//   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config
-//   *>(&cfg),
+//   CompareDeterministic(reinterpret_cast<const
+//   PaddlePredictor::Config*>(&cfg),
 //                        input_slots_all);
 // }
 

@@ -76,6 +76,10 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
                                        &argument->ipu_batches_per_step());
     argument->main_graph().SetNotOwned("batch_size",
                                        &argument->ipu_batch_size());
+    argument->main_graph().SetNotOwned("need_infer_shape",
+                                       &argument->ipu_need_infer_shape());
+    argument->main_graph().SetNotOwned("need_avg_shard",
+                                       &argument->ipu_need_avg_shard());
 #else
     PADDLE_THROW(
         platform::errors::Unimplemented("Please compile with WITH_IPU"));

@@ -689,5 +689,5 @@ if (WITH_IPU)
     # ERNIE from test_analyzer_ernie
     set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
     inference_analysis_api_test(test_analyzer_ipu_ernie ${ERNIE_INSTALL_DIR} analyzer_ernie_ipu_tester.cc)
-    set_tests_properties(test_analyzer_ipu_ernie PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_ipu_ernie PROPERTIES TIMEOUT 150)
 endif()

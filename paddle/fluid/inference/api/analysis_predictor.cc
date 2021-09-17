@@ -568,6 +568,8 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetIpuEnablePipelining(config_.ipu_enable_pipelining_);
   argument_.SetIpuBatchesPerStep(config_.ipu_batches_per_step_);
   argument_.SetIpuBatchSize(config_.ipu_batch_size_);
+  argument_.SetIpuNeedInferShape(config_.ipu_need_infer_shape_);
+  argument_.SetIpuNeedAvgShard(config_.ipu_need_avg_shard_);
 #endif
 
   if (config_.use_mkldnn_) {

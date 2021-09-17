@@ -281,19 +281,6 @@ void Compiler::SetIpuIndexStage(const std::vector<std::string>& tensor_ids,
   auto tensor_ids_set =
       std::set<std::string>(tensor_ids.begin(), tensor_ids.end());
 
-  // TODO(yaozhixin) : workaround for Paddle inference
-  // auto debug_id =
-  //     builder_->getInt64NodeAttribute("__debug_info_id", tensor_ids_set);
-  // if (debug_id < 300) {
-  //   builder_->virtualGraph(tensor_ids_set, 0);
-  // } else if (debug_id < 600) {
-  //   builder_->virtualGraph(tensor_ids_set, 1);
-  // } else if (debug_id < 900) {
-  //   builder_->virtualGraph(tensor_ids_set, 2);
-  // } else {
-  //   builder_->virtualGraph(tensor_ids_set, 3);
-  // }
-
   if (op_desc->HasAttr(sIpuIndexAttr)) {
     auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuIndexAttr));
     builder_->virtualGraph(tensor_ids_set, ipu_index);
@@ -312,20 +299,6 @@ void Compiler::SetIpuIndexStage(const std::vector<std::string>& tensor_ids,
 void Compiler::SetIpuIndexStage(const std::string& tensor_id,
                                 const OpDesc* op_desc) {
   VLOG(10) << "enter Compiler::SetIpuIndexStage";
-
-  // TODO(yaozhixin) : workaround for Paddle inference
-  // auto tensor_id_set = std::set<std::string>{tensor_id};
-  // auto debug_id =
-  //     builder_->getInt64NodeAttribute("__debug_info_id", tensor_id_set);
-  // if (debug_id < 300) {
-  //   builder_->virtualGraph(tensor_id, 0);
-  // } else if (debug_id < 600) {
-  //   builder_->virtualGraph(tensor_id, 1);
-  // } else if (debug_id < 900) {
-  //   builder_->virtualGraph(tensor_id, 2);
-  // } else {
-  //   builder_->virtualGraph(tensor_id, 3);
-  // }
 
   if (op_desc->HasAttr(sIpuIndexAttr)) {
     auto ipu_index = BOOST_GET_CONST(int, op_desc->GetAttr(sIpuIndexAttr));

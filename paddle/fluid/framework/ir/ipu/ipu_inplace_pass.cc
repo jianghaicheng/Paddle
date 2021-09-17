@@ -95,3 +95,4 @@ void IpuInplacePass::ApplyImpl(ir::Graph *graph) const {
 REGISTER_PASS(ipu_inplace_pass, paddle::framework::ir::IpuInplacePass)
     .RequirePassAttr("feed_list")
     .RequirePassAttr("fetch_list");
+// USE_PASS(graph_viz_pass);

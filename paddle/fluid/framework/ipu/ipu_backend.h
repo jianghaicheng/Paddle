@@ -18,8 +18,8 @@ limitations under the License. */
 #include <popart/names.hpp>
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/ipu/ipu_compiler.h"
 #include "paddle/fluid/framework/ipu/device.h"
+#include "paddle/fluid/framework/ipu/ipu_compiler.h"
 #include "paddle/fluid/framework/ipu/ipu_executor.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
 #include "paddle/fluid/framework/scope.h"
@@ -64,6 +64,7 @@ class IpuBackend {
 
   void SetScope(Scope &scope);
   void SetIpuStrategy(const IpuStrategy &strategy);
+  const IpuStrategy *GetIpuStrategy();
 
   // Device
   size_t GetNumDevices();

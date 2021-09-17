@@ -68,8 +68,8 @@ Node *mul_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto x_num_col_dims = BOOST_GET_CONST(int, op->GetAttr("x_num_col_dims"));
   auto y_num_col_dims = BOOST_GET_CONST(int, op->GetAttr("y_num_col_dims"));
-  auto x_shape_ = op->Block()->FindVar(op->Input("X")[0])->GetShape();
-  auto y_shape_ = op->Block()->FindVar(op->Input("Y")[0])->GetShape();
+  auto x_shape_ = GetInputNode("X", node)->Var()->GetShape();
+  auto y_shape_ = GetInputNode("Y", node)->Var()->GetShape();
 
   // build the shape for reshape
   std::vector<int64_t> reshape_shape_{};
@@ -88,10 +88,6 @@ Node *mul_handler(Graph *graph, Node *node) {
   auto matmul =
       CreateBaseOp(graph, node, "popart_matmul",
                    {x_flatten->outputs[0], y_flatten->outputs[0]}, {}, {});
-
-  // TODO(yaozhixin): workaround for Paddle inference
-  // reshape_shape_[0] = 1;
-  // reshape_shape_[1] = -1;
 
   auto reshape_const = CreateConst(
       graph, node, {}, {},
@@ -170,7 +166,7 @@ Node *scale_handler(Graph *graph, Node *node) {
   auto bias_ = BOOST_GET_CONST(float, op->GetAttr("bias"));
   auto bias_after_scale_ =
       BOOST_GET_CONST(bool, op->GetAttr("bias_after_scale"));
-  auto data_type_ = op->Block()->FindVar(op->Input("X")[0])->GetDataType();
+  auto data_type_ = GetInputNode("X", node)->Var()->GetDataType();
 
   auto new_node_bias_var =
       CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{bias_}},
@@ -219,7 +215,7 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
   auto ignoreIndex = BOOST_GET_CONST(int, op->GetAttr("ignore_index"));
   auto new_cast = CreateCast(graph, node, {GetInputNode("Label", node)}, {},
                              proto::VarType::INT32);
-  auto label_shape_ = op->Block()->FindVar(op->Input("Label")[0])->GetShape();
+  auto label_shape_ = GetInputNode("Label", node)->Var()->GetShape();
   if (label_shape_.size() == 1) {
     return CreateBaseOp(graph, node, "popart_nllloss",
                         {GetInputNode("X", node), new_cast->outputs[0]},
