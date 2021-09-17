@@ -38,15 +38,15 @@ Node *conv2d_handler(Graph *graph, Node *node) {
     return CreateConv(
         graph, node,
         {
-            GetInputNode("Input", node), GetInputNode("Filter", node),
-            GetInputNode("Bias", node),
+            GetInputVarNode("Input", node), GetInputVarNode("Filter", node),
+            GetInputVarNode("Bias", node),
         },
         node->outputs, dilations, group_, {}, pads, stride);
   } else {
     return CreateConv(
         graph, node,
         {
-            GetInputNode("Input", node), GetInputNode("Filter", node),
+            GetInputVarNode("Input", node), GetInputVarNode("Filter", node),
         },
         node->outputs, dilations, group_, {}, pads, stride);
   }
@@ -56,18 +56,18 @@ Node *batch_norm_handler(Graph *graph, Node *node) {
   // TODO(alleng) differ from trainning & inference
   auto *op = node->Op();
   std::vector<Node *> inputs;
-  inputs.push_back(GetInputNode("X", node));
-  inputs.push_back(GetInputNode("Scale", node));
-  inputs.push_back(GetInputNode("Bias", node));
-  inputs.push_back(GetInputNode("Mean", node));
-  inputs.push_back(GetInputNode("Variance", node));
+  inputs.push_back(GetInputVarNode("X", node));
+  inputs.push_back(GetInputVarNode("Scale", node));
+  inputs.push_back(GetInputVarNode("Bias", node));
+  inputs.push_back(GetInputVarNode("Mean", node));
+  inputs.push_back(GetInputVarNode("Variance", node));
   std::vector<Node *> outputs;
-  outputs.push_back(GetOutputNode("Y", node));
-  outputs.push_back(GetOutputNode("MeanOut", node));
-  outputs.push_back(GetOutputNode("VarianceOut", node));
-  outputs.push_back(GetOutputNode("SavedMean", node));
-  outputs.push_back(GetOutputNode("SavedVariance", node));
-  // outputs.push_back(GetOutputNode("ReserveSpace", node));
+  outputs.push_back(GetOutputVarNode("Y", node));
+  outputs.push_back(GetOutputVarNode("MeanOut", node));
+  outputs.push_back(GetOutputVarNode("VarianceOut", node));
+  outputs.push_back(GetOutputVarNode("SavedMean", node));
+  outputs.push_back(GetOutputVarNode("SavedVariance", node));
+  // outputs.push_back(GetOutputVarNode("ReserveSpace", node));
   auto momentum = BOOST_GET_CONST(float, op->GetAttr("momentum"));
   auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
   // data_layout
@@ -154,12 +154,12 @@ Node *group_norm_handler(Graph *graph, Node *node) {
   auto groups = int64_t{groups_};
   auto attrs_ = AttributeMap{{"epsilon", epsilon_}, {"num_groups", groups}};
 
-  std::vector<Node *> inputs_ = {GetInputNode("X", node),
-                                 GetInputNode("Scale", node),
-                                 GetInputNode("Bias", node)};
-  std::vector<Node *> outputs_ = {GetOutputNode("Y", node),
-                                  GetOutputNode("Mean", node),
-                                  GetOutputNode("Variance", node)};
+  std::vector<Node *> inputs_ = {GetInputVarNode("X", node),
+                                 GetInputVarNode("Scale", node),
+                                 GetInputVarNode("Bias", node)};
+  std::vector<Node *> outputs_ = {GetOutputVarNode("Y", node),
+                                  GetOutputVarNode("Mean", node),
+                                  GetOutputVarNode("Variance", node)};
   return CreateBaseOp(graph, node, "popart_groupnormalization", inputs_,
                       outputs_, attrs_);
 }
@@ -169,10 +169,10 @@ Node *instance_norm_handler(Graph *graph, Node *node) {
   auto epsilon_ = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
   auto attrs_ = AttributeMap{{"epsilon", epsilon_}};
 
-  std::vector<Node *> inputs_ = {GetInputNode("X", node),
-                                 GetInputNode("Scale", node),
-                                 GetInputNode("Bias", node)};
-  std::vector<Node *> outputs_ = {GetOutputNode("Y", node)};
+  std::vector<Node *> inputs_ = {GetInputVarNode("X", node),
+                                 GetInputVarNode("Scale", node),
+                                 GetInputVarNode("Bias", node)};
+  std::vector<Node *> outputs_ = {GetOutputVarNode("Y", node)};
   return CreateBaseOp(graph, node, "popart_instancenormalization", inputs_,
                       outputs_, attrs_);
 }
@@ -180,7 +180,7 @@ Node *instance_norm_handler(Graph *graph, Node *node) {
 Node *layer_norm_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto begin_norm_axis_ = BOOST_GET_CONST(int, op->GetAttr("begin_norm_axis"));
-  auto input_shape_ = GetInputNode("X", node)->Var()->GetShape();
+  auto input_shape_ = GetInputVarNode("X", node)->Var()->GetShape();
 
   std::vector<int64_t> norm_shape_{1, 1};
   for (int i = 0; i < input_shape_.size(); i++) {
@@ -199,19 +199,19 @@ Node *layer_norm_handler(Graph *graph, Node *node) {
       CreateBaseOp(graph, node, "popart_constant", {}, {}, attrs1);
   auto new_node_reshape1 = CreateBaseOp(
       graph, node, "popart_reshape",
-      {GetInputNode("X", node), reshape1_const->outputs[0]}, {}, {});
+      {GetInputVarNode("X", node), reshape1_const->outputs[0]}, {}, {});
 
   auto epsilon_ = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
   int64_t groups_ = 1;
   auto groupnorm_attrs_ =
       AttributeMap{{"epsilon", epsilon_}, {"num_groups", groups_}};
   auto out_Y_ = MakeVarNode(graph, node);
-  CreateBaseOp(
-      graph, node, "popart_groupnormalization",
-      {new_node_reshape1->outputs[0], GetInputNode("Scale", node),
-       GetInputNode("Bias", node)},
-      {out_Y_, GetOutputNode("Mean", node), GetOutputNode("Variance", node)},
-      groupnorm_attrs_);
+  CreateBaseOp(graph, node, "popart_groupnormalization",
+               {new_node_reshape1->outputs[0], GetInputVarNode("Scale", node),
+                GetInputVarNode("Bias", node)},
+               {out_Y_, GetOutputVarNode("Mean", node),
+                GetOutputVarNode("Variance", node)},
+               groupnorm_attrs_);
 
   auto attrs2 = AttributeMap{
       {"value", input_shape_},
@@ -221,7 +221,7 @@ Node *layer_norm_handler(Graph *graph, Node *node) {
       CreateBaseOp(graph, node, "popart_constant", {}, {}, attrs2);
   auto new_node_reshape2 = CreateBaseOp(graph, node, "popart_reshape",
                                         {out_Y_, reshape2_const->outputs[0]},
-                                        {GetOutputNode("Y", node)}, {});
+                                        {GetOutputVarNode("Y", node)}, {});
   return new_node_reshape2;
 }
 
@@ -233,16 +233,16 @@ Node *dropout_handler(Graph *graph, Node *node) {
   auto dropout_prob_ = BOOST_GET_CONST(float, op->GetAttr("dropout_prob"));
   if (dropout_implementation_ == "upscale_in_train") {
     return CreateBaseOp(graph, node, "popart_identity",
-                        {GetInputNode("X", node)}, {GetOutputNode("Out", node)},
-                        {});
+                        {GetInputVarNode("X", node)},
+                        {GetOutputVarNode("Out", node)}, {});
   } else if (dropout_implementation_ == "downgrade_in_infer") {
     auto scale = CreateConst(graph, node, {}, {},
                              {{"value", std::vector<float>{1 - dropout_prob_}},
                               {"dims", std::vector<int64_t>{1}},
                               {"dtype", ONNXDataType::FLOAT}});
     return CreateBaseOp(graph, node, "popart_mul",
-                        {GetInputNode("X", node), scale->outputs[0]},
-                        {GetOutputNode("Out", node)}, {});
+                        {GetInputVarNode("X", node), scale->outputs[0]},
+                        {GetOutputVarNode("Out", node)}, {});
   } else {
     PADDLE_THROW(
         platform::errors::InvalidArgument("Invalid dropout_implementation"));

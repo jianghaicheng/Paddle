@@ -39,7 +39,8 @@ Node *reduce_mean_handler(Graph *graph, Node *node) {
 
 Node *mean_handler(Graph *graph, Node *node) {
   return CreateBaseOp(graph, node, "popart_reducemean",
-                      {GetInputNode("X", node)}, {GetOutputNode("Out", node)},
+                      {GetInputVarNode("X", node)},
+                      {GetOutputVarNode("Out", node)},
                       {
                           {"keepdims", int64_t{0}},
                       });
@@ -50,7 +51,7 @@ Node *pow_handler(Graph *graph, Node *node) {
   if (op->HasInput("FactorTensor") && !op->Input("FactorTensor").empty()) {
     return CreateBaseOp(
         graph, node, "popart_pow",
-        {GetInputNode("X", node), GetInputNode("FactorTensor", node)},
+        {GetInputVarNode("X", node), GetInputVarNode("FactorTensor", node)},
         node->outputs);
   } else {
     // Op(pow) -> Op(Constant)->Var(const_out)->Op(Pow)
@@ -58,8 +59,8 @@ Node *pow_handler(Graph *graph, Node *node) {
     auto attrs =
         MakeConstAttrMapFromValue<float>(value_, {1}, ONNXDataType::FLOAT);
     auto new_node_const = CreateConst(graph, node, {}, {}, attrs);
-    return CreateBaseOp(graph, node, "popart_pow",
-                        {GetInputNode("X", node), new_node_const->outputs[0]},
+    return CreateBaseOp(graph, node, "popart_pow", {GetInputVarNode("X", node),
+                                                    new_node_const->outputs[0]},
                         node->outputs);
   }
 }
@@ -68,8 +69,8 @@ Node *mul_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto x_num_col_dims = BOOST_GET_CONST(int, op->GetAttr("x_num_col_dims"));
   auto y_num_col_dims = BOOST_GET_CONST(int, op->GetAttr("y_num_col_dims"));
-  auto x_shape_ = GetInputNode("X", node)->Var()->GetShape();
-  auto y_shape_ = GetInputNode("Y", node)->Var()->GetShape();
+  auto x_shape_ = GetInputVarNode("X", node)->Var()->GetShape();
+  auto y_shape_ = GetInputVarNode("Y", node)->Var()->GetShape();
 
   // build the shape for reshape
   std::vector<int64_t> reshape_shape_{};
@@ -80,11 +81,11 @@ Node *mul_handler(Graph *graph, Node *node) {
     reshape_shape_.push_back(int64_t(y_shape_[right]));
   }
   auto x_flatten =
-      CreateBaseOp(graph, node, "popart_flatten", {GetInputNode("X", node)}, {},
-                   {{"axis", int64_t(x_num_col_dims)}});
+      CreateBaseOp(graph, node, "popart_flatten", {GetInputVarNode("X", node)},
+                   {}, {{"axis", int64_t(x_num_col_dims)}});
   auto y_flatten =
-      CreateBaseOp(graph, node, "popart_flatten", {GetInputNode("Y", node)}, {},
-                   {{"axis", int64_t(y_num_col_dims)}});
+      CreateBaseOp(graph, node, "popart_flatten", {GetInputVarNode("Y", node)},
+                   {}, {{"axis", int64_t(y_num_col_dims)}});
   auto matmul =
       CreateBaseOp(graph, node, "popart_matmul",
                    {x_flatten->outputs[0], y_flatten->outputs[0]}, {}, {});
@@ -104,15 +105,16 @@ Node *matmul_handler(Graph *graph, Node *node) {
   auto transpose_x = BOOST_GET_CONST(bool, op->GetAttr("transpose_X"));
   auto transpose_y = BOOST_GET_CONST(bool, op->GetAttr("transpose_Y"));
   auto alpha = BOOST_GET_CONST(float, op->GetAttr("alpha"));
-  auto x_shape = GetInputNodeShape("X", node);
-  auto y_shape = GetInputNodeShape("Y", node);
+  auto x_shape = GetInputVarNode("X", node)->Var()->GetShape();
+  auto y_shape = GetInputVarNode("Y", node)->Var()->GetShape();
+
   int x_rank = x_shape.size();
   std::vector<int64_t> perm;
   if (x_rank == 1) {
     perm = std::vector<int64_t>{0};
   } else if (x_rank == 2) {
     return CreateGemm(graph, node,
-                      {GetInputNode("X", node), GetInputNode("Y", node)},
+                      {GetInputVarNode("X", node), GetInputVarNode("Y", node)},
                       node->outputs, transpose_x, transpose_y, alpha);
   } else if (x_rank == 3) {
     perm = std::vector<int64_t>{0, 2, 1};
@@ -123,16 +125,16 @@ Node *matmul_handler(Graph *graph, Node *node) {
         "op matmul with input rank == %d", x_rank));
   }
 
-  Node *x_node = GetInputNode("X", node);
-  Node *y_node = GetInputNode("Y", node);
+  Node *x_node = GetInputVarNode("X", node);
+  Node *y_node = GetInputVarNode("Y", node);
   if (transpose_x) {
     x_node = CreateBaseOp(graph, node, "popart_transpose",
-                          {GetInputNode("X", node)}, {}, {{"perm", perm}});
+                          {GetInputVarNode("X", node)}, {}, {{"perm", perm}});
     x_node = x_node->outputs[0];
   }
   if (transpose_y) {
     y_node = CreateBaseOp(graph, node, "popart_transpose",
-                          {GetInputNode("Y", node)}, {}, {{"perm", perm}});
+                          {GetInputVarNode("Y", node)}, {}, {{"perm", perm}});
     y_node = y_node->outputs[0];
   }
   // TODO(alleng) move 1e-8 to global or create a funtion like equal()
@@ -166,7 +168,7 @@ Node *scale_handler(Graph *graph, Node *node) {
   auto bias_ = BOOST_GET_CONST(float, op->GetAttr("bias"));
   auto bias_after_scale_ =
       BOOST_GET_CONST(bool, op->GetAttr("bias_after_scale"));
-  auto data_type_ = GetInputNode("X", node)->Var()->GetDataType();
+  auto data_type_ = GetInputVarNode("X", node)->Var()->GetDataType();
 
   auto new_node_bias_var =
       CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{bias_}},
@@ -176,7 +178,7 @@ Node *scale_handler(Graph *graph, Node *node) {
 
   Node *new_node_scale_var = nullptr;
   if (op->HasInput("ScaleTensor") && !op->Input("ScaleTensor").empty()) {
-    new_node_scale_var = GetInputNode("ScaleTensor", node);
+    new_node_scale_var = GetInputVarNode("ScaleTensor", node);
   } else {
     new_node_scale_var =
         CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{scale_}},
@@ -186,7 +188,7 @@ Node *scale_handler(Graph *graph, Node *node) {
   }
 
   // convert to float32
-  auto new_node_cast = CreateCast(graph, node, {GetInputNode("X", node)}, {},
+  auto new_node_cast = CreateCast(graph, node, {GetInputVarNode("X", node)}, {},
                                   static_cast<int>(proto::VarType::FP32));
   Node *result = nullptr;
   if (bias_after_scale_) {
@@ -213,13 +215,13 @@ Node *scale_handler(Graph *graph, Node *node) {
 Node *cross_entropy2_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto ignoreIndex = BOOST_GET_CONST(int, op->GetAttr("ignore_index"));
-  auto new_cast = CreateCast(graph, node, {GetInputNode("Label", node)}, {},
+  auto new_cast = CreateCast(graph, node, {GetInputVarNode("Label", node)}, {},
                              proto::VarType::INT32);
-  auto label_shape_ = GetInputNode("Label", node)->Var()->GetShape();
+  auto label_shape_ = GetInputVarNode("Label", node)->Var()->GetShape();
   if (label_shape_.size() == 1) {
     return CreateBaseOp(graph, node, "popart_nllloss",
-                        {GetInputNode("X", node), new_cast->outputs[0]},
-                        {GetOutputNode("Y", node)},
+                        {GetInputVarNode("X", node), new_cast->outputs[0]},
+                        {GetOutputVarNode("Y", node)},
                         {
                             {"ignoreIndex", ignoreIndex},
                         });
@@ -238,7 +240,7 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
 
     auto nllloss = CreateBaseOp(
         graph, node, "popart_nllloss",
-        {GetInputNode("X", node), reshape_before_loss->outputs[0]}, {},
+        {GetInputVarNode("X", node), reshape_before_loss->outputs[0]}, {},
         {
             {"ignoreIndex", ignoreIndex},
         });
@@ -253,7 +255,7 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
     auto reshape_after_loss =
         CreateBaseOp(graph, node, "popart_reshape",
                      {nllloss->outputs[0], const_after_loss->outputs[0]},
-                     {GetOutputNode("Y", node)}, {});
+                     {GetOutputVarNode("Y", node)}, {});
     return reshape_after_loss;
   }
 }

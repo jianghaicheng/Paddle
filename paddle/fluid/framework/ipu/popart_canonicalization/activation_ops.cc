@@ -22,8 +22,8 @@ namespace ipu {
 namespace {
 
 Node *activation_op_handler(Graph *graph, Node *node, const std::string &type) {
-  auto new_node =
-      CreateBaseOp(graph, node, type, {GetInputNode("X", node)}, node->outputs);
+  auto new_node = CreateBaseOp(graph, node, type, {GetInputVarNode("X", node)},
+                               node->outputs);
   return new_node;
 }
 

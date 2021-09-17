@@ -47,17 +47,14 @@ void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
 const int VarType2OnnxDtype(const int type);
 const std::string VarType2PopStr(const int type);
 
-// TODO(alleng) rename to GetInputVarNode or other name
-Node *GetInputNode(const std::string &name, const Node *node, const int id = 0);
-Node *GetOutputNode(const std::string &name, const Node *node,
-                    const int id = 0);
-Node *GetInVar(const Node *node, const std::string &var_name);
-Node *GetOutVar(const Node *node, const std::string &var_name);
-
-std::vector<int64_t> GetInputNodeShape(const std::string &name,
-                                       const Node *op_node, const int id = 0);
-std::vector<int64_t> GetOutputNodeShape(const std::string &name,
-                                        const Node *op_node, const int id = 0);
+Node *GetInputVarNode(const std::string &input_name, const Node *op_node,
+                      const int id = 0);
+Node *GetOutputVarNode(const std::string &output_name, const Node *op_node,
+                       const int id = 0);
+Node *GetInputVarNodeByVarName(const std::string &var_name,
+                               const Node *op_node);
+Node *GetOutputVarNodeByVarName(const std::string &var_name,
+                                const Node *op_node);
 
 }  // namespace ipu
 }  // namespace framework

@@ -24,7 +24,7 @@ namespace {
 Node *equal_handler(Graph *graph, Node *node) {
   auto new_node = CreateBaseOp(
       graph, node, "popart_equal",
-      {GetInputNode("X", node), GetInputNode("Y", node)}, node->outputs);
+      {GetInputVarNode("X", node), GetInputVarNode("Y", node)}, node->outputs);
   return new_node;
 }
 

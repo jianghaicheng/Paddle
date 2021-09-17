@@ -19,8 +19,8 @@ namespace framework {
 namespace ipu {
 
 // singleton
-static int var_count = -1;
-static int op_count = -1;
+static int var_count = 0;
+static int op_count = 0;
 
 const std::string GenerateVarName() {
   return std::string("_gen_var_") + std::to_string(var_count++);

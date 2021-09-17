@@ -144,44 +144,36 @@ const std::string VarType2PopStr(const int type) {
   }
 }
 
-Node *GetInputNode(const std::string &name, const Node *node, const int id) {
-  auto node_name = node->Op()->Input(name).at(id);
-  return GetInVar(node, node_name);
+Node *GetInputVarNode(const std::string &input_name, const Node *op_node,
+                      const int id) {
+  auto var_name = op_node->Op()->Input(input_name).at(id);
+  return GetInputVarNodeByVarName(var_name, op_node);
 }
 
-Node *GetOutputNode(const std::string &name, const Node *node, const int id) {
-  auto node_name = node->Op()->Output(name).at(id);
-  return GetOutVar(node, node_name);
+Node *GetOutputVarNode(const std::string &output_name, const Node *op_node,
+                       const int id) {
+  auto var_name = op_node->Op()->Output(output_name).at(id);
+  return GetOutputVarNodeByVarName(var_name, op_node);
 }
 
-Node *GetInVar(const Node *node, const std::string &var_name) {
-  for (auto *n : node->inputs) {
-    if (n->Name() == var_name) {
-      return n;
+Node *GetInputVarNodeByVarName(const std::string &var_name,
+                               const Node *op_node) {
+  for (auto *var : op_node->inputs) {
+    if (var->Name() == var_name) {
+      return var;
     }
   }
   return nullptr;
 }
 
-Node *GetOutVar(const Node *node, const std::string &var_name) {
-  for (auto *n : node->outputs) {
-    if (n->Name() == var_name) {
-      return n;
+Node *GetOutputVarNodeByVarName(const std::string &var_name,
+                                const Node *op_node) {
+  for (auto *var : op_node->outputs) {
+    if (var->Name() == var_name) {
+      return var;
     }
   }
   return nullptr;
-}
-
-std::vector<int64_t> GetInputNodeShape(const std::string &name,
-                                       const Node *op_node, const int id) {
-  auto input_node = GetInputNode(name, op_node, id);
-  return op_node->Op()->Block()->FindVar(input_node->Name())->GetShape();
-}
-
-std::vector<int64_t> GetOutputNodeShape(const std::string &name,
-                                        const Node *op_node, const int id) {
-  auto output_node = GetOutputNode(name, op_node, id);
-  return op_node->Op()->Block()->FindVar(output_node->Name())->GetShape();
 }
 
 }  // namespace ipu

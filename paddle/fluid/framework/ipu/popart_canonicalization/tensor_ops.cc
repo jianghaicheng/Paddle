@@ -108,7 +108,7 @@ Node *transpose_handler(Graph *graph, Node *node) {
 
   auto new_node_transpose =
       CreateBaseOp(graph, node, "popart_transpose", node->inputs,
-                   {GetOutputNode("Out", node)}, attrs);
+                   {GetOutputVarNode("Out", node)}, attrs);
   return new_node_transpose;
 }
 
@@ -126,23 +126,23 @@ Node *reshape_handler(Graph *graph, Node *node) {
 
   auto new_node_reshape =
       CreateBaseOp(graph, node, "popart_reshape",
-                   {GetInputNode("X", node), new_node_const->outputs[0]},
-                   {GetOutputNode("Out", node)}, {});
+                   {GetInputVarNode("X", node), new_node_const->outputs[0]},
+                   {GetOutputVarNode("Out", node)}, {});
   return new_node_reshape;
 }
 
 Node *gather_handler(Graph *graph, Node *node) {
   auto new_node_gather =
       CreateBaseOp(graph, node, "popart_gather",
-                   {GetInputNode("X", node), GetInputNode("Index", node)},
-                   {GetOutputNode("Out", node)}, {});
+                   {GetInputVarNode("X", node), GetInputVarNode("Index", node)},
+                   {GetOutputVarNode("Out", node)}, {});
   return new_node_gather;
 }
 
 Node *squeeze_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axes"));
-  auto input_shape_ = GetInputNode("X", node)->Var()->GetShape();
+  auto input_shape_ = GetInputVarNode("X", node)->Var()->GetShape();
 
   std::vector<int64_t> axes{axes_.begin(), axes_.end()};
   if (axes_.empty()) {
@@ -153,8 +153,8 @@ Node *squeeze_handler(Graph *graph, Node *node) {
     }
   }
   auto new_node_squeeze =
-      CreateBaseOp(graph, node, "popart_squeeze", {GetInputNode("X", node)},
-                   {GetOutputNode("Out", node)}, {{"axes", axes}});
+      CreateBaseOp(graph, node, "popart_squeeze", {GetInputVarNode("X", node)},
+                   {GetOutputVarNode("Out", node)}, {{"axes", axes}});
 
   return new_node_squeeze;
 }
@@ -170,7 +170,7 @@ Node *cast_handler(Graph *graph, Node *node) {
 Node *lookup_table_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto padding_idx_ = BOOST_GET_CONST(int64_t, op->GetAttr("padding_idx"));
-  auto w_shape_ = GetInputNode("W", node)->Var()->GetShape();
+  auto w_shape_ = GetInputVarNode("W", node)->Var()->GetShape();
   auto table_size_ = w_shape_[0];
   auto emb_size_ = w_shape_[1];
 
@@ -212,12 +212,12 @@ Node *lookup_table_handler(Graph *graph, Node *node) {
 
     auto left_slice =
         CreateBaseOp(graph, node, "popart_slice",
-                     {GetInputNode("W", node), left_start->outputs[0],
+                     {GetInputVarNode("W", node), left_start->outputs[0],
                       left_end->outputs[0], axes->outputs[0], step->outputs[0]},
                      {}, {});
     auto right_slice = CreateBaseOp(
         graph, node, "popart_slice",
-        {GetInputNode("W", node), right_start->outputs[0],
+        {GetInputVarNode("W", node), right_start->outputs[0],
          right_end->outputs[0], axes->outputs[0], step->outputs[0]},
         {}, {});
 
@@ -243,16 +243,16 @@ Node *lookup_table_handler(Graph *graph, Node *node) {
     }
     w_node = w_node->outputs[0];
   } else {
-    w_node = GetInputNode("W", node);
+    w_node = GetInputVarNode("W", node);
   }
 
-  auto squeeze =
-      CreateBaseOp(graph, node, "popart_squeeze", {GetInputNode("Ids", node)},
-                   {}, {{"axes", std::vector<int64_t>{-1}}});
+  auto squeeze = CreateBaseOp(graph, node, "popart_squeeze",
+                              {GetInputVarNode("Ids", node)}, {},
+                              {{"axes", std::vector<int64_t>{-1}}});
 
   auto gather =
       CreateBaseOp(graph, node, "popart_gather", {w_node, squeeze->outputs[0]},
-                   {GetOutputNode("Out", node)}, {});
+                   {GetOutputVarNode("Out", node)}, {});
   return gather;
 }
 
@@ -260,9 +260,9 @@ Node *unsqueeze_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("axes"));
   std::vector<int64_t> axes{axes_.begin(), axes_.end()};
-  auto new_node_unsqueeze =
-      CreateBaseOp(graph, node, "popart_unsqueeze", {GetInputNode("X", node)},
-                   {GetOutputNode("Out", node)}, {{"axes", axes}});
+  auto new_node_unsqueeze = CreateBaseOp(
+      graph, node, "popart_unsqueeze", {GetInputVarNode("X", node)},
+      {GetOutputVarNode("Out", node)}, {{"axes", axes}});
 
   return new_node_unsqueeze;
 }
@@ -297,7 +297,7 @@ Node *stack_handler(Graph *graph, Node *node) {
   }
   auto new_node_concat =
       CreateBaseOp(graph, node, "popart_concat", unsqueeze_outputs_,
-                   {GetOutputNode("Y", node)}, {{"axis", axis_}});
+                   {GetOutputVarNode("Y", node)}, {{"axis", axis_}});
   return new_node_concat;
 }
 
@@ -311,7 +311,7 @@ Node *slice_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   Node *starts = nullptr;
   if (op->HasInput("StartsTensor") && !op->Input("StartsTensor").empty()) {
-    starts = GetInputNode("StartsTensor", node);
+    starts = GetInputVarNode("StartsTensor", node);
   } else {
     auto starts_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("starts"));
     auto dim = int64_t(starts_.size());
@@ -321,7 +321,7 @@ Node *slice_handler(Graph *graph, Node *node) {
   }
   Node *ends = nullptr;
   if (op->HasInput("EndsTensor") && !op->Input("EndsTensor").empty()) {
-    ends = GetInputNode("EndsTensor", node);
+    ends = GetInputVarNode("EndsTensor", node);
   } else {
     auto ends_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ends"));
     auto dim = int64_t(ends_.size());
@@ -338,7 +338,7 @@ Node *slice_handler(Graph *graph, Node *node) {
   }
   auto new_node = CreateBaseOp(
       graph, node, "popart_slice",
-      {GetInputNode("Input", node), starts, ends, axes->outputs[0]},
+      {GetInputVarNode("Input", node), starts, ends, axes->outputs[0]},
       node->outputs);
   return new_node;
 }
@@ -356,8 +356,9 @@ Node *expand_handler(Graph *graph, Node *node) {
   if (op->HasInput("ExpandTimes") && !op->Input("ExpandTimes").empty()) {
     // cast to int64
     // TODO(alleng) using cast will fail at runtime
-    expand_times = CreateCast(graph, node, {GetInputNode("ExpandTimes", node)},
-                              {}, proto::VarType::INT64);
+    expand_times =
+        CreateCast(graph, node, {GetInputVarNode("ExpandTimes", node)}, {},
+                   proto::VarType::INT64);
   } else {
     auto expand_times_i32 =
         BOOST_GET_CONST(std::vector<int>, op->GetAttr("expand_times"));
@@ -370,7 +371,7 @@ Node *expand_handler(Graph *graph, Node *node) {
   }
   auto new_node = CreateBaseOp(
       graph, node, "popart_tile",
-      {GetInputNode("X", node), expand_times->outputs[0]}, node->outputs);
+      {GetInputVarNode("X", node), expand_times->outputs[0]}, node->outputs);
   return new_node;
 }
 
