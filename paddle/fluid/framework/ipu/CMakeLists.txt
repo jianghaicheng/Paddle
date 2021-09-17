@@ -9,6 +9,7 @@ set(POPART_CANONICALIZATION_SRC
     "popart_canonicalization/nn_ops.cc"
     "popart_canonicalization/tensor_ops.cc"
     "popart_canonicalization/other_ops.cc"
+    "popart_canonicalization/reduce_ops.cc"
 )
 
 cc_library(ipu_device SRCS device.cc DEPS enforce popart)

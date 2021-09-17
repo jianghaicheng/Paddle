@@ -21,22 +21,6 @@ namespace framework {
 namespace ipu {
 namespace {
 
-Node *reduce_mean_handler(Graph *graph, Node *node) {
-  auto *op = node->Op();
-  auto attrs = AttributeMap{};
-  auto reduce_all = BOOST_GET_CONST(bool, op->GetAttr("reduce_all"));
-  if (!reduce_all) {
-    auto axes_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("dim"));
-    auto axes = std::vector<int64_t>{axes_.begin(), axes_.end()};
-    attrs.emplace("axes", axes);
-  }
-  auto keepdims_ = BOOST_GET_CONST(bool, op->GetAttr("keep_dim"));
-  auto keepdims = int64_t{keepdims_};
-  attrs.emplace("keepdims", keepdims);
-  return CreateBaseOp(graph, node, "popart_reducemean", node->inputs,
-                      node->outputs, attrs);
-}
-
 Node *mean_handler(Graph *graph, Node *node) {
   return CreateBaseOp(graph, node, "popart_reducemean",
                       {GetInputVarNode("X", node)},
@@ -260,7 +244,6 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
   }
 }
 
-REGISTER_HANDLER(reduce_mean, reduce_mean_handler);
 REGISTER_HANDLER(mean, mean_handler);
 REGISTER_HANDLER(pow, pow_handler);
 REGISTER_HANDLER(mul, mul_handler);

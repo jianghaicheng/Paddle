@@ -113,10 +113,8 @@ void Compiler::LowerBody(const ir::Graph* graph) {
     auto op_type = op_desc->Type();
     VLOG(10) << "node->type: " << op_type;
 
-    auto itr = name_function_.find(op_type);
-    if (itr != name_function_.end()) {
-      itr->second(node->Op());
-    } else if (op_type == "popart_constant") {
+    // TODO(alleng) abstract duplicate code
+    if (op_type == "popart_constant") {
       auto dims =
           BOOST_GET_CONST(std::vector<int64_t>, op_desc->GetAttr("dims"));
       auto dtype_ = BOOST_GET_CONST(int, op_desc->GetAttr("dtype"));
@@ -163,6 +161,50 @@ void Compiler::LowerBody(const ir::Graph* graph) {
           builder_->aiOnnxOpset11().reducemean(inputs, axes, keepdims);
       SetIpuIndexStage(result, op_desc);
       InsertTensors(GetOpOutputs(op_desc), result);
+    } else if (op_type == "popart_reducemin") {
+      auto inputs = GetOpInputs(op_desc);
+      auto axes = nonstd::optional<std::vector<int64_t>>();
+      if (op_desc->HasAttr("axes")) {
+        axes = BOOST_GET_CONST(std::vector<int64_t>, op_desc->GetAttr("axes"));
+      }
+      auto keepdims = BOOST_GET_CONST(int64_t, op_desc->GetAttr("keepdims"));
+      popart::TensorId result =
+          builder_->aiOnnxOpset11().reducemin(inputs, axes, keepdims);
+      SetIpuIndexStage(result, op_desc);
+      InsertTensors(GetOpOutputs(op_desc), result);
+    } else if (op_type == "popart_reducemax") {
+      auto inputs = GetOpInputs(op_desc);
+      auto axes = nonstd::optional<std::vector<int64_t>>();
+      if (op_desc->HasAttr("axes")) {
+        axes = BOOST_GET_CONST(std::vector<int64_t>, op_desc->GetAttr("axes"));
+      }
+      auto keepdims = BOOST_GET_CONST(int64_t, op_desc->GetAttr("keepdims"));
+      popart::TensorId result =
+          builder_->aiOnnxOpset11().reducemax(inputs, axes, keepdims);
+      SetIpuIndexStage(result, op_desc);
+      InsertTensors(GetOpOutputs(op_desc), result);
+    } else if (op_type == "popart_reducesum") {
+      auto inputs = GetOpInputs(op_desc);
+      auto axes = nonstd::optional<std::vector<int64_t>>();
+      if (op_desc->HasAttr("axes")) {
+        axes = BOOST_GET_CONST(std::vector<int64_t>, op_desc->GetAttr("axes"));
+      }
+      auto keepdims = BOOST_GET_CONST(int64_t, op_desc->GetAttr("keepdims"));
+      popart::TensorId result =
+          builder_->aiOnnxOpset11().reducesum(inputs, axes, keepdims);
+      SetIpuIndexStage(result, op_desc);
+      InsertTensors(GetOpOutputs(op_desc), result);
+    } else if (op_type == "popart_reduceprod") {
+      auto inputs = GetOpInputs(op_desc);
+      auto axes = nonstd::optional<std::vector<int64_t>>();
+      if (op_desc->HasAttr("axes")) {
+        axes = BOOST_GET_CONST(std::vector<int64_t>, op_desc->GetAttr("axes"));
+      }
+      auto keepdims = BOOST_GET_CONST(int64_t, op_desc->GetAttr("keepdims"));
+      popart::TensorId result =
+          builder_->aiOnnxOpset11().reduceprod(inputs, axes, keepdims);
+      SetIpuIndexStage(result, op_desc);
+      InsertTensors(GetOpOutputs(op_desc), result);
     } else if (op_type == "popart_batchnormalization") {
       auto inputs = GetOpInputs(op_desc);
       auto outputs = GetOpOutputs(op_desc);
@@ -181,7 +223,13 @@ void Compiler::LowerBody(const ir::Graph* graph) {
       SetIpuIndexStage(result, op_desc);
       InsertTensors(GetOpOutputs(op_desc), result);
     } else {
-      PADDLE_THROW(platform::errors::NotFound("%s is not registered", op_type));
+      auto itr = name_function_.find(op_type);
+      if (itr != name_function_.end()) {
+        itr->second(node->Op());
+      } else {
+        PADDLE_THROW(
+            platform::errors::NotFound("%s is not registered", op_type));
+      }
     }
   }
   VLOG(10) << "leave Compiler::LowerBody";
