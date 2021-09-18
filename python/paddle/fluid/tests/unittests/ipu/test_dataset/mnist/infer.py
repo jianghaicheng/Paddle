@@ -60,6 +60,12 @@ def parse_args():
         default=False,
         help="Whether to use IPU or not.")
     parser.add_argument(
+        "--ues_ipu_model",
+        type=bool,
+        default=True,
+        help="use model trained on IPU devices"
+    )
+    parser.add_argument(
         "--num_ipus",
         type=int, 
         default=1, 
@@ -75,8 +81,6 @@ def parse_args():
         action="store_false",
         help="draw IR graph for debug"
     )
-    parser.add_argument(
-        "--num_epochs", type=int, default=5, help="number of epochs.")
     parser.add_argument(
         "--save_dir",
         type=str,
@@ -101,14 +105,46 @@ def apply_pseudo_batch_size_pass(prog, batch_size, var_name):
     # transform feed var batch_size to 1
     global_block = prog.global_block()
     if var_name in global_block.vars:
-        feed_var = global_block.vars[var_name] # Call API
+        feed_var = global_block.vars[var_name] # Call Python Block API
         # modify attrs
         # TODO(yiakwy) : hard coded
-        feed_var.desc.set_shape([1,1,28,28])
-        logger.info("Change batch size of var %s from %d to %d")
+        old_shape = feed_var.desc.shape()
+        feed_var.desc.set_shape([batch_size,1,28,28])
+        logger.info("Change batch size of var %s from %d to %d" % (var_name, old_shape[0], batch_size))
         return
 
     raise ValueError("Cannot find variable %s in the program description" % var_name)
+
+def read_batch_size(prog, var_name):
+    global_block = prog.global_block()
+    if var_name in global_block.vars:
+        feed_var = global_block.vars[var_name] # Call Python Block API
+        old_shape = feed_var.desc.shape()
+        return old_shape[0]
+
+    raise ValueError("Cannot find variable %s in the program description" % var_name)
+
+def apply_pseudo_rm_op_by_type_pass(prog, op_type):
+    global_block = prog.global_block()
+    # TODO(yiakwy) : with block python frontend API, we could 
+    for i, op in enumerate(global_block.ops):
+        op.desc.set_is_target(False)
+        if op.type == op_type:
+            global_block._remove_op(i)
+            logger.info("Remove operator %d of type %s" % (i, op_type))
+            # return
+
+    # raise ValueError("Cannot find operator with type %s in the program description" % op_type)
+
+def apply_pseudo_rm_vars_pass(prog, var_name):
+    global_block = prog.global_block()
+    if var_name in global_block.vars:
+        global_block._remove_var(var_name)
+        prog.desc.flush()
+        logger.info("Remove var %s" % var_name)
+        return
+
+    raise ValueError("Cannot find var %s in the program description" % var_name)
 
 def load_image(file):
     im = Image.open(file).convert('L')
@@ -144,12 +180,12 @@ def main():
     # Reading images
     logger.info("Reading data ...")
     pwd = os.path.dirname(os.path.realpath(__file__))
-    img = load_image(os.path.join(pwd,FLAGS.img))
+    img = load_image(os.path.join(pwd,FLAGS.img))    
     logger.info("Complete reading image %s" % FLAGS.img)
 
     save_dir = FLAGS.save_dir
     num_ipus = FLAGS.num_ipus
-    enable_pipelining = not FLAGS.no_pipelining
+    enable_pipelining = FLAGS.no_pipelining
     will_draw_ir_graph = FLAGS.draw_ir_graph
 
     # add model
@@ -162,7 +198,7 @@ def main():
         logger.info("Constructing the computation graph ...")
         [infer_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(save_dir, infer_exc, 
-         model_filename="recognize_digits_%s_test.pdmodel" % DEVICE_SUFFIX, params_filename="recognize_digits_%s.pdiparams" % DEVICE_SUFFIX)
+         model_filename="recognize_digits_%s.pdmodel" % DEVICE_SUFFIX, params_filename="recognize_digits_%s.pdiparams" % DEVICE_SUFFIX)
         logger.info("Computation graph built.")
 
 
@@ -170,14 +206,24 @@ def main():
             # TODO(yiakwy) : for the moment, we store our model trained on IPU as static graph
             # which means that the batch size is fixed. 
             # 
-            # We will apply passes to trains from batch size to `None` or `-1` upon the generated graph description later
-            apply_pseudo_batch_size_pass(infer_program, 1, feed_target_names[0])
-        else:
-            pass
+            # We will apply passes to transform batch size from a static number to `None` or `-1` or another number upon the generated graph description
             # apply_pseudo_batch_size_pass(infer_program, 1, feed_target_names[0])
+            
+            # TODO(yiakwy) : workaround
+            batch_size = read_batch_size(infer_program, feed_target_names[0])
+            img_with_64 = np.tile(img, (batch_size, 1, 1, 1))
+            img = img_with_64
+
+            apply_pseudo_rm_op_by_type_pass(infer_program, "feed")
+            apply_pseudo_rm_op_by_type_pass(infer_program, "fetch")
+            apply_pseudo_rm_vars_pass(infer_program, "feed")
+            apply_pseudo_rm_vars_pass(infer_program, "fetch")
+        else:
+            if FLAGS.ues_ipu_model:
+                apply_pseudo_batch_size_pass(infer_program, 1, feed_target_names[0])
 
 
-        if FLAGS.use_ipu:
+        if FLAGS.use_ipu:#False:
             # Pipeline with tensorflow frontend: https://docs.graphcore.ai/projects/tensorflow1-user-guide/en/latest/perf_training.html#pipelined-training
             ipu_strategy = compiler.get_ipu_strategy()
             ipu_strategy.is_training = False
@@ -192,7 +238,7 @@ def main():
             logger.info("Compiling graph on IPU devices ...")
             feed_list = feed_target_names
             fetch_list = [ out.name for out in fetch_targets]
-            infer_program = ipu_compiler.compile(feed_list, fetch_list, infer=True)
+            infer_program = ipu_compiler.compile(feed_list, fetch_list)
             logger.info("Complete compiling.")
         else:
             if will_draw_ir_graph:

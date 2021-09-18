@@ -225,6 +225,7 @@ def train(epochs, exec, model, feeder, save_dir,
             metrics = exec.run(train_program, 
             feed={inp.name : data[i] for i, inp in enumerate(model.inputs)},
             fetch_list=model.outputs[1])
+
             if batch_id % 100 == 0:
                 if validation_loss > 0:
                     print("Epoch %d, batch %d, Cost %f, Validation Cost %f" % (
@@ -238,15 +239,19 @@ def train(epochs, exec, model, feeder, save_dir,
             step += 1
 
         if save_dir is not None:
-            if True:#not model.cfg.get("use_ipu", False):
-                # TODO(yiak) : does not work in IPU
+            if not model.cfg.get("use_ipu", False):
                 paddle.static.save_inference_model(
                     save_dir+"recognize_digits_%s" % model.cfg.get("device_suffix", "cpu"),
                     model.inputs[0], model.outputs[0],
                     exec, program=train_program
                 )
             else:
-                paddle.static.save(train_program, save_dir+"recognize_digits_%s_test" % model.cfg.get("device_suffix", "ipu"))
+                paddle.static.save_inference_model(
+                    save_dir+"recognize_digits_%s" % model.cfg.get("device_suffix", "cpu"),
+                    model.inputs[0], model.outputs[0],
+                    exec, program=train_program.org_program
+                )   
+                # paddle.static.save(train_program.org_program, save_dir+"recognize_digits_%s_test" % model.cfg.get("device_suffix", "ipu"))
 
     # find the best pass
     best = sorted(report,key=lambda record: float(record[1]))[0]
@@ -314,6 +319,12 @@ def main():
     enable_pipelining = not FLAGS.no_pipelining
     will_draw_ir_graph = FLAGS.draw_ir_graph
     device_suffix = "ipu" if FLAGS.use_ipu else "cpu"
+
+    # create config
+    cfg = {}
+    cfg["batch_size"] = BATCH_SIZE
+    cfg["use_ipu"] = FLAGS.use_ipu
+    cfg["device_suffix"] = device_suffix
 
     # create config
     cfg = {}

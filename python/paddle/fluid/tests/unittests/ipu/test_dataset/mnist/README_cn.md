@@ -62,6 +62,21 @@ MNSIT 数据集足够小，可以在1个IPU上运行。对于精度对齐市足�
 
 > bash infer_with_ipu.sh
 
+示例：
+
+```
+(py37_paddle-ipu) [docker-λ>] leiw@gbnwx-pod006-3-in_docker_dev:~/Paddle/python/paddle/fluid/tests/unittests/ipu/test_dataset/mnist$ bash infer_with_ipu.sh
+[09/18 07:14:40] mnist:infer INFO: Reading data ...
+[09/18 07:14:40] mnist:infer INFO: Complete reading image infer_3.png
+[09/18 07:14:40] mnist:infer INFO: Constructing the computation graph ...
+[09/18 07:15:12] mnist:infer INFO: Computation graph built.
+[09/18 07:15:12] mnist:infer INFO: Change batch size of var %s from %d to %d
+[09/18 07:15:12] mnist:infer INFO: Drawing IR graph ...
+[09/18 07:15:12] mnist:infer INFO: Complete drawing.
+digit hand write number picture is recognized as : 3
+```
+```
+
 ## 通过 Analysis API (c++) 在 `IPU` 上做推理
 
 我们将加入相关示例
