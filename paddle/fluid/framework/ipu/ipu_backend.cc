@@ -59,7 +59,6 @@ void IpuBackend::Compile(ir::Graph* graph,
   compiler_->LowerWeights(graph, scope_);
   compiler_->LowerBody(graph);
   compiler_->InitOutputs(fetch_list);
-  executor_->SetOutputTensorId(compiler_->GetOutputTensors());
   executor_->SetWeights(compiler_->GetWeights());
   VLOG(10) << "leave IpuBackend::Compile";
 }

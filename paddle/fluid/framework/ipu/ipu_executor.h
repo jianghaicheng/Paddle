@@ -61,10 +61,6 @@ class Executor {
   // Strategy
   void SetIpuStrategy(const IpuStrategy &strategy);
 
-  // Outputs
-  void SetOutputTensorId(const std::map<std::string, std::string> &outputs);
-  std::vector<int64_t> GetOutputShape(const std::string &fetch_name);
-
  private:
   float GetLRFromScope();
 
@@ -77,7 +73,6 @@ class Executor {
   const IpuStrategy *ipu_strategy_ = nullptr;
   popart::WeightsIO weights_io_;
   std::vector<popart::TensorId> weights_;
-  std::map<std::string, std::string> outputs_;
 };
 
 }  // namespace ipu

@@ -54,9 +54,6 @@ class IpuBackend {
   void Compile(ir::Graph *graph, const std::vector<std::string> &feed_list,
                const std::vector<std::string> &fetch_list);
 
-  // need doc
-  void Prepare();
-
   // what run does include:
   //   1. construct forward onnx graph
   //   2. graph-level optimization
@@ -78,6 +75,7 @@ class IpuBackend {
 
  private:
   int UpperIpuNum();
+  void Prepare();
 
  private:
   std::shared_ptr<Compiler> compiler_;

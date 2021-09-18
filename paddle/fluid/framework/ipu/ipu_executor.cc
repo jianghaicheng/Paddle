@@ -204,21 +204,6 @@ void Executor::SetIpuStrategy(const IpuStrategy &strategy) {
   ipu_strategy_ = &strategy;
 }
 
-void Executor::SetOutputTensorId(
-    const std::map<std::string, std::string> &outputs) {
-  outputs_ = outputs;
-}
-
-std::vector<int64_t> Executor::GetOutputShape(const std::string &fetch_name) {
-  auto tensor_id = outputs_[fetch_name];
-  auto fetch_info = session_->getInfo(tensor_id);
-  auto output_shape = fetch_info.shape();
-  if (ipu_strategy_->batches_per_step > 1) {
-    output_shape.insert(output_shape.begin(), ipu_strategy_->batches_per_step);
-  }
-  return output_shape;
-}
-
 float Executor::GetLRFromScope() {
   auto lr_var = scope_->GetVar(opt_info.GetLRVarName());
   auto tensor = lr_var->Get<framework::LoDTensor>();
