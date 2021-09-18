@@ -120,8 +120,18 @@ class TestBase(IPUOpTest):
         [inference_program, feed_target_names, fetch_targets] = (
             paddle.static.load_inference_model(self.full_name, exe))
 
-        tmp = exe.run(
-            inference_program, feed=self.feed, fetch_list=[fetch_targets])
+        if run_ipu:
+            feed_list = feed_target_names
+            fetch_list = [fetch_targets[0].name]
+            ipu_strategy = compiler.get_ipu_strategy()
+            ipu_strategy.is_training = False
+            program = compiler.IpuCompiler(
+                inference_program,
+                ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+        else:
+            program = inference_program
+
+        tmp = exe.run(program, feed=self.feed, fetch_list=[fetch_targets])
 
         return tmp
 

@@ -505,7 +505,6 @@ class IpuCompiler(object):
         import paddle
 
         self._program = program
-        self._graph = core.Graph(program.desc)
         self._compiled = False
 
         if scope is not None:
@@ -530,6 +529,24 @@ class IpuCompiler(object):
         ]
 
     def compile(self, feed_list, fetch_list, feed_var_name='feed', scope=None):
+        # feed and fetch doesn't have corresponding popart op, so we rm both here
+        global_block = self._program.global_block()
+        need_to_remove_op_index = []
+        for i, op in enumerate(global_block.ops):
+            op.desc.set_is_target(False)
+            if op.type == "feed" or op.type == "fetch":
+                need_to_remove_op_index.append(i)
+
+        for index in need_to_remove_op_index[::-1]:
+            global_block._remove_op(index)
+
+        for var in ['feed', 'fetch']:
+            if global_block.has_var(var):
+                global_block._remove_var(var)
+
+        self._program.desc.flush()
+        self._graph = core.Graph(self._program.desc)
+
         for pass_name in self._graph_passes:
             graph_pass = core.get_pass(pass_name)
             graph_pass.apply(self._graph)
