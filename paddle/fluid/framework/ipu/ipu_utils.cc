@@ -37,7 +37,7 @@ std::size_t PaddleIArray::nelms() const {
 
 const popart::Shape PaddleIArray::shape() const { return shape_; }
 
-popart::DataType VarType2PopartType(proto::VarType::Type type) {
+popart::DataType VarType2PopartType(const proto::VarType::Type type) {
   switch (type) {
     case proto::VarType::UINT8:
       return popart::DataType::UINT8;
@@ -69,7 +69,39 @@ popart::DataType VarType2PopartType(proto::VarType::Type type) {
   }
 }
 
-popart::DataType OnnxDtype2PopartType(int type) {
+proto::VarType::Type PopartType2VarType(const popart::DataType type) {
+  switch (type) {
+    case popart::DataType::UINT8:
+      return proto::VarType::UINT8;
+    case popart::DataType::INT8:
+      return proto::VarType::INT8;
+    case popart::DataType::INT16:
+      return proto::VarType::INT16;
+    case popart::DataType::INT32:
+      return proto::VarType::INT32;
+    case popart::DataType::INT64:
+      return proto::VarType::INT64;
+    case popart::DataType::BOOL:
+      return proto::VarType::BOOL;
+    case popart::DataType::DOUBLE:
+      return proto::VarType::FP64;
+    case popart::DataType::FLOAT:
+      return proto::VarType::FP32;
+    case popart::DataType::FLOAT16:
+      return proto::VarType::FP16;
+    case popart::DataType::BFLOAT16:
+      return proto::VarType::BF16;
+    case popart::DataType::COMPLEX64:
+      return proto::VarType::COMPLEX64;
+    case popart::DataType::COMPLEX128:
+      return proto::VarType::COMPLEX128;
+    default:
+      PADDLE_THROW(paddle::platform::errors::Unavailable(
+          "Unsupported Paddle var type."));
+  }
+}
+
+popart::DataType OnnxDtype2PopartType(const int type) {
   auto dtype = static_cast<ONNXDataType>(type);
   switch (dtype) {
     case ONNXDataType::BOOL:

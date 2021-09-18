@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ipu/ipu_optimizer.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
 #include "paddle/fluid/framework/ipu/ipu_utils.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
@@ -38,9 +39,8 @@ class Executor {
                const std::vector<popart::TensorId> &outputs,
                std::shared_ptr<popart::DeviceInfo> device);
   void Run(const std::vector<popart::TensorId> &inputs_id,
-           const std::vector<const Tensor *> &inputs,
            const std::vector<popart::TensorId> &outputs_id,
-           const std::vector<Tensor *> &outputs);
+           const framework::ExecutionContext &ctx);
 
   // Optimizer
   void SetOptimizerType(const std::string &type);
