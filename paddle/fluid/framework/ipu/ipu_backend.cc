@@ -59,31 +59,32 @@ void IpuBackend::Compile(ir::Graph* graph,
   compiler_->LowerWeights(graph, scope_);
   compiler_->LowerBody(graph);
   compiler_->InitOutputs(fetch_list);
-  executor_->SetOutputsShape(compiler_->GetOutputsShape());
+  executor_->SetOutputTensorId(compiler_->GetOutputTensors());
   executor_->SetWeights(compiler_->GetWeights());
   VLOG(10) << "leave IpuBackend::Compile";
 }
 
 void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
                      const std::vector<Tensor*>& outputs) {
-  if (!is_prepared_) {
-    Prepare();
-    is_prepared_ = true;
-  }
-
+  Prepare();
   auto inputs_id = compiler_->GetInputs();
   auto outputs_id = compiler_->GetOutputs();
   executor_->Run(inputs_id, inputs, outputs_id, outputs);
 }
 
 void IpuBackend::Prepare() {
+  if (is_prepared_) {
+    return;
+  } else {
+    is_prepared_ = true;
+  }
   auto proto = compiler_->GetModelProto();
   auto tensors = compiler_->GetTensors();
   auto outputs = compiler_->GetOutputs();
   executor_->Prepare(proto, tensors, outputs, device_);
 }
 
-void IpuBackend::SetScope(Scope& scope) {
+void IpuBackend::SetScope(const Scope& scope) {
   scope_ = &scope;
   executor_->SetScope(&scope);
 }

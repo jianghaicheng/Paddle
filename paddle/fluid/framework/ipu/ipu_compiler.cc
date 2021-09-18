@@ -367,13 +367,13 @@ std::vector<int64_t> Compiler::GetTensorShape(const std::string& name) {
   return builder_->getTensorShape(tensors_[name]);
 }
 
-std::map<std::string, std::vector<int64_t>> Compiler::GetOutputsShape() {
-  std::map<std::string, std::vector<int64_t>> outputs_shape;
+std::map<std::string, std::string> Compiler::GetOutputTensors() {
+  std::map<std::string, std::string> outputs;
   for (const auto& fetch_name : fetch_list_) {
-    auto shape = GetTensorShape(fetch_name);
-    outputs_shape[fetch_name] = shape;
+    auto tensorid = tensors_[fetch_name];
+    outputs[fetch_name] = tensorid;
   }
-  return outputs_shape;
+  return outputs;
 }
 
 std::vector<popart::TensorId>& Compiler::GetWeights() { return weights_; }

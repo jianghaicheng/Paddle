@@ -56,13 +56,13 @@ class Executor {
   void WeightsToPaddle();
 
   // Scope
-  void SetScope(Scope *scope) { scope_ = scope; }
+  void SetScope(const Scope *scope) { scope_ = scope; }
 
   // Strategy
   void SetIpuStrategy(const IpuStrategy &strategy);
 
   // Outputs
-  void SetOutputsShape(const std::map<std::string, std::vector<int64_t>> &info);
+  void SetOutputTensorId(const std::map<std::string, std::string> &outputs);
   std::vector<int64_t> GetOutputShape(const std::string &fetch_name);
 
  private:
@@ -73,13 +73,13 @@ class Executor {
   std::unique_ptr<popart::Session> session_;
 
  private:
-  Scope *scope_ = nullptr;
+  const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
   popart::WeightsIO weights_io_;
   std::vector<popart::TensorId> weights_;
-  std::map<std::string, std::vector<int64_t>> outputs_shape_;
+  std::map<std::string, std::string> outputs_;
 };
 
-}  // namespace paddle
-}  // namespace framework
 }  // namespace ipu
+}  // namespace framework
+}  // namespace paddle

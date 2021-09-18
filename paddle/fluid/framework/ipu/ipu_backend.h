@@ -53,6 +53,9 @@ class IpuBackend {
   void Compile(ir::Graph *graph, const std::vector<std::string> &feed_list,
                const std::vector<std::string> &fetch_list);
 
+  // need doc
+  void Prepare();
+
   // what run does include:
   //   1. construct forward onnx graph
   //   2. graph-level optimization
@@ -60,9 +63,9 @@ class IpuBackend {
   void Run(const std::vector<const Tensor *> &inputs,
            const std::vector<Tensor *> &outputs);
 
-  Executor &GetExecutor() { return *executor_; };
+  Executor &GetExecutor() { return *executor_; }
 
-  void SetScope(Scope &scope);
+  void SetScope(const Scope &scope);
   void SetIpuStrategy(const IpuStrategy &strategy);
   const IpuStrategy *GetIpuStrategy();
 
@@ -74,7 +77,6 @@ class IpuBackend {
   bool DeviceIsAttached();
 
  private:
-  void Prepare();
   int UpperIpuNum();
 
  private:
@@ -84,7 +86,7 @@ class IpuBackend {
   bool is_prepared_ = false;
 
   // not own
-  Scope *scope_ = nullptr;
+  const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
 };
 

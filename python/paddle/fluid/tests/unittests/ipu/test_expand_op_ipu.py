@@ -97,8 +97,6 @@ class TestBase(IPUOpTest):
         self.assertTrue(res0.shape == res1.shape)
 
 
-@unittest.skip("repeats is int32 in paddle, but int64 in popart")
-# TODO(alleng) add a pass for this case
 class TestCase1(TestBase):
     def set_feed(self):
         self.feed = {"x": np.random.uniform(size=[2, 2]).astype('float32')}

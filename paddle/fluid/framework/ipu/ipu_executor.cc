@@ -175,7 +175,7 @@ void Executor::SetWeightsIO() {
           beta1_acc *= beta1;
           step += 1;
         }
-        data_ptr[0] = (float)step;
+        data_ptr[0] = static_cast<float>(step);
       }
       auto tensor_info = session_->getInfo(popart_var_name);
       weights_io_.insert(popart_var_name, {data_ptr, tensor_info});
@@ -191,15 +191,15 @@ void Executor::SetIpuStrategy(const IpuStrategy &strategy) {
   ipu_strategy_ = &strategy;
 }
 
-void Executor::SetOutputsShape(
-    const std::map<std::string, std::vector<int64_t>> &info) {
-  for (const auto &pair : info) {
-    outputs_shape_[pair.first] = pair.second;
-  }
+void Executor::SetOutputTensorId(
+    const std::map<std::string, std::string> &outputs) {
+  outputs_ = outputs;
 }
 
 std::vector<int64_t> Executor::GetOutputShape(const std::string &fetch_name) {
-  auto output_shape = outputs_shape_.at(fetch_name);
+  auto tensor_id = outputs_[fetch_name];
+  auto fetch_info = session_->getInfo(tensor_id);
+  auto output_shape = fetch_info.shape();
   if (ipu_strategy_->batches_per_step > 1) {
     output_shape.insert(output_shape.begin(), ipu_strategy_->batches_per_step);
   }
