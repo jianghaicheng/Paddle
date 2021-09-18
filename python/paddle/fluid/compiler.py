@@ -574,6 +574,9 @@ class IpuCompiler(object):
             feed_var = program_global_block.var(feed_name)
             feed_var.desc.set_need_check_feed(False)
 
+        if not hasattr(program, 'org_program'):
+            program.org_program = self._program
+
         return program
 
 
