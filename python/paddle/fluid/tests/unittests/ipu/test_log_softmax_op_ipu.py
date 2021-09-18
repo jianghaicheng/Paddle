@@ -20,7 +20,8 @@ import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
 import paddle.optimizer
 import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, np_dtype_to_fluid_str
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
+                                                          np_dtype_to_fluid_str)
 import paddle.nn.functional as F
 
 paddle.enable_static()

@@ -21,7 +21,8 @@ import paddle.fluid.compiler as compiler
 from paddle.fluid.executor import global_scope
 import paddle.optimizer
 import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, np_dtype_to_fluid_str
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
+                                                          np_dtype_to_fluid_str)
 
 paddle.enable_static()
 

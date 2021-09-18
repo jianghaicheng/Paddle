@@ -20,6 +20,7 @@ import sys
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
+import paddle.static
 
 paddle.enable_static()
 SEED = 2021
