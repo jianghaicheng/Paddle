@@ -37,8 +37,10 @@ class IpuRuntimeKernel : public framework::OpKernel<T> {
               ctx.device_context());
       ipu_backend->AttachDevice(ipu_ctx.DeviceId());
     }
+
     VLOG(4) << "IpuRuntime Kernel, begin to run graph";
     ipu_backend->Run(ctx);
+
     // post-run
     auto outputs = ctx.MultiOutput<framework::Tensor>("FetchList");
     auto output_names = ctx.OutputNames("FetchList");
