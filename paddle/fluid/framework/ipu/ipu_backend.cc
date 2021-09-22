@@ -59,17 +59,17 @@ void IpuBackend::Compile(ir::Graph* graph,
   compiler_->LowerWeights(graph, scope_);
   compiler_->LowerBody(graph);
   compiler_->InitOutputs(fetch_list);
-  executor_->SetOutputTensorId(compiler_->GetOutputTensors());
   executor_->SetWeights(compiler_->GetWeights());
   VLOG(10) << "leave IpuBackend::Compile";
 }
 
 void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
-                     const std::vector<Tensor*>& outputs) {
+                     const std::vector<Tensor*>& outputs,
+                     const framework::ExecutionContext& ctx) {
   Prepare();
   auto inputs_id = compiler_->GetInputs();
   auto outputs_id = compiler_->GetOutputs();
-  executor_->Run(inputs_id, inputs, outputs_id, outputs);
+  executor_->Run(inputs_id, inputs, outputs_id, outputs, ctx);
 }
 
 void IpuBackend::Prepare() {

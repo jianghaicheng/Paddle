@@ -83,7 +83,9 @@ void Executor::Prepare(const std::string &proto,
 void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
                    const std::vector<const Tensor *> &inputs,
                    const std::vector<popart::TensorId> &outputs_id,
-                   const std::vector<Tensor *> &outputs) {
+                   const std::vector<Tensor *> &outputs,
+                   const framework::ExecutionContext &ctx) {
+  // inputs
   std::map<popart::TensorId, popart::IArray &> popart_inputs;
   std::map<popart::TensorId, PaddleIArray> input_wrappers;
   for (size_t i = 0; i < inputs.size(); i++) {
@@ -92,12 +94,23 @@ void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
     input_wrappers.emplace(tensor_id, PaddleIArray(tensor));
     popart_inputs.emplace(tensor_id, input_wrappers.at(tensor_id));
   }
-
+  // anchors
   std::map<popart::TensorId, popart::IArray &> popart_anchors;
   std::map<popart::TensorId, PaddleIArray> anchor_wrappers;
   for (size_t i = 0; i < outputs.size(); i++) {
     auto tensor_id = outputs_id[i];
     auto tensor = const_cast<Tensor *>(outputs[i]);
+    // get dims & dtype from session
+    auto fetch_info = session_->getInfo(tensor_id);
+    auto output_shape = fetch_info.shape();
+    if (ipu_strategy_->batches_per_step > 1) {
+      output_shape.insert(output_shape.begin(),
+                          ipu_strategy_->batches_per_step);
+    }
+    tensor->Resize(framework::make_ddim(output_shape));
+    auto fetch_dtype = fetch_info.dataType();
+    auto paddle_type = PopartType2VarType(fetch_dtype);
+    tensor->mutable_data(ctx.GetPlace(), paddle_type);
     anchor_wrappers.emplace(tensor_id, PaddleIArray(tensor));
     popart_anchors.emplace(tensor_id, anchor_wrappers.at(tensor_id));
   }
@@ -189,21 +202,6 @@ void Executor::WeightsToPaddle() { session_->readWeights(weights_io_); }
 
 void Executor::SetIpuStrategy(const IpuStrategy &strategy) {
   ipu_strategy_ = &strategy;
-}
-
-void Executor::SetOutputTensorId(
-    const std::map<std::string, std::string> &outputs) {
-  outputs_ = outputs;
-}
-
-std::vector<int64_t> Executor::GetOutputShape(const std::string &fetch_name) {
-  auto tensor_id = outputs_[fetch_name];
-  auto fetch_info = session_->getInfo(tensor_id);
-  auto output_shape = fetch_info.shape();
-  if (ipu_strategy_->batches_per_step > 1) {
-    output_shape.insert(output_shape.begin(), ipu_strategy_->batches_per_step);
-  }
-  return output_shape;
 }
 
 float Executor::GetLRFromScope() {
