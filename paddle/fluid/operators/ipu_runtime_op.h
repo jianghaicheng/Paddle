@@ -37,13 +37,23 @@ class IpuRuntimeKernel : public framework::OpKernel<T> {
               ctx.device_context());
       ipu_backend->AttachDevice(ipu_ctx.DeviceId());
     }
-
+    VLOG(4) << "IpuBackend prepare session";
+    ipu_backend->Prepare();
     VLOG(4) << "IpuRuntime Kernel, begin to run graph";
-    ipu_backend->Run(ctx);
-
-    // post-run
+    auto inputs = ctx.MultiInput<framework::Tensor>("FeedList");
     auto outputs = ctx.MultiOutput<framework::Tensor>("FetchList");
     auto output_names = ctx.OutputNames("FetchList");
+    for (size_t i = 0; i < outputs.size(); ++i) {
+      auto* out = outputs[i];
+      auto oshape = ipu_backend->GetExecutor().GetOutputShape(output_names[i]);
+      out->Resize(framework::make_ddim(oshape));
+      // TODO(alleng) support muti-output dtypes
+      // maybe get dtype from ipu_backend
+      out->mutable_data<T>(ctx.GetPlace());
+    }
+
+    ipu_backend->Run(inputs, outputs);
+
     // resize tensor when tensor.dims() is empty
     for (size_t i = 0; i < outputs.size(); ++i) {
       auto* out = outputs[i];

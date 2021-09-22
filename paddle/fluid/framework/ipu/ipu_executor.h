@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ipu/ipu_optimizer.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
 #include "paddle/fluid/framework/ipu/ipu_utils.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
@@ -39,8 +38,9 @@ class Executor {
                const std::vector<popart::TensorId> &outputs,
                std::shared_ptr<popart::DeviceInfo> device);
   void Run(const std::vector<popart::TensorId> &inputs_id,
+           const std::vector<const Tensor *> &inputs,
            const std::vector<popart::TensorId> &outputs_id,
-           const framework::ExecutionContext &ctx);
+           const std::vector<Tensor *> &outputs);
 
   // Optimizer
   void SetOptimizerType(const std::string &type);
@@ -61,6 +61,10 @@ class Executor {
   // Strategy
   void SetIpuStrategy(const IpuStrategy &strategy);
 
+  // Outputs
+  void SetOutputTensorId(const std::map<std::string, std::string> &outputs);
+  std::vector<int64_t> GetOutputShape(const std::string &fetch_name);
+
  private:
   float GetLRFromScope();
 
@@ -73,6 +77,7 @@ class Executor {
   const IpuStrategy *ipu_strategy_ = nullptr;
   popart::WeightsIO weights_io_;
   std::vector<popart::TensorId> weights_;
+  std::map<std::string, std::string> outputs_;
 };
 
 }  // namespace ipu

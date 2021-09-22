@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ipu/ipu_compiler.h"
 #include "paddle/fluid/framework/ipu/ipu_executor.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -54,11 +53,15 @@ class IpuBackend {
   void Compile(ir::Graph *graph, const std::vector<std::string> &feed_list,
                const std::vector<std::string> &fetch_list);
 
+  // need doc
+  void Prepare();
+
   // what run does include:
   //   1. construct forward onnx graph
   //   2. graph-level optimization
   //   3. autodiff
-  void Run(const framework::ExecutionContext &ctx);
+  void Run(const std::vector<const Tensor *> &inputs,
+           const std::vector<Tensor *> &outputs);
 
   Executor &GetExecutor() { return *executor_; }
 
@@ -75,7 +78,6 @@ class IpuBackend {
 
  private:
   int UpperIpuNum();
-  void Prepare();
 
  private:
   std::shared_ptr<Compiler> compiler_;

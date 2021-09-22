@@ -367,6 +367,15 @@ std::vector<int64_t> Compiler::GetTensorShape(const std::string& name) {
   return builder_->getTensorShape(tensors_[name]);
 }
 
+std::map<std::string, std::string> Compiler::GetOutputTensors() {
+  std::map<std::string, std::string> outputs;
+  for (const auto& fetch_name : fetch_list_) {
+    auto tensorid = tensors_[fetch_name];
+    outputs[fetch_name] = tensorid;
+  }
+  return outputs;
+}
+
 std::vector<popart::TensorId>& Compiler::GetWeights() { return weights_; }
 
 std::string Compiler::GetModelProto() { return builder_->getModelProto(); }
