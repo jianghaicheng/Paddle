@@ -39,7 +39,7 @@ The program has a few comand line options.
 
 For MNIST dataset, it is enough to train on a single IPU, it is enough for precision alignmnet. We will support Model replica and data parallel for feature test purpose soon.
 
-MNSIT 数据集足够小，可以在1个IPU上运行。对于精度对齐市足够的。我们后面会支持数据并行用于特性测试。
+MNSIT 数据集足够小，可以在1个IPU上运行。对于精度对齐是足够的。我们后面会支持数据并行用于特性测试。
 
 `-h`                   展示信息.  
 

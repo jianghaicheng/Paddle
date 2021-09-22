@@ -222,6 +222,36 @@ void Compiler::LowerBody(const ir::Graph* graph) {
           inputs, popart::ReductionType::NoReduction, ignoreIndex);
       SetIpuIndexStage(result, op_desc);
       InsertTensors(GetOpOutputs(op_desc), result);
+    } else if (op_type == "popart_topk") {
+        auto inputs = GetOpInputs(op_desc);
+        auto outputs= GetOpOutputs(op_desc);
+        int64_t axis = BOOST_GET_CONST(int64_t, op_desc->GetAttr("axis"));
+        int sorted_INT32 = BOOST_GET_CONST(int, op_desc->GetAttr("sorted"));
+        int64_t sorted = int64_t{sorted_INT32};
+
+        auto aiOnnxOpset = builder_->aiOnnxOpset11();
+
+        popart::ConvInputs result;
+        if (inputs.size() == 2) {
+            VLOG(10) << "[Compiler::LowerBody] size of inputs for <popart_topk> is 2";
+            result = aiOnnxOpset.topk(inputs, axis, sorted);
+        } else if (inputs.size() == 1) {
+            VLOG(10) << "[Compiler::LowerBody] size of inputs for <popart_topk> is 1";
+            int64_t k = BOOST_GET_CONST(int64_t, op_desc->GetAttr("k"));
+            // TODO(yiakwy) : reference to Opset10, 11 API
+            popart::TensorInfo kShape{"INT64", std::vector<int64_t>{1}};
+            popart::ConstVoidData kData = {&k, kShape};
+            auto K_t = aiOnnxOpset.constant(kData);
+            result = aiOnnxOpset.topk({inputs[0], K_t}, axis, sorted);
+        }
+        result[1] = aiOnnxOpset.cast({result[1]}, "INT32");
+        SetIpuIndexStage(result, op_desc);
+        VLOG(10) << "[Compiler::LowerBody] output[1]: " << outputs[1];
+        VLOG(10) << "[Compiler::LowerBody] output[1]: " << GetOpOutputs(op_desc)[1] << " -> " << result[1];
+        tensors_.emplace(GetOpOutputs(op_desc)[1], result[1]); // topk indices
+        VLOG(10) << "[Compiler::LowerBody] output[0]: " << outputs[0];
+        VLOG(10) << "[Compiler::LowerBody] output[0]: " << GetOpOutputs(op_desc)[0] << " -> " << result[0];
+        tensors_.emplace(GetOpOutputs(op_desc)[0], result[0]); // topk values
     } else {
       auto itr = name_function_.find(op_type);
       if (itr != name_function_.end()) {
