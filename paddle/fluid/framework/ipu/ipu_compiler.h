@@ -47,7 +47,6 @@ class Compiler {
   std::vector<popart::TensorId> GetOutputs() { return outputs_; }
   std::map<std::string, popart::TensorId> GetTensors() { return tensors_; }
   std::vector<int64_t> GetTensorShape(const std::string &name);
-  std::map<std::string, std::string> GetOutputTensors();
   std::vector<popart::TensorId> &GetWeights();
 
   std::string GetModelProto();

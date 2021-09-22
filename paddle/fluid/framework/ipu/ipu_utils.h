@@ -69,8 +69,9 @@ class PaddleIArray final : public popart::IArray {
   std::vector<int64_t> shape_;
 };
 
-popart::DataType VarType2PopartType(proto::VarType::Type type);
-popart::DataType OnnxDtype2PopartType(int type);
+popart::DataType VarType2PopartType(const proto::VarType::Type type);
+proto::VarType::Type PopartType2VarType(const popart::DataType type);
+popart::DataType OnnxDtype2PopartType(const int type);
 bool GetBoolEnv(std::string str);
 
 template <typename T>
