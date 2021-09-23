@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# 
+#
 # Usage: python ./PopParse.py --popart_dir /paddle/poplar_sdk-ubuntu_18_04-2.1.0+617-6bb5f5b742/popart-ubuntu_18_04-2.1.0+145366-ce995e299d/include/
 import enum
 import argparse
@@ -21,7 +21,7 @@ import os
 import re
 import sys
 import clang.cindex
-import onnx
+import parse_onnx as onnx
 # from utils import _utils
 
 parser = argparse.ArgumentParser()
@@ -32,6 +32,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--popart_dir", default="default", help="Popart home")
 
 args = parser.parse_args()
+
 onnx.init(args.popart_dir, None)
 print("popparse", onnx.popart_include_dir)
 jsonOutput = onnx.parse()
@@ -102,14 +103,15 @@ for classname in jsonOutput:
 classes.reverse()
 
 for opset in classes:
-    macroFile += "// Ops from %s\n" % opset
+    macroFile += "\n// Ops from %s" % opset
     for name in jsonOutput[opset]:
         if name in UnsupportedOps:
             continue
 
         print("Generating code for {0}::{1}".format(opset, name))
         # Generate the macro
-        opDecl = "OP_DECL("
+        opDecl = "\n"
+        opDecl += "OP_DECL("
 
         # funcName = name.capitalize()
         # opDecl += "popart, " + name + ", " + name
@@ -158,7 +160,7 @@ for opset in classes:
         opDecl += ", " + argVector
         # opDecl += ", " + bodyArgVector
 
-        macroFile += opDecl + ")\n"
+        macroFile += opDecl + ") // NOLINT"
 autoComment = """// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -172,7 +174,11 @@ autoComment = """// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-"""
+
+// clang-format off
+
+#pragma once"""
+
 with open(os.path.join(sources_dir(), 'supported_ops_autogen.h'), 'w') as f:
     print(autoComment, file=f)
     print(macroFile, file=f)

@@ -14,7 +14,11 @@ name_data = []
 
 popart_files = ["builder.hpp", "builder.h.gen"]
 
-nodeBlacklist = {"DomainOpSet", "Builder", "getOpsetVersion", "AiOnnxOpset11"}
+nodeBlacklist = {
+    "DomainOpSet",
+    "Builder",
+    "getOpsetVersion",
+}
 
 
 def find_popart_includes():
