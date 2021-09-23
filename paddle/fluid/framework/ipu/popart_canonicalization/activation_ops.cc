@@ -48,7 +48,7 @@ Node *sqrt_handler(Graph *graph, Node *node) {
 }
 
 Node *gelu_handler(Graph *graph, Node *node) {
-  return activation_op_handler(graph, node, "popart_gelu");
+  return activation_op_handler(graph, node, "popart_gelu_v2");
 }
 
 Node *log_softmax_handler(Graph *graph, Node *node) {

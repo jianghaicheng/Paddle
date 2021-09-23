@@ -160,7 +160,7 @@ Node *group_norm_handler(Graph *graph, Node *node) {
   std::vector<Node *> outputs_ = {GetOutputVarNode("Y", node),
                                   GetOutputVarNode("Mean", node),
                                   GetOutputVarNode("Variance", node)};
-  return CreateBaseOp(graph, node, "popart_groupnormalization", inputs_,
+  return CreateBaseOp(graph, node, "popart_groupnormalization_v2", inputs_,
                       outputs_, attrs_);
 }
 
@@ -206,7 +206,7 @@ Node *layer_norm_handler(Graph *graph, Node *node) {
   auto groupnorm_attrs_ =
       AttributeMap{{"epsilon", epsilon_}, {"num_groups", groups_}};
   auto out_Y_ = MakeVarNode(graph, node);
-  CreateBaseOp(graph, node, "popart_groupnormalization",
+  CreateBaseOp(graph, node, "popart_groupnormalization_v2",
                {new_node_reshape1->outputs[0], GetInputVarNode("Scale", node),
                 GetInputVarNode("Bias", node)},
                {out_Y_, GetOutputVarNode("Mean", node),

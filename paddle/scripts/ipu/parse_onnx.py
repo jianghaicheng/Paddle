@@ -1,40 +1,32 @@
-# Copyright (c) 2020 Graphcore Ltd. All rights reserved
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import logging
 import os
 import re
-import csv
 from ctypes.util import find_library
 import clang.cindex
 
-current_dir = os.path.dirname(os.path.realpath(__file__))
-logger = logging.getLogger('OnnxParser')
-
 popart_include_dir = None
-name_data = []
 
 popart_files = ["builder.hpp", "builder.h.gen"]
-
-nodeBlacklist = {
-    "DomainOpSet",
-    "Builder",
-    "getOpsetVersion",
-}
-
-
-def find_popart_includes():
-    assert "CONDA_PREFIX" in os.environ, ("You need to run this script from "
-                                          "inside an activated buildenv")
-    expected_path = os.path.realpath(
-        os.path.join(os.environ["CONDA_PREFIX"], "..", "popart"))
-    assert os.path.isdir(expected_path), ("You need to configure your build "
-                                          "by running cmake")
-    return expected_path
+nodeBlacklist = {"DomainOpSet", "Builder", "getOpsetVersion"}
 
 
 def init(popart_path=None, clang_path=None):
     builder_path = os.path.isfile(
         os.path.join(popart_path, "popart", "builder.hpp"))
-    # print(popart_path)
     assert builder_path, ("Unable to locate popART's popart/builder.hpp "
                           "in " + popart_path)
     global popart_include_dir
@@ -50,13 +42,13 @@ def init(popart_path=None, clang_path=None):
 
     if clang_path is None:
         for version in [11, 9, 8, 7, 6]:
-            logger.debug('Trying to find: clang-%s', str(version))
+            logging.debug('Trying to find: clang-%s', str(version))
             clang_path = find_library('clang-' + str(version))
             if clang_path is not None:
                 break
 
     assert clang_path is not None, 'Could not find clang'
-    logger.info('Will use clang: %s', clang_path)
+    logging.info('Will use clang: %s', clang_path)
     clang.cindex.Config.set_library_file(clang_path)
 
 
@@ -112,17 +104,14 @@ def find_functions(jsonOutput, node, namespace=""):
     jsonOutput[namespace][functionName] = operation
 
 
-# parse()
-#
 # Parse popART header files and extract onnx operator information
-# Returns:
-#   Map of operators, return types and arguments
+# Returns Map of operators, return types and arguments
 def parse():
     index = clang.cindex.Index.create()
     print(" popart_include_dir ", popart_include_dir)
     path = os.path.realpath(
         os.path.join(popart_include_dir, "popart", "builder.hpp"))
-    logger.info('Parsing: %s', path)
+    logging.info('Parsing: %s', path)
     tu = index.parse(
         path,
         args=[
@@ -130,22 +119,23 @@ def parse():
         ])
 
     for diag in tu.diagnostics:
-        logger.warning(diag)
+        logging.warning(diag)
 
     json = dict()
     find_functions(json, tu.cursor)
 
-    classes = []
+    classes_onnx = []
     for name in json:
-        if name.startswith("Ai"):
-            classes.append(name)
+        if name.startswith("AiOnnx"):
+            classes_onnx.append(name)
+        elif name.startswith("AiGraphcore"):
+            pass
         else:
             del json[name]
+    classes_onnx.reverse()
 
-    classes.reverse()
     added_functions = set()
-
-    for opset in classes:
+    for opset in classes_onnx:
         to_remove = []
 
         for name in json[opset]:
@@ -158,63 +148,3 @@ def parse():
             json[opset].pop(name)
 
     return json
-
-
-signatures = dict()
-
-
-def parse_signatures():
-    json = parse()
-    classes = []
-    for classname in json:
-        classes.append(classname)
-    classes.reverse()
-
-    type_map = {
-        'bool': ['cint'],
-        'float': ['cfloat'],
-        'int64_t': ['clong', 'dimension'],
-        'unsigned int': ['cint'],
-        'std::string': ['cstr'],
-        'std::vector<float>': ['cfloat_list', 'empty_initializer'],
-        'std::vector<int64_t>': ['clong_list', 'empty_initializer'],
-        'std::vector<std::string>': ['cstr_list', 'empty_initializer'],
-        'nonstd::optional<float>': ['cfloat', 'None'],
-        'nonstd::optional<int>': ['cint', 'None'],
-        'nonstd::optional<int64_t>': ['clong', 'None'],
-        'nonstd::optional<std::string>': ['cstr', 'None'],
-        'nonstd::optional<std::vector<int64_t> >':
-        ['clong_list', 'dimension_list', 'None'],
-        'Attributes::Int': ['clong'],
-        'Attributes::Ints': ['clong_list', 'empty_initializer'],
-        'popart::ReductionType': ['cint', 'reduction'],
-        'popart::ScatterReduction': ['cint', 'scatter_reduction'],
-        'popart::Builder': 'ignore',
-        'popart::ConstVoidData': 'ignore',
-        'popart::MultiConvDilations': 'ignore',
-        'popart::MultiConvInputs': 'ignore',
-        'popart::MultiConvPads': 'ignore',
-        'popart::MultiConvStrides': 'ignore',
-        'popart::TensorId': 'ignore'
-    }
-
-    for classname in classes:
-        for op in json[classname]:
-            args = json[classname][op]['args']
-
-            arglist = []
-            for arg in args:
-                name = arg['name']
-                ty = arg['type'].replace('const ', '').replace(' &', '')
-
-                if name == 'args':
-                    arglist.append('Args')
-                    continue
-                if ty not in type_map:
-                    assert False, "Unsupported type " + ty + \
-                        " in onnx.parse_signatures()"
-
-                if type_map[ty] != 'ignore':
-                    arglist.append(type_map[ty])
-
-            signatures[op] = arglist

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// clang-format off
-
 #pragma once
+
+#include "paddle/fluid/framework/ipu/supported_ops_autogen.h"
+#include "paddle/fluid/framework/ipu/supported_ops_custom.h"
