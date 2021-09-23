@@ -178,18 +178,6 @@ void Executor::SetWeightsIO() {
       auto var = scope_->GetVar(paddle_var_name);
       auto data_ptr = var->GetMutable<framework::LoDTensor>()->data<float>();
 
-      if (pair.first == "Step___" && data_ptr[0] < 1.0f) {
-        // TODO(xiaobingw): workround, will implement with pass or other way
-        // python side maybe better
-        auto beta1 = opt_info.GetAttr("beta1");
-        int step = 0;
-        float beta1_acc = beta1;
-        while (beta1_acc < data_ptr[0]) {
-          beta1_acc *= beta1;
-          step += 1;
-        }
-        data_ptr[0] = static_cast<float>(step);
-      }
       auto tensor_info = session_->getInfo(popart_var_name);
       weights_io_.insert(popart_var_name, {data_ptr, tensor_info});
     }

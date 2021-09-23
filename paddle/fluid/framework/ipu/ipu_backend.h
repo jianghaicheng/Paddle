@@ -65,6 +65,7 @@ class IpuBackend {
   Executor &GetExecutor() { return *executor_; }
 
   void SetScope(const Scope &scope);
+  const Scope *GetScope() { return scope_; }
   void SetIpuStrategy(const IpuStrategy &strategy);
   const IpuStrategy *GetIpuStrategy();
 

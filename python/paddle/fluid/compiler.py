@@ -522,6 +522,7 @@ class IpuCompiler(object):
         self._backend.set_ipu_strategy(self._ipu_strategy)
         self._graph_passes = [
             "optimizer_extract_pass",
+            "optimizer_state_align_pass",
             "forward_graph_extract_pass",
             "infer_shape_pass",
             "avg_shard_pass",

@@ -25,6 +25,11 @@ static constexpr const char *sIpuStageAttr = "ipu_stage";
 static constexpr const char *sOpIdentifyIdAttr = "op_identify_id";
 static constexpr const char *sDebugInfoId = "__debug_info_id";
 
+static constexpr const char *sBeta1 = "beta1";
+static constexpr const char *sBeta2 = "beta2";
+static constexpr const char *sBeta1Pow = "Beta1Pow";
+static constexpr const char *sBeta2Pow = "Beta2Pow";
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle
