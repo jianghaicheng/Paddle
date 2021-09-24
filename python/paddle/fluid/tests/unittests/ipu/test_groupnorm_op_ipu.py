@@ -109,8 +109,17 @@ class TestBase(IPUOpTest):
             else:
                 program = main_prog
 
-            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
-            return result[0]
+            if self.is_training:
+                result = []
+                for _ in range(self.epoch):
+                    loss_res = exe.run(program,
+                                       feed=self.feed,
+                                       fetch_list=fetch_list)
+                    result.append(loss_res[0])
+                return np.array(result)
+            else:
+                result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
+                return result[0]
 
     def test_base(self):
         res0 = self._test_base(False)
@@ -139,6 +148,9 @@ class TestTrainCase1(TestBase):
 
 
 class TestTrainCase2(TestBase):
+    def set_atol(self):
+        self.atol = 1e-3
+
     def set_attrs(self):
         self.attrs = {
             "groups": 4,

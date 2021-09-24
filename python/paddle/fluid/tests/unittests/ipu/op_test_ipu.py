@@ -20,7 +20,6 @@ from paddle.fluid.tests.unittests.op_test import _set_use_system_allocator
 
 SEED = 2021
 
-# TODO(alleng) add more dtype
 map_np_dtype_to_fluid_dtype = {
     'bool': "bool",
     'int8': "int8",
@@ -33,7 +32,7 @@ map_np_dtype_to_fluid_dtype = {
 }
 
 
-def np_dtype_to_fluid_str(dtype):
+def np_dtype_to_fluid_str(dtype: np.dtype) -> str:
     return map_np_dtype_to_fluid_dtype[dtype.name]
 
 
