@@ -31,6 +31,7 @@ struct IpuStrategy {
   bool save_last_onnx = true;
   popart::SessionOptions popart_options_;
   bool need_avg_shard = false;
+  bool enable_fp16 = false;
 };
 
 }  // namespace ipu

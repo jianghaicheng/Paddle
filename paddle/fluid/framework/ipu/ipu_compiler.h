@@ -15,8 +15,9 @@
 #pragma once
 
 #include <popart/builder.hpp>
-
+#include <popart/graphtransformer.hpp>
 #include "paddle/fluid/framework/ipu/common.h"
+#include "paddle/fluid/framework/ipu/ipu_strategy.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -27,7 +28,7 @@ namespace ipu {
 class Compiler {
  public:
   Compiler();
-
+  ~Compiler();
   void RegisterOpFunc();
   void LowerBody(const ir::Graph *graph);
   void InitInputs(ir::Graph *graph, const std::vector<std::string> &feed_list);
@@ -49,8 +50,12 @@ class Compiler {
   std::vector<popart::TensorId> &GetWeights();
 
   std::string GetModelProto();
+  void SetIpuStrategy(const IpuStrategy &strategy) {
+    ipu_strategy_ = &strategy;
+  };
   void SaveModelProto(const std::string &path);
   void SaveModelProtoNoCheck(const std::string &path);
+  void ConvertProtoToFp16();
 
  private:
   std::vector<std::string> GetOpInputs(const OpDesc *op);
@@ -76,6 +81,9 @@ class Compiler {
 
   // weights info map
   std::vector<popart::TensorId> weights_;
+
+  std::string converted_proto_ = "";
+  const IpuStrategy *ipu_strategy_ = nullptr;
 };
 
 }  // namespace ipu

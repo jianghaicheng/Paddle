@@ -3289,7 +3289,15 @@ All parameter, weight, gradient are variables in Paddle.
           },
           R"DOC(
             Int type, used to make batch size fixed. Default 1.
-          )DOC");
+          )DOC")
+      .def_property(
+          "enable_fp16",
+          [](const ipu::IpuStrategy &self) { return self.enable_fp16; },
+          [](ipu::IpuStrategy &self, bool enable_fp16) {
+            self.enable_fp16 = enable_fp16;
+          },
+          R"DOC(
+            Bool type, True enable float16 mode, otherwise disable. Default False.)DOC");
 #endif
 
   BindFleetWrapper(&m);

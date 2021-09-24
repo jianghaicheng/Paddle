@@ -185,7 +185,6 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 Place CPUDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_IPU
-// TODO(Cheng) get current device
 IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {
   int id = place.GetDeviceId();
   std::shared_ptr<framework::ipu::IpuBackend> ipu_backend =
@@ -194,7 +193,6 @@ IPUDeviceContext::IPUDeviceContext(IPUPlace place) : place_(place) {
 }
 
 Place IPUDeviceContext::GetPlace() const { return place_; }
-// TODO(Cheng) need to imp
 void IPUDeviceContext::Wait() const {
   /*! \brief  Wait for all operations completion in the stream. */
 }

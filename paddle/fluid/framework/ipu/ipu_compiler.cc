@@ -44,6 +44,8 @@ Compiler::Compiler() {
   RegisterOpFunc();
 }
 
+Compiler::~Compiler() {}
+
 void Compiler::RegisterOpFunc() {
   VLOG(10) << "enter Compiler::RegisterOpFunc";
 #define INT_VEC std::vector<std::int64_t>
@@ -214,6 +216,9 @@ void Compiler::InitInputs(ir::Graph* graph,
         if (feed_name == var_desc->Name()) {
           VLOG(10) << "feed_name= " << var_desc->Name();
           auto data_type = VarType2PopartType(var_desc->GetDataType());
+          if (ipu_strategy_->enable_fp16) {
+            data_type = popart::DataType::FLOAT16;
+          }
           popart::TensorInfo input_info{data_type, var_desc->GetShape()};
           VLOG(10) << "popart input_info = " << input_info;
           popart::TensorId tensor_id =
@@ -338,14 +343,26 @@ std::vector<int64_t> Compiler::GetTensorShape(const std::string& name) {
 
 std::vector<popart::TensorId>& Compiler::GetWeights() { return weights_; }
 
-std::string Compiler::GetModelProto() { return builder_->getModelProto(); }
+// convertFloatsToHalfs
+void Compiler::ConvertProtoToFp16() {
+  popart::GraphTransformer graph_transformer(builder_->getModelProto());
+  graph_transformer.convertFloatsToHalfs();
+  converted_proto_ = graph_transformer.getModelProto();
+}
+
+std::string Compiler::GetModelProto() {
+  if (converted_proto_.length()) {
+    return converted_proto_;
+  }
+  return builder_->getModelProto();
+}
 
 void Compiler::SaveModelProto(const std::string& path) {
   builder_->saveModelProto(path);
 }
 
 void Compiler::SaveModelProtoNoCheck(const std::string& path) {
-  auto proto = builder_->getModelProto();
+  auto proto = GetModelProto();
   std::ofstream onnxfile(path, std::ios_base::binary);
   onnxfile.write(proto.data(), proto.size());
   onnxfile.close();

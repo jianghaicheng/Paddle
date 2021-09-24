@@ -78,6 +78,10 @@ void IpuBackend::Prepare() {
   } else {
     is_prepared_ = true;
   }
+  // convert Model to fp16
+  if (ipu_strategy_->enable_fp16) {
+    compiler_->ConvertProtoToFp16();
+  }
   auto proto = compiler_->GetModelProto();
   auto tensors = compiler_->GetTensors();
   auto outputs = compiler_->GetOutputs();
@@ -92,6 +96,7 @@ void IpuBackend::SetScope(const Scope& scope) {
 void IpuBackend::SetIpuStrategy(const IpuStrategy& strategy) {
   ipu_strategy_ = &strategy;
   executor_->SetIpuStrategy(strategy);
+  compiler_->SetIpuStrategy(strategy);
 }
 
 size_t IpuBackend::GetNumDevices() {
