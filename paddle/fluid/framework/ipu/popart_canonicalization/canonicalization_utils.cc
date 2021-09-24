@@ -176,6 +176,10 @@ Node *GetOutputVarNodeByVarName(const std::string &var_name,
   return nullptr;
 }
 
+const bool is_float_equal(float a, float b, float eps) {
+  return std::fabs(a - b) <= eps;
+}
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

@@ -35,7 +35,7 @@ nonstd::optional<T> GetOptAttrAllowNull(std::string attr, OpDesc* op_desc) {
   if (op_desc->HasAttr(attr)) {
     return BOOST_GET_CONST(T, op_desc->GetAttr(attr));
   } else {
-    return nonstd::optional<T>();
+    return {};
   }
 }
 
@@ -43,8 +43,6 @@ Compiler::Compiler() {
   builder_ = popart::Builder::create();
   RegisterOpFunc();
 }
-
-Compiler::~Compiler() = default;
 
 void Compiler::RegisterOpFunc() {
   VLOG(10) << "enter Compiler::RegisterOpFunc";
@@ -106,7 +104,6 @@ void Compiler::LowerBody(const ir::Graph* graph) {
     auto op_type = op_desc->Type();
     VLOG(10) << "node->type: " << op_type;
 
-    // TODO(alleng) abstract duplicate code
     if (op_type == "popart_constant") {
       auto dims =
           BOOST_GET_CONST(std::vector<int64_t>, op_desc->GetAttr("dims"));

@@ -11,7 +11,6 @@ set(POPART_CANONICALIZATION_SRC
     "popart_canonicalization/other_ops.cc"
     "popart_canonicalization/reduce_ops.cc"
     "popart_canonicalization/search_ops.cc"
-    "popart_canonicalization/topk_accuracy_op.cc"
 )
 
 cc_library(ipu_device SRCS device.cc DEPS enforce popart)

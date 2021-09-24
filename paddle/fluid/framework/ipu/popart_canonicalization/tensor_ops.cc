@@ -355,7 +355,6 @@ Node *expand_handler(Graph *graph, Node *node) {
   Node *expand_times = nullptr;
   if (op->HasInput("ExpandTimes") && !op->Input("ExpandTimes").empty()) {
     // cast to int64
-    // TODO(alleng) using cast will fail at runtime
     expand_times =
         CreateCast(graph, node, {GetInputVarNode("ExpandTimes", node)}, {},
                    proto::VarType::INT64);

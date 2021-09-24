@@ -27,7 +27,6 @@ namespace ipu {
 class Compiler {
  public:
   Compiler();
-  ~Compiler();
 
   void RegisterOpFunc();
   void LowerBody(const ir::Graph *graph);

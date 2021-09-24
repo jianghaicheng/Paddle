@@ -121,8 +121,7 @@ Node *matmul_handler(Graph *graph, Node *node) {
                           {GetInputVarNode("Y", node)}, {}, {{"perm", perm}});
     y_node = y_node->outputs[0];
   }
-  // TODO(alleng) move 1e-8 to global or create a funtion like equal()
-  if (abs(alpha - 1.0) > 1e-8) {
+  if (is_float_equal(alpha, 1.0)) {
     auto o_node =
         CreateBaseOp(graph, node, "popart_matmul", {x_node, y_node}, {});
     auto attr = MakeConstAttrMapFromValue(alpha, {1}, ONNXDataType::FLOAT);
