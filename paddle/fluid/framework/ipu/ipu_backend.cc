@@ -94,8 +94,6 @@ void IpuBackend::SetIpuStrategy(const IpuStrategy& strategy) {
   executor_->SetIpuStrategy(strategy);
 }
 
-const IpuStrategy* IpuBackend::GetIpuStrategy() { return ipu_strategy_; }
-
 size_t IpuBackend::GetNumDevices() {
   // IpuModel
   bool ipu_model = GetBoolEnv("POPLAR_IPUMODEL");

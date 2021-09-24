@@ -67,7 +67,7 @@ class IpuBackend {
   void SetScope(const Scope &scope);
   const Scope *GetScope() { return scope_; }
   void SetIpuStrategy(const IpuStrategy &strategy);
-  const IpuStrategy *GetIpuStrategy();
+  const IpuStrategy *GetIpuStrategy() { return ipu_strategy_; }
 
   // Device
   size_t GetNumDevices();

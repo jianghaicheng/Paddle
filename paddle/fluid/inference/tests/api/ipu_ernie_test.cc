@@ -108,7 +108,8 @@ bool ParseLine(const std::string &line,
   return true;
 }
 
-bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs) {
+bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs,
+                   int batch_size = 1) {
   if (FLAGS_infer_data.empty()) {
     LOG(ERROR) << "please set input data path";
     return false;
@@ -124,18 +125,27 @@ bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs) {
     ParseLine(line, &feed_data);
     inputs->push_back(std::move(feed_data));
     sample++;
-    if (!FLAGS_test_all_data && sample == FLAGS_batch_size) break;
+    if (!FLAGS_test_all_data && sample == batch_size) break;
   }
   LOG(INFO) << "number of samples: " << sample;
   return true;
 }
 
-void SetConfig(AnalysisConfig *cfg, bool use_ipu = false) {
+void SetConfig(AnalysisConfig *cfg, bool use_ipu = false, int batch_size = 1) {
   cfg->SetModel(FLAGS_infer_model);
   if (use_ipu) {
     // num_ipu, enable_pipelining, batches_per_step, batch_size,
-    // need_infer_shape, need_avg_shard
-    cfg->EnableIpu(4, false, 1, 1, true, true);
+    // need_avg_shard
+    cfg->EnableIpu(4, false, 1, batch_size, true);
+  }
+}
+
+void SetPipelineConfig(AnalysisConfig *cfg, bool use_ipu = false) {
+  cfg->SetModel(FLAGS_infer_model);
+  if (use_ipu) {
+    // num_ipu, enable_pipelining, batches_per_step, batch_size,
+    // need_avg_shard
+    cfg->EnableIpu(4, true, 4, 1, true);
   }
 }
 
@@ -150,20 +160,16 @@ void profile(bool use_ipu = false) {
                  inputs, &outputs, FLAGS_num_threads);
 }
 
-// Check the model by ipu
-// TEST(Analyzer_ernie, profile_ipu) { profile(true); }
-
 // // Compare Deterministic result
-// TEST(Analyzer_Ernie, compare_determine) {
-//   AnalysisConfig cfg;
-//   SetConfig(&cfg, true);
+TEST(Analyzer_Ernie, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg, true);
 
-//   std::vector<std::vector<PaddleTensor>> input_slots_all;
-//   LoadInputData(&input_slots_all);
-//   CompareDeterministic(reinterpret_cast<const
-//   PaddlePredictor::Config*>(&cfg),
-//                        input_slots_all);
-// }
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  LoadInputData(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
+}
 
 // Compare results
 TEST(Analyzer_Ernie, compare_results) {
@@ -197,6 +203,39 @@ TEST(Analyzer_Ernie, compare_results) {
     }
   }
 }
+
+// Compare pipeline result
+// TEST(Analyzer_Ernie_pipeline, compare_results) {
+//   AnalysisConfig cfg;
+//   SetPipelineConfig(&cfg, true);
+
+//   std::vector<std::vector<PaddleTensor>> input_slots_all;
+//   LoadInputData(&input_slots_all, 4);
+
+//   std::ifstream fin(FLAGS_refer_result);
+//   std::string line;
+//   std::vector<float> ref;
+
+//   while (std::getline(fin, line)) {
+//     Split(line, ' ', &ref);
+//   }
+
+//   auto predictor = CreateTestPredictor(
+//       reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+//       FLAGS_use_analysis);
+
+//   std::vector<PaddleTensor> outputs;
+//   for (size_t i = 0; i < input_slots_all.size(); i++) {
+//     outputs.clear();
+//     predictor->Run(input_slots_all[i], &outputs);
+//     auto outputs_size = outputs.front().data.length() / (sizeof(float));
+//     for (size_t j = 0; j < outputs_size; ++j) {
+//       EXPECT_NEAR(ref[i * outputs_size + j],
+//                   static_cast<float *>(outputs[0].data.data())[j],
+//                   FLAGS_accuracy);
+//     }
+//   }
+// }
 
 }  // namespace inference
 }  // namespace paddle

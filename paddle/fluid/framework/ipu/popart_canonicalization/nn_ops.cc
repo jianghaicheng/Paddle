@@ -53,7 +53,6 @@ Node *conv2d_handler(Graph *graph, Node *node) {
 }
 
 Node *batch_norm_handler(Graph *graph, Node *node) {
-  // TODO(alleng) differ from trainning & inference
   auto *op = node->Op();
   std::vector<Node *> inputs;
   inputs.push_back(GetInputVarNode("X", node));
@@ -61,17 +60,29 @@ Node *batch_norm_handler(Graph *graph, Node *node) {
   inputs.push_back(GetInputVarNode("Bias", node));
   inputs.push_back(GetInputVarNode("Mean", node));
   inputs.push_back(GetInputVarNode("Variance", node));
+  int64_t num_outputs = 1;
   std::vector<Node *> outputs;
+  auto is_test_type = op->GetAttrType("is_test");
+  bool is_test;
+  if (is_test_type == 0) {
+    // int
+    is_test = BOOST_GET_CONST(int, op->GetAttr("is_test"));
+  } else {
+    // bool
+    is_test = BOOST_GET_CONST(bool, op->GetAttr("is_test"));
+  }
   outputs.push_back(GetOutputVarNode("Y", node));
-  outputs.push_back(GetOutputVarNode("MeanOut", node));
-  outputs.push_back(GetOutputVarNode("VarianceOut", node));
-  outputs.push_back(GetOutputVarNode("SavedMean", node));
-  outputs.push_back(GetOutputVarNode("SavedVariance", node));
+  if (!is_test) {
+    outputs.push_back(GetOutputVarNode("MeanOut", node));
+    outputs.push_back(GetOutputVarNode("VarianceOut", node));
+    outputs.push_back(GetOutputVarNode("SavedMean", node));
+    outputs.push_back(GetOutputVarNode("SavedVariance", node));
+    num_outputs = 5;
+  }
   // outputs.push_back(GetOutputVarNode("ReserveSpace", node));
   auto momentum = BOOST_GET_CONST(float, op->GetAttr("momentum"));
   auto epsilon = BOOST_GET_CONST(float, op->GetAttr("epsilon"));
   // data_layout
-  int64_t num_outputs = 1;
   return CreateBaseOp(graph, node, "popart_batchnormalization", inputs, outputs,
                       {
                           {"momentum", momentum},
@@ -96,12 +107,14 @@ Node *pool2d_handler(Graph *graph, Node *node) {
           "op pool2d with unkonwn pooling_type: %s", pooling_type));
     }
   }
-  auto padding_algorithm =
-      BOOST_GET_CONST(std::string, op->GetAttr("padding_algorithm"));
-  if (padding_algorithm != "EXPLICIT") {
-    // TODO(alleng) Fix this
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "op pool2d with unkonwn padding_algorithm: %s", padding_algorithm));
+  if (op->HasAttr("padding_algorithm")) {
+    auto padding_algorithm =
+        BOOST_GET_CONST(std::string, op->GetAttr("padding_algorithm"));
+    if (padding_algorithm != "EXPLICIT") {
+      // TODO(alleng) Fix this
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "op pool2d with unkonwn padding_algorithm: %s", padding_algorithm));
+    }
   }
 
   auto ksize = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ksize"));

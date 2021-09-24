@@ -28,9 +28,6 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
   // topology_sort forward_ops(outside this Pass)
   // remove unneeded vars in scope outside this Pass
 
-  VLOG(10) << "Raw Graph: ";
-  VLOG(10) << DebugString(graph);
-
   // // graph_viz_pass
   // auto graph_viz_pass = PassRegistry::Instance().Get("graph_viz_pass");
   // graph_viz_pass->Set("graph_viz_path",
@@ -104,6 +101,8 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
     } else if (all_ops[OpRole::kForward].count(node) == 0 &&
                all_ops[OpRole::kLoss].count(node) == 0 &&
                forward_vars.count(node) == 0) {
+      rm_nodes.insert(node);
+    } else if (node->Name() == "feed" || node->Name() == "fetch") {
       rm_nodes.insert(node);
     }
   }

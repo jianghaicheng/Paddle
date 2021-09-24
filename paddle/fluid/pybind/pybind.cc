@@ -3273,15 +3273,6 @@ All parameter, weight, gradient are variables in Paddle.
             "False.
           )DOC")
       .def_property(
-          "need_infer_shape",
-          [](const ipu::IpuStrategy &self) { return self.need_infer_shape; },
-          [](ipu::IpuStrategy &self, bool need_infer_shape) {
-            self.need_infer_shape = need_infer_shape;
-          },
-          R"DOC(
-            Bool type, True enable infer shape, otherwise disable. Default False.
-          )DOC")
-      .def_property(
           "need_avg_shard",
           [](const ipu::IpuStrategy &self) { return self.need_avg_shard; },
           [](ipu::IpuStrategy &self, bool need_avg_shard) {
@@ -3289,6 +3280,15 @@ All parameter, weight, gradient are variables in Paddle.
           },
           R"DOC(
             Bool type, True enable avg shard, otherwise disable. Default False.
+          )DOC")
+      .def_property(
+          "batch_size",
+          [](const ipu::IpuStrategy &self) { return self.batch_size; },
+          [](ipu::IpuStrategy &self, int batch_size) {
+            self.batch_size = batch_size;
+          },
+          R"DOC(
+            Int type, used to make batch size fixed. Default 1.
           )DOC");
 #endif
 

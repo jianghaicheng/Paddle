@@ -255,7 +255,6 @@ struct Argument {
   DECL_ARGUMENT_FIELD(ipu_enable_pipelining, IpuEnablePipelining, bool);
   DECL_ARGUMENT_FIELD(ipu_batches_per_step, IpuBatchesPerStep, int);
   DECL_ARGUMENT_FIELD(ipu_batch_size, IpuBatchSize, int);
-  DECL_ARGUMENT_FIELD(ipu_need_infer_shape, IpuNeedInferShape, bool);
   DECL_ARGUMENT_FIELD(ipu_need_avg_shard, IpuNeedAvgShard, bool);
 
  private:

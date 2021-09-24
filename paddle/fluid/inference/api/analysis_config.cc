@@ -115,7 +115,6 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
 
 void AnalysisConfig::EnableIpu(int device_num, bool ipu_enable_pipelining,
                                int ipu_batches_per_step, int ipu_batch_size,
-                               bool ipu_need_infer_shape,
                                bool ipu_need_avg_shard) {
   enable_ir_optim_ = true;
 
@@ -124,7 +123,6 @@ void AnalysisConfig::EnableIpu(int device_num, bool ipu_enable_pipelining,
   ipu_enable_pipelining_ = ipu_enable_pipelining;
   ipu_batches_per_step_ = ipu_batches_per_step;
   ipu_batch_size_ = ipu_batch_size;
-  ipu_need_infer_shape_ = ipu_need_infer_shape;
   ipu_need_avg_shard_ = ipu_need_avg_shard;
 
   Update();
@@ -219,7 +217,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(ipu_enable_pipelining_);
   CP_MEMBER(ipu_batches_per_step_);
   CP_MEMBER(ipu_batch_size_);
-  CP_MEMBER(ipu_need_infer_shape_);
   CP_MEMBER(ipu_need_avg_shard_);
 
   if (use_gpu_) {
@@ -622,7 +619,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ipu_enable_pipelining_;
   ss << ipu_batches_per_step_;
   ss << ipu_batch_size_;
-  ss << ipu_need_infer_shape_;
   ss << ipu_need_avg_shard_;
 
   return ss.str();

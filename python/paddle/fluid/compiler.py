@@ -521,12 +521,9 @@ class IpuCompiler(object):
         self._backend.set_scope(self._scope)
         self._backend.set_ipu_strategy(self._ipu_strategy)
         self._graph_passes = [
-            "optimizer_extract_pass",
-            "optimizer_state_align_pass",
-            "forward_graph_extract_pass",
-            "infer_shape_pass",
-            "avg_shard_pass",
-            "popart_canonicalization_pass",
+            "optimizer_extract_pass", "optimizer_state_align_pass",
+            "forward_graph_extract_pass", "infer_shape_pass", "avg_shard_pass",
+            "popart_canonicalization_pass"
         ]
 
     def compile(self, feed_list, fetch_list, feed_var_name='feed', scope=None):
@@ -550,6 +547,8 @@ class IpuCompiler(object):
 
         for pass_name in self._graph_passes:
             graph_pass = core.get_pass(pass_name)
+            if pass_name == "infer_shape_pass":
+                graph_pass.set("feed_list", feed_list)
             graph_pass.apply(self._graph)
 
         ipu_inplace_pass = core.get_pass("ipu_inplace_pass")

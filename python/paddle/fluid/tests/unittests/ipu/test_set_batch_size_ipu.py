@@ -36,19 +36,16 @@ class TestBase(IPUOpTest):
 
     def set_feed(self):
         self.feed_shape = []
-        self.feed_shape.append([1, 3, 10, 10])
+        self.feed_shape.append([-1, 3, 128, 128])
 
         self.feed = {}
         self.feed["in_0"] = np.random.uniform(
-            size=self.feed_shape[0]).astype(np.float32)
+            size=[2, 3, 128, 128]).astype(np.float32)
 
         self.feed_list = list(self.feed.keys())
 
     def set_attrs(self):
         self.attrs = {}
-        self.attrs['is_test'] = False
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = False
 
     def _test_base(self, run_ipu=True):
         scope = fluid.core.Scope()
@@ -66,9 +63,14 @@ class TestBase(IPUOpTest):
                     dtype='float32')
                 conv1 = paddle.static.nn.conv2d(
                     x, num_filters=3, filter_size=3, bias_attr=False)
-                out = paddle.fluid.layers.batch_norm(conv1, **self.attrs)
+                conv2 = paddle.static.nn.conv2d(
+                    conv1, num_filters=3, filter_size=3, bias_attr=False)
+                conv3 = paddle.static.nn.conv2d(
+                    conv2, num_filters=3, filter_size=3, bias_attr=False)
+                conv4 = paddle.static.nn.conv2d(
+                    conv3, num_filters=3, filter_size=3, bias_attr=False)
 
-                fetch_list = [out.name]
+                fetch_list = [conv4.name]
 
             if run_ipu:
                 place = paddle.IPUPlace()
@@ -81,6 +83,8 @@ class TestBase(IPUOpTest):
                 feed_list = self.feed_list
                 ipu_strategy = compiler.get_ipu_strategy()
                 ipu_strategy.is_training = self.is_training
+                # set batch size
+                ipu_strategy.batch_size = 2
                 program = compiler.IpuCompiler(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
@@ -97,22 +101,6 @@ class TestBase(IPUOpTest):
         self.assertTrue(
             np.allclose(
                 res0.flatten(), res1.flatten(), atol=self.atol))
-
-
-class TestCase1(TestBase):
-    def set_attrs(self):
-        self.attrs = {}
-        self.attrs['is_test'] = True
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = False
-
-
-class TestCase2(TestBase):
-    def set_attrs(self):
-        self.attrs = {}
-        self.attrs['is_test'] = True
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = True
 
 
 if __name__ == "__main__":
