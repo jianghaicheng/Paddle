@@ -22,8 +22,37 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
+// performance profile
+TEST(Analyzer_Resnet50_ipu, performance_profile) {
+  std::string model_dir = FLAGS_infer_model + "/" + "model";
+  AnalysisConfig config;
+  // num_ipu, enable_pipelining, batches_per_step, batch_size,
+  // need_avg_shard
+  config.EnableIpu(1, false);
+  config.SetModel(model_dir + "/model", model_dir + "/params");
+
+  std::vector<PaddleTensor> inputs;
+  const int batch = 1;
+  const int channel = 3;
+  const int height = 318;
+  const int width = 318;
+  const int input_num = batch * channel * height * width;
+  std::vector<float> input(input_num, 1);
+
+  PaddleTensor in;
+  in.shape = {batch, channel, height, width};
+  in.data =
+      PaddleBuf(static_cast<void*>(input.data()), input_num * sizeof(float));
+  in.dtype = PaddleDType::FLOAT32;
+  inputs.emplace_back(in);
+
+  std::vector<std::vector<PaddleTensor>> outputs;
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config*>(&config),
+                 {inputs}, &outputs, FLAGS_num_threads);
+}
+
 // Compare results with 1 batch
-TEST(Analyzer_Resnet50, compare_results_1_batch) {
+TEST(Analyzer_Resnet50_ipu, compare_results_1_batch) {
   std::string model_dir = FLAGS_infer_model + "/" + "model";
   AnalysisConfig config;
   // num_ipu, enable_pipelining, batches_per_step, batch_size,
@@ -73,7 +102,7 @@ TEST(Analyzer_Resnet50, compare_results_1_batch) {
 }
 
 // Compare results with 2 batch
-TEST(Analyzer_Resnet50, compare_results_2_batch) {
+TEST(Analyzer_Resnet50_ipu, compare_results_2_batch) {
   std::string model_dir = FLAGS_infer_model + "/" + "model";
   AnalysisConfig config;
   // num_ipu, enable_pipelining, batches_per_step, batch_size,

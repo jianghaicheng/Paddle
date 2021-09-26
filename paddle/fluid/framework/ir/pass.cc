@@ -46,9 +46,6 @@ Graph* Pass::Apply(Graph* graph) const {
                       platform::errors::InvalidArgument(
                           "Required atrribute %s for graph is not set.", attr));
   }
-#ifdef PADDLE_WITH_IPU
-  ApplyImpl(graph);
-#else
   ApplyImpl(graph);
   // TODO(panyx0718): Add more verifications.
   PADDLE_ENFORCE_EQ(
@@ -64,7 +61,6 @@ Graph* Pass::Apply(Graph* graph) const {
     graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
   }
   graph->Get<PassRecorder>(kPassRecorder).insert(Type());
-#endif
 #ifdef PADDLE_WITH_MKLDNN
   // Clear mkl-dnn cache,
   // Passes can change params, tensors, so caching need to be discarded

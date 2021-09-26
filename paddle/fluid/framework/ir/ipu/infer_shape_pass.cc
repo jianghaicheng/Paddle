@@ -75,11 +75,6 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
 
     auto tensor = ptr->GetMutable<paddle::framework::LoDTensor>();
     tensor->Resize(paddle::framework::make_ddim(var_desc->GetShape()));
-
-    // skip lowerWeights in IpuBackend if persistable node has inputs
-    if (var_desc->Persistable() && node->inputs.size()) {
-      var_desc->SetPersistable(false);
-    }
   }
 
   // infer shape

@@ -160,8 +160,11 @@ void profile(bool use_ipu = false) {
                  inputs, &outputs, FLAGS_num_threads);
 }
 
-// // Compare Deterministic result
-TEST(Analyzer_Ernie, compare_determine) {
+// performance profile
+TEST(Analyzer_Ernie_ipu, performance_profile) { profile(true); }
+
+// Compare Deterministic result
+TEST(Analyzer_Ernie_ipu, compare_determine) {
   AnalysisConfig cfg;
   SetConfig(&cfg, true);
 
@@ -172,7 +175,7 @@ TEST(Analyzer_Ernie, compare_determine) {
 }
 
 // Compare results
-TEST(Analyzer_Ernie, compare_results) {
+TEST(Analyzer_Ernie_ipu, compare_results) {
   AnalysisConfig cfg;
   SetConfig(&cfg, true);
 

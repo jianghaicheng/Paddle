@@ -253,7 +253,7 @@ void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope_) {
   // at this step, the graph doesn't contains optimizer related states
   for (const auto* node : graph->Nodes()) {
     if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
-      if (node->Var()->Persistable()) {
+      if (node->Var()->Persistable() && node->inputs.empty()) {
         auto var_name = node->Var()->Name();
         // workround: https://github.com/graphcore/Paddle/issues/151
         if (tensors_.count(var_name) != 0) {
