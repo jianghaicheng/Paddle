@@ -107,7 +107,6 @@ def apply_pseudo_batch_size_pass(prog, batch_size, var_name):
     if var_name in global_block.vars:
         feed_var = global_block.vars[var_name] # Call Python Block API
         # modify attrs
-        # TODO(yiakwy) : hard coded
         old_shape = feed_var.desc.shape()
         feed_var.desc.set_shape([batch_size,1,28,28])
         logger.info("Change batch size of var %s from %d to %d" % (var_name, old_shape[0], batch_size))
@@ -125,16 +124,15 @@ def read_batch_size(prog, var_name):
     raise ValueError("Cannot find variable %s in the program description" % var_name)
 
 def apply_pseudo_rm_op_by_type_pass(prog, op_type):
-    global_block = prog.global_block()
-    # TODO(yiakwy) : with block python frontend API, we could 
+    global_block = prog.global_block() 
     for i, op in enumerate(global_block.ops):
         op.desc.set_is_target(False)
         if op.type == op_type:
             global_block._remove_op(i)
             logger.info("Remove operator %d of type %s" % (i, op_type))
-            # return
+            return
 
-    # raise ValueError("Cannot find operator with type %s in the program description" % op_type)
+    raise ValueError("Cannot find operator with type %s in the program description" % op_type)
 
 def apply_pseudo_rm_vars_pass(prog, var_name):
     global_block = prog.global_block()
@@ -203,17 +201,8 @@ def main():
 
 
         if FLAGS.use_ipu:
-            # TODO(yiakwy) : for the moment, we store our model trained on IPU as static graph
-            # which means that the batch size is fixed. 
-            # 
             # We will apply passes to transform batch size from a static number to `None` or `-1` or another number upon the generated graph description
-            # apply_pseudo_batch_size_pass(infer_program, 1, feed_target_names[0])
-            
-            # TODO(yiakwy) : workaround
-            batch_size = read_batch_size(infer_program, feed_target_names[0])
-            img_with_64 = np.tile(img, (batch_size, 1, 1, 1))
-            img = img_with_64
-
+            apply_pseudo_batch_size_pass(infer_program, 1, feed_target_names[0])
             apply_pseudo_rm_op_by_type_pass(infer_program, "feed")
             apply_pseudo_rm_op_by_type_pass(infer_program, "fetch")
             apply_pseudo_rm_vars_pass(infer_program, "feed")
@@ -223,7 +212,7 @@ def main():
                 apply_pseudo_batch_size_pass(infer_program, 1, feed_target_names[0])
 
 
-        if FLAGS.use_ipu:#False:
+        if FLAGS.use_ipu:
             # Pipeline with tensorflow frontend: https://docs.graphcore.ai/projects/tensorflow1-user-guide/en/latest/perf_training.html#pipelined-training
             ipu_strategy = compiler.get_ipu_strategy()
             ipu_strategy.is_training = False

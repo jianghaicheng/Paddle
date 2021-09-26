@@ -30,7 +30,7 @@ VERSION=
 DRY_RUN=false
 
 # docker arguments
-DOCKER_ARGS="-v /localdata2/yiwang:/localdata2/yiwang:rw"
+DOCKER_ARGS=""
 
 # created containers
 containers=
@@ -60,7 +60,6 @@ _run_container_with_root() {
   GRP_ID=$(id -g) # 0 for root user
   DOCKER_HOME="/home/$USER"
 
-  # @todo TODO(yiakwy) : rm mounted disk "/localdata2/yiwang"
   docker_args=$(echo --privileged=true -it \
     --name $container_id \
     -e CONTAINER_NAME=$container_id \

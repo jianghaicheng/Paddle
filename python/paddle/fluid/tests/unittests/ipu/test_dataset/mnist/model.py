@@ -1,3 +1,17 @@
+#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import paddle
 import paddle.static
 import paddle.fluid as fluid
@@ -17,21 +31,8 @@ class MNIST:
         self.optimizer = None
         self.is_loaded_weights = False
         self.is_built = False
-        # TODO(yiak) : topK accuracy op will be supported soon 
+        # TODO(yiakwy) : topK accuracy op will be supported soon 
         self.use_topK_Accuracy_op = False
-
-        # build dataset and data loader
-
-        # build network
-        # self.build_model()
-
-        # build optimizer in train mode (included in body building already)
-
-        # initial default callbacks
-        # TODO(yiakwy)
-
-        # initial default metrics (included in body building already)
-        pass
 
     def build_model(self):
         self._build_input()
@@ -83,7 +84,7 @@ class MNIST:
         avg_loss = fluid.layers.mean(loss)
         if self.use_topK_Accuracy_op:
             if self.cfg.get("use_ipu", False):
-                acc = fluid.layers.accuracy(input=prediction, label=self.label, soft_label=False) # Topk operator is not supported yet
+                acc = fluid.layers.accuracy(input=prediction, label=self.label, soft_label=False)
             else:
                 acc = fluid.layers.accuracy(input=prediction, label=self.label)
             self._outputs = [prediction, avg_loss, acc]

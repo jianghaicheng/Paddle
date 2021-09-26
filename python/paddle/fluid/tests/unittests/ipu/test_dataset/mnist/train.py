@@ -40,24 +40,30 @@ from paddle.vision.transforms.transforms import SaturationTransform
 from model import MNIST
 from mnist import set_random_seed
 from logger import setup_logger
+# By default, Paddle uses 'vdl' (see requirements.txt) to visualize trainnig prcoess
+# for simplicity, we use matplotlib here
+import matplotlib.pyplot as plt
 
 paddle.enable_static()
 
 logger = setup_logger('mnist:trainer')
 
 # define batch size
-# 
 BATCH_SIZE = 64
-# TODO(yiakwy)
-BATCHES_PER_STEP=-1
 
 # DEVICE_SUFFIX="ipu"
+
+# default plot attributes formatter for training loss curve with IPU
+COLOR_FMT = "%so-"
+TITLE_FMT = "MNIST (LeNet5) learning curve on %s"
 
 # seed for continuous evaluation
 SEED = 90
 
+
 def parse_args():
-    parser = argparse.ArgumentParser("Training mnist on IPUs", 
+    parser = argparse.ArgumentParser(
+        "Training mnist on IPUs",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
         "--enable_ce",
@@ -75,36 +81,25 @@ def parse_args():
         default=False,
         help="Whether to use IPU or not.")
     parser.add_argument(
-        "--num_ipus",
-        type=int, 
-        default=1, 
-        help="Number of ipus"
-    )
+        "--num_ipus", type=int, default=1, help="Number of ipus")
     parser.add_argument(
         "--no_pipelining",
         action="store_true",
-        help="If set, shards of Graph on different IPUs will not be pipelined."
-    )
+        help="If set, shards of Graph on different IPUs will not be pipelined.")
     parser.add_argument(
         "--replication-factor",
         type=int,
         default=1,
         help="Number of times to replicate the graph to perform data parallel"
-             " training. Must be a factor of the number of IPUs."
-    )
+        " training. Must be a factor of the number of IPUs.")
     parser.add_argument(
-        "--draw_ir_graph",
-        action="store_false",
-        help="draw IR graph for debug"
-    )
+        "--draw_ir_graph", action="store_false", help="draw IR graph for debug")
     parser.add_argument(
         "--num_epochs", type=int, default=5, help="number of epochs.")
     parser.add_argument(
-        "--save_dir",
-        type=str,
-        default="log_dir/",
-        help="output directory"
-    )
+        "--draw_loss_curve", type=bool, default=False, help="draw loss curve")
+    parser.add_argument(
+        "--save_dir", type=str, default="log_dir/", help="output directory")
     args = parser.parse_args()
     return args
 
@@ -115,14 +110,32 @@ def draw_ir_graph(prog, name='raw_graph', save_path="", base_path="log_dir/ir"):
         graph = framework.IrGraph(core.Graph(prog.desc), for_test=True)
     else:
         graph = prog._graph
-    
+
     save_path = os.path.join(base_path, save_path)
     # call graph_viz_pass
     graph.draw(save_path, name)
 
 
+def draw_training_loss(iters,
+                       losses,
+                       dest="log_dir/learning_curve.png",
+                       color='g',
+                       title=TITLE_FMT % "IPU",
+                       ax=None):
+    figsize = (16, 16)
+    if ax is None:
+        fig, ax = plt.subplots(1, figsize=figsize)
+        ax.set_title(title, fontsize=24)
+        ax.set_xlabel("iter", fontsize=14)
+        ax.set_ylabel("loss", fontsize=14)
+    ax.plot(iters, losses, COLOR_FMT % color, label=title)
+    ax.grid()
+    assert (fig is not None)
+    fig.savefig(dest)
+
+
 # Paddle >= 2.1, use paddle.vision.datasets.MNIST
-# Paddle <= 1.6, use paddle.dataset.mnist, deprecated in Paddle >= 2.1 
+# Paddle <= 1.6, use paddle.dataset.mnist, deprecated since Paddle >= 2.1 
 class MnistDataset(paddle.vision.datasets.MNIST):
     def __init__(self, mode, return_label=True):
         super(MnistDataset, self).__init__(mode=mode)
@@ -132,37 +145,65 @@ class MnistDataset(paddle.vision.datasets.MNIST):
         img = np.reshape(self.images[idx], [1, 28, 28])
         img = img / 255.0 * 2.0 - 1.0
         if self.return_label:
-            return img.astype('float32'), np.array(self.labels[idx]).astype(np.int64) # INT64 is not supported in Poplar and Popart framework
+            return img.astype('float32'), np.array(self.labels[idx]).astype(
+                np.
+                int64)  # INT64 is not supported in Poplar and Popart framework
         return img,
 
     def __len__(self):
         return len(self.images)
 
 
+def numeric_topk(ndarray, k=1, largest=True, sorted=False):
+    """
+    Args:
+        ndarray: prediction numpy array, shape=(M,N) 
+        k: index with kth largeast probability
+        largest: if true, return top k largest values and their indices
+        sorted: if true, return sorted top k largest values and their indices 
+    Returns:
+        topK values and indices
+    """
+    if not isinstance(ndarray, np.ndarray):
+        raise ValueError("pred must be a numpy array!")
+    shape = ndarray.shape
+    if len(shape) != 2:
+        raise ValueError(
+            "Wrong dimension for prediction, expected 2 but found %d" %
+            len(shape))
+    values_cpy_or_ref = ndarray
+    if largest:
+        values_cpy_or_ref = -ndarray
+    sorted_indices = np.argpartition(values_cpy_or_ref, k, axis=1)
+    row_indices = np.arange(ndarray.shape[0])[:, None]
+    if sorted:
+        topk_indices_cols = np.argsort(
+            values_cpy_or_ref[row_indices, sorted_indices[:, 0:k]], axis=1)
+        topk_indices = sorted_indices[:, 0:k][row_indices, topk_indices_cols]
+    else:
+        topk_indices = sorted_indices[:, 0:k]
+    topk_values = ndarray[row_indices, topk_indices]
+    return topk_values, topk_indices
+
+
 def topKAccuracy(pred, labels, k=1):
     """
+    Calculate top K accuracies for predictions.
+
     Args:
         pred: prediction numpy array, shape=(M,N) 
         labels: ground truth, shape(M,))
         k: index with kth largeast probability
     Returns:
-        float: topK accuracy value
+        topK accuracy value
     """
-    if not isinstance(pred, np.ndarray):
-        raise ValueError("pred must be a numpy array!")
     shape = pred.shape
-    if len(shape) != 2:
-        raise ValueError("Wrong dimension for prediction, expected 2 but found %d" % len(shape))
-    sorted_indices = np.argpartition(-pred, k, axis=1)
-    # row_indices = np.arange(pred.shape[0])[:,None]
-    # topk_indices_cols = np.argsort(pred[row_indices, sorted_indices[:, 0:k]], axis=1)
-    # topk_indices = sorted_indices[:,0:k][row_indices, topk_indices_cols]
-    topk_indices = sorted_indices[:,0:k]
+    _, topk_indices = numeric_topk(pred, k=k)
 
     num_correct = 0
     for i in range(shape[0]):
         for j in range(k):
-            if topk_indices[i,j] == labels[i]:
+            if topk_indices[i, j] == labels[i]:
                 num_correct += 1
                 break
 
@@ -170,35 +211,47 @@ def topKAccuracy(pred, labels, k=1):
     return accuracy
 
 
-
-def train(epochs, exec, model, feeder, save_dir, 
-          train_reader, train_program,
+def train(epochs, exec, model, save_dir, train_reader, train_program,
           test_reader, validation_program):
     report = []
+
+    # drawing loss curves
+    iter_axis = []
+    loss_axis = []
+
     step = 0
     for pass_id in range(epochs):
         # test for epoch
         validation_loss = -1
-        if pass_id > 0:#(pass_id+1) % 10 == 0:
+        if pass_id > 0:  #(pass_id+1) % 10 == 0:
             validation_loss_set = []
             validation_acc_set = []
-            # TODO(yiakwy) : do evaluation
             for test_data in test_reader():
                 if model.use_topK_Accuracy_op:
                     metrics = exec.run(program=validation_program,
-                    feed={inp.name : test_data[i] for i, inp in enumerate(model.inputs)},
-                    fetch_list=model.outputs[1:3])
+                                       feed={
+                                           inp.name: test_data[i]
+                                           for i, inp in enumerate(model.inputs)
+                                       },
+                                       fetch_list=model.outputs[1:3])
 
                     validation_loss_set.append(float(metrics[0]))
                     validation_acc_set.append(float(metrics[1]))
                 else:
                     if model.cfg.get("use_ipu", False):
-                        test_data = [np.array(data[0]), np.array(data[1]).astype('int32')]
+                        test_data = [
+                            np.array(data[0]), np.array(data[1]).astype('int32')
+                        ]
                     metrics = exec.run(program=validation_program,
-                    feed={inp.name : test_data[i] for i, inp in enumerate(model.inputs)},
-                    fetch_list=[model.outputs[0], model.outputs[1], model.inputs[1]])
+                                       feed={
+                                           inp.name: test_data[i]
+                                           for i, inp in enumerate(model.inputs)
+                                       },
+                                       fetch_list=[
+                                           model.outputs[0], model.outputs[1],
+                                           model.inputs[1]
+                                       ])
 
-                    # TODO(yiakwy) : calculate topK accuracy with numpy
                     pred = metrics[0]
                     avg_loss = metrics[1]
                     labels = metrics[2]
@@ -212,51 +265,67 @@ def train(epochs, exec, model, feeder, save_dir,
             # check average loss value
             validation_avg_loss = np.array(validation_loss_set).mean()
             validation_avg_acc = np.array(validation_acc_set).mean()
-            
+
             # check exitance condition
             validation_loss = validation_avg_loss
 
             # processing logics
             report.append((pass_id, validation_avg_loss, validation_avg_acc))
         for batch_id, data in enumerate(train_reader()):
-            # TODO(yiakwy) : feeder.feed(data) does not work
-            # metrics = exec.run(train_program, feed=feeder.feed(data), 
-            # fetch_list=model.outputs[1:3])
-            metrics = exec.run(train_program, 
-            feed={inp.name : data[i] for i, inp in enumerate(model.inputs)},
-            fetch_list=model.outputs[1])
+            metrics = exec.run(
+                train_program,
+                feed={inp.name: data[i]
+                      for i, inp in enumerate(model.inputs)},
+                fetch_list=model.outputs[1])
 
             if batch_id % 100 == 0:
                 if validation_loss > 0:
-                    print("Epoch %d, batch %d, Cost %f, Validation Cost %f" % (
-                        pass_id, batch_id, metrics[0], validation_loss
-                    ))
+                    print("Epoch %d, batch %d, Cost %f, Validation Cost %f" %
+                          (pass_id, batch_id, metrics[0], validation_loss))
                 else:
-                    print("Epoch %d, batch %d, Cost %f" % (
-                        pass_id, batch_id, metrics[0]
-                    ))
+                    print("Epoch %d, batch %d, Cost %f" % (pass_id, batch_id,
+                                                           metrics[0]))
+
+                iter_axis.append(step)
+                loss_axis.append(metrics[0])
 
             step += 1
 
         if save_dir is not None:
             if not model.cfg.get("use_ipu", False):
                 paddle.static.save_inference_model(
-                    save_dir+"recognize_digits_%s" % model.cfg.get("device_suffix", "cpu"),
-                    model.inputs[0], model.outputs[0],
-                    exec, program=train_program
-                )
+                    save_dir + "recognize_digits_%s" % model.cfg.get(
+                        "device_suffix", "cpu"),
+                    model.inputs[0],
+                    model.outputs[0],
+                    exec,
+                    program=train_program)
             else:
                 paddle.static.save_inference_model(
-                    save_dir+"recognize_digits_%s" % model.cfg.get("device_suffix", "cpu"),
-                    model.inputs[0], model.outputs[0],
-                    exec, program=train_program.org_program
-                )   
+                    save_dir + "recognize_digits_%s" % model.cfg.get(
+                        "device_suffix", "cpu"),
+                    model.inputs[0],
+                    model.outputs[0],
+                    exec,
+                    program=train_program.org_program)
                 # paddle.static.save(train_program.org_program, save_dir+"recognize_digits_%s_test" % model.cfg.get("device_suffix", "ipu"))
 
-    # find the best pass
-    best = sorted(report,key=lambda record: float(record[1]))[0]
+            # find the best pass
+    best = sorted(report, key=lambda record: float(record[1]))[0]
     print('Best pass is %s, validation average loss is %s' % (best[0], best[1]))
     print('The classification accuracy is %.2f%%' % (float(best[2]) * 100))
+
+    if model.cfg["draw_loss_curve"]:
+        # draw learning curves
+        if not model.cfg["use_ipu"]:
+            color = 'r'
+            title = TITLE_FMT % "CPU"
+            dest = "log_dir/learning_curve-%s.png" % "cpu"
+            draw_training_loss(
+                iter_axis, loss_axis, color=color, title=title, dest=dest)
+        else:
+            dest = "log_dir/learning_curve-%s.png" % "ipu"
+            draw_training_loss(iter_axis, loss_axis, dest=dest)
 
 
 def main():
@@ -268,7 +337,6 @@ def main():
 
     if not FLAGS.use_ipu:
         if not FLAGS.use_data_parallel:
-            # TODO(yiakwy) : 
             # place = paddle.CPUPlace(0) does not work
             place = paddle.CPUPlace()
         else:
@@ -283,9 +351,6 @@ def main():
         train_program.random_seed = SEED
 
     if FLAGS.use_data_parallel:
-        # TODO(yiakwy) : 
-        #   1. use paddle.static.ParallelExecutor to train with CPU(IPU?) devices
-        #   2. use paddle.DataParallel to dispatch data to CPU(IPU?) devices
         # see https://www.paddlepaddle.org.cn/documentation/docs/zh/1.6/api_guides/low_level/parallel_executor.html
         raise NotImplemented("not implemented yet!")
 
@@ -296,7 +361,7 @@ def main():
     if not FLAGS.use_data_parallel:
         train_reader = paddle.io.DataLoader(
             MnistDataset(mode='train'), batch_size=BATCH_SIZE, drop_last=True)
-        
+
         # used for evaluation while training
         test_reader = paddle.io.DataLoader(
             MnistDataset(mode='test'), batch_size=BATCH_SIZE, drop_last=True)
@@ -324,19 +389,15 @@ def main():
     cfg = {}
     cfg["batch_size"] = BATCH_SIZE
     cfg["use_ipu"] = FLAGS.use_ipu
-    cfg["device_suffix"] = device_suffix
-
-    # create config
-    cfg = {}
-    cfg["batch_size"] = BATCH_SIZE
-    cfg["use_ipu"] = FLAGS.use_ipu
+    cfg["draw_loss_curve"] = FLAGS.draw_loss_curve
     cfg["device_suffix"] = device_suffix
 
     # create model
     mnist = MNIST(cfg)
 
     # add model
-    with paddle.static.program_guard(main_program=train_program, startup_program=startup_program):
+    with paddle.static.program_guard(
+            main_program=train_program, startup_program=startup_program):
         logger.info("Constructing the computation graph ...")
         mnist.build_model()
         logger.info("Computation graph built.")
@@ -361,7 +422,6 @@ def main():
             train_program = ipu_compiler.compile(feed_list, fetch_list)
             logger.info("Complete compiling.")
             # Only forward graph contained in the new train_program
-            # TODO(yiakwy) : add support to create `popart.InferenceSession` in python frontend
             validation_program = train_program.clone(for_test=False)
         else:
             if will_draw_ir_graph:
@@ -369,22 +429,12 @@ def main():
                 draw_ir_graph(train_program)
                 logger.info("Complete drawing.")
 
-
-        # create data feader
-        # TODO(yiak): This does not work for LoDTensor
-        # feeder = fluid.DataFeeder(feed_list=mnist.inputs, place=place)
-        feeder = None
-
         # train model
-        train(epochs, 
-              train_exc, 
-              mnist, 
-              feeder, # deprecated
-              save_dir, 
-              train_reader, train_program, 
+        train(epochs, train_exc, mnist, save_dir, train_reader, train_program,
               test_reader, validation_program)
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

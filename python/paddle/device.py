@@ -241,9 +241,6 @@ def get_device():
         device_id = place.get_device_id()
         device = 'xpu:' + str(device_id)
     elif isinstance(place, core.IPUPlace):
-        # TODO(yiakwy) : ipu_place.get_device_id() always returns 0 without telling whold IpuPodX infos
-        # device_id = place.get_device_id()
-        # device = 'ipu:' + str(device_id)
         num_devices = core.get_ipu_device_count()
         device = "ipus:{{0-{}}}".format(num_devices-1)
     else:

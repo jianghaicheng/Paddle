@@ -177,7 +177,6 @@ void Compiler::LowerBody(const ir::Graph* graph) {
         VLOG(10)
             << "[Compiler::LowerBody] size of inputs for <popart_topk> is 1";
         int64_t k = BOOST_GET_CONST(int64_t, op_desc->GetAttr("k"));
-        // TODO(yiakwy) : reference to Opset10, 11 API
         popart::TensorInfo kShape{"INT64", std::vector<int64_t>{1}};
         popart::ConstVoidData kData = {&k, kShape};
         auto K_t = aiOnnxOpset.constant(kData);
