@@ -24,18 +24,24 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
-std::shared_ptr<IpuBackend> instance_ = nullptr;
+std::shared_ptr<IpuBackend> IpuBackend::instance_ = nullptr;
 
 IpuBackend::IpuBackend() {
   compiler_ = std::make_shared<Compiler>();
   executor_ = std::make_unique<Executor>();
 }
 
-IpuBackend::~IpuBackend() {
+void IpuBackend::Clear() {
   // detach device
   if (device_ != nullptr && device_->isAttached()) {
     device_->detach();
+    device_.reset();
+    device_ = nullptr;
   }
+}
+
+IpuBackend::~IpuBackend() {
+  Clear();
 }
 
 std::shared_ptr<IpuBackend> IpuBackend::GetInstance() {

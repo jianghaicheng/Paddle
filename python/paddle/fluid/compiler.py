@@ -525,6 +525,9 @@ class IpuCompiler(object):
             "forward_graph_extract_pass", "infer_shape_pass", "avg_shard_pass",
             "popart_canonicalization_pass"
         ]
+        # TODO(yiakwy): workaround
+        global ipu_compiler_ref
+        ipu_compiler_ref = self
 
     def compile(self, feed_list, fetch_list, feed_var_name='feed', scope=None):
         # feed and fetch doesn't have corresponding popart op, so we rm both here
@@ -595,6 +598,12 @@ class IpuCompiler(object):
             program.org_program = self._program
 
         return program
+
+    def clean(self):
+        self._backend.clear()
+
+    def __del__(self):
+        self.clean()
 
 
 def get_ipu_strategy():

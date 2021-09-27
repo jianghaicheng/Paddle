@@ -42,6 +42,8 @@ class IpuBackend {
   IpuBackend();
   ~IpuBackend();
 
+  void Clear();
+
   // return if exsits, else create and return
   static std::shared_ptr<IpuBackend> GetInstance();
 
@@ -89,6 +91,8 @@ class IpuBackend {
   // not own
   const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
+ private:
+  static std::shared_ptr<IpuBackend> instance_;
 };
 
 }  // namespace ipu

@@ -17,8 +17,12 @@ import unittest
 
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import _set_use_system_allocator
+from typing import Optional
+import paddle.fluid.compiler as compiler
 
 SEED = 2021
+
+ipu_compiler_ref : Optional[compiler.IpuCompiler] = None
 
 map_np_dtype_to_fluid_dtype = {
     'bool': "bool",
@@ -55,6 +59,10 @@ class IPUOpTest(unittest.TestCase):
         random.setstate(cls._py_rand_state)
 
         _set_use_system_allocator(cls._use_system_allocator)
+        # TODO(yiakwy): workaround
+        # unittest will to trigger IpuCompiler.__del__ automatically
+        global ipu_compiler_ref
+        ipu_compiler_ref is not None and ipu_compiler_ref.clean()
 
     def set_atol(self):
         self.atol = 1e-5
