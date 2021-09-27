@@ -133,10 +133,6 @@ if (WITH_ASCEND_CL)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} npu_op_runner)
 endif()
 
-if (WITH_IPU)
-  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} ipu_backend)
-endif()
-
 # FIXME(typhoonzero): operator deps may not needed.
 # op_library(lod_tensor_to_array_op DEPS lod_rank_table_op)
 # op_library(array_to_lod_tensor_op DEPS lod_rank_table_op)
