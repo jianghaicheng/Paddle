@@ -33,7 +33,6 @@ void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace, void* dst,
   std::memcpy(dst, src, num);
 }
 #ifdef PADDLE_WITH_IPU
-//# TODO(Cheng): this should be overwrited.
 template <>
 void Copy<platform::IPUPlace, platform::CPUPlace>(platform::IPUPlace dst_place,
                                                   void* dst,
