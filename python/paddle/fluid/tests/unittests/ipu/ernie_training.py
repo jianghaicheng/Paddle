@@ -861,8 +861,6 @@ if __name__ == "__main__":
         ipu_strategy = compiler.get_ipu_strategy()
         ipu_strategy.num_ipus = args.num_ipus
         ipu_strategy.enable_manual_shard = args.num_ipus > 1
-        # RuntimeError: Copying to tensor that is not writable
-        # https://graphcore.zendesk.com/agent/tickets/3208
         ipu_strategy.enable_pipelining = args.enable_pipelining
         if args.enable_pipelining:
             if args.is_training:

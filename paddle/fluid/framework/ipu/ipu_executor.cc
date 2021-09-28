@@ -131,7 +131,6 @@ void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
   if (ipu_strategy_ != nullptr && ipu_strategy_->is_training) {
     session_->weightsToHost();
     WeightsToPaddle();
-    // TODO(xiaobingw): save onnx each run, will del future
     if (ipu_strategy_->save_last_onnx) {
       session_->modelToHost("test_last.onnx");
     }

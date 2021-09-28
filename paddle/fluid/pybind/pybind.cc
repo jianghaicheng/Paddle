@@ -3204,7 +3204,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_scope", &ipu::IpuBackend::SetScope)
       .def("set_ipu_strategy", &ipu::IpuBackend::SetIpuStrategy);
 
-  // TODO(xiaobingw): maybe refactor at future
   py::class_<framework::ipu::IpuStrategy>(m, "IpuStrategy")
       .def(py::init())
       .def_property("num_ipus",

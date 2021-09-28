@@ -1320,7 +1320,6 @@ class Executor(object):
             lr_sheduler = program.lr_sheduler
             lr_value = lr_sheduler()
 
-            # TODO: (xiaobingw) maybe should seperate IpuProgram and Program ?
             if hasattr(program.lr_sheduler, 'lr_var'):
                 lr_var = program.lr_sheduler.lr_var
             else:

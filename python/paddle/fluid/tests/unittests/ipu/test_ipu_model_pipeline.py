@@ -63,7 +63,6 @@ class TestCastNet(unittest.TestCase):
                 ipu_strategy.num_ipus = 2
                 ipu_strategy.is_training = False
                 ipu_strategy.enable_manual_shard = True
-                # TODO(xiaobingw): add support batchesPerStep
                 ipu_strategy.enable_pipelining = False
                 program = compiler.IpuCompiler(
                     main_prog,
