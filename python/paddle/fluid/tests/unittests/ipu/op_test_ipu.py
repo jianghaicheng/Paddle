@@ -59,7 +59,6 @@ class IPUOpTest(unittest.TestCase):
         random.setstate(cls._py_rand_state)
 
         _set_use_system_allocator(cls._use_system_allocator)
-        # TODO(yiakwy): workaround
         # unittest will to trigger IpuCompiler.__del__ automatically
         global ipu_compiler_ref
         ipu_compiler_ref is not None and ipu_compiler_ref.clean()

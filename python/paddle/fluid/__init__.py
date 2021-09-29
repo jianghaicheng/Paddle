@@ -246,7 +246,7 @@ def __bootstrap__():
         ]
     
     if core.is_compiled_with_ipu():
-        # TODO(yiakwy) : Currently we request all ipu available for training and testing
+        # Currently we request all ipu available for training and testing
         #   finer control of pod of IPUs will be added later
         read_env_flags += []
 

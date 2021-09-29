@@ -71,7 +71,6 @@ Node *topK_op_handler(Graph *graph, Node *node) {
     VLOG(10) << "[topK_op_handler] input node(" << inputs[0]->Var()->Name()
              << ")";
     // auto *var = inputs[0]->Var();
-    // WARN(yiakwy) : fill_constant : convert `int64_t` to `int` while popart
     // requires INT64 to create constant node
     // VarType_Type_INT64 = 3
     /*

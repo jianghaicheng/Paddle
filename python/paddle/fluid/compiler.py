@@ -525,7 +525,6 @@ class IpuCompiler(object):
             "forward_graph_extract_pass", "infer_shape_pass", "avg_shard_pass",
             "popart_canonicalization_pass"
         ]
-        # TODO(yiakwy): workaround
         global ipu_compiler_ref
         ipu_compiler_ref = self
 
