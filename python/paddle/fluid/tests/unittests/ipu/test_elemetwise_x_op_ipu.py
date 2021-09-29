@@ -28,19 +28,14 @@ paddle.enable_static()
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
-class TestBase(IPUOpTest):
+class TestMul(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
-        self.set_feed()
-        self.set_feed_attr()
-        self.set_attrs()
+        self.init_op()
 
-    def set_feed(self):
-        self.feed = {
-            "x": np.array([2, 3, 4]).astype('float32'),
-            "y": np.array([1, 5, 2]).astype('float32'),
-        }
+    def init_op(self):
+        self.op = paddle.fluid.layers.elementwise_mul
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed.values()]
@@ -48,9 +43,6 @@ class TestBase(IPUOpTest):
         self.feed_dtype = [
             np_dtype_to_fluid_str(x.dtype) for x in self.feed.values()
         ]
-
-    def set_attrs(self):
-        self.attrs = {"axis": -1}
 
     def _test_base(self, run_ipu=True):
         scope = fluid.core.Scope()
@@ -70,7 +62,7 @@ class TestBase(IPUOpTest):
                     name=self.feed_list[1],
                     shape=self.feed_shape[1],
                     dtype=self.feed_dtype[1])
-                out = paddle.fluid.layers.elementwise_mul(x, y, **self.attrs)
+                out = self.op(x, y, **self.attrs)
 
                 fetch_list = [out.name]
 
@@ -94,7 +86,7 @@ class TestBase(IPUOpTest):
             result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
             return result[0]
 
-    def test_base(self):
+    def run_test_base(self):
         res0 = self._test_base(True)
         res1 = self._test_base(False)
 
@@ -104,29 +96,76 @@ class TestBase(IPUOpTest):
 
         self.assertTrue(res0.shape == res1.shape)
 
-
-class TestCase1(TestBase):
-    def set_feed(self):
+    def test_case0(self):
         self.feed = {
-            "x": np.ones((2, 3, 4, 5)).astype('float32'),
-            "y": np.zeros((3, 4)).astype('float32'),
+            "x": np.random.uniform(size=(2, 3, 4, 5)).astype('float32'),
+            "y": np.random.uniform(size=(2, 3, 4, 5)).astype('float32'),
         }
+        self.attrs = {}
+        self.set_feed_attr()
+        self.run_test_base()
 
-    def set_attrs(self):
+    def test_case1(self):
+        self.feed = {
+            "x": np.random.uniform(size=(2, 3, 4, 5)).astype('float32'),
+            "y": np.random.uniform(size=(3, 4)).astype('float32'),
+        }
+        self.set_feed_attr()
         self.attrs = {"axis": 1}
+        self.run_test_base()
 
-
-class TestCase2(TestBase):
-    def set_feed(self):
+    def test_case2(self):
         self.feed = {
-            "x": np.random.randint(
-                1, 5, size=[2, 3, 4, 5]).astype('float32'),
-            "y": np.random.randint(
-                1, 5, size=[5]).astype('float32')
+            "x": np.random.uniform(size=(2, 3, 4, 5)).astype('float32'),
+            "y": np.random.uniform(size=(5)).astype('float32'),
         }
+        self.set_feed_attr()
+        self.attrs = {"axis": -1}
+        self.run_test_base()
 
-    def set_attrs(self):
-        self.attrs = {"axis": 3}
+    def test_case3(self):
+        self.feed = {
+            "x": np.random.uniform(size=(2, 3, 4, 5)).astype('float32'),
+            "y": np.random.uniform(size=(2)).astype('float32'),
+        }
+        self.set_feed_attr()
+        self.attrs = {"axis": 0}
+        self.run_test_base()
+
+
+class TestAdd(TestMul):
+    def init_op(self):
+        self.op = paddle.fluid.layers.elementwise_add
+
+
+class TestSub(TestMul):
+    def init_op(self):
+        self.op = paddle.fluid.layers.elementwise_sub
+
+
+class TestDiv(TestMul):
+    def init_op(self):
+        self.op = paddle.fluid.layers.elementwise_div
+
+
+class TestMin(TestMul):
+    def init_op(self):
+        self.op = paddle.fluid.layers.elementwise_min
+
+
+class TestMax(TestMul):
+    def init_op(self):
+        self.op = paddle.fluid.layers.elementwise_max
+
+
+class TestPow(TestMul):
+    def init_op(self):
+        self.op = paddle.fluid.layers.elementwise_pow
+
+
+class TestMod(TestMul):
+    def init_op(self):
+        self.op = paddle.fluid.layers.elementwise_mod
 
 
 if __name__ == "__main__":

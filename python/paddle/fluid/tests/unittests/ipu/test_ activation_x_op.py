@@ -18,57 +18,49 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
+import paddle.nn.functional as F
 import paddle.optimizer
 import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
+                                                          np_dtype_to_fluid_str)
 
 paddle.enable_static()
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
-class TestBase(IPUOpTest):
+class TestRelu(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
-        self.set_feed()
-        self.set_attrs()
+        self.init_op()
 
-    def set_feed(self):
-        self.feed_shape = []
-        self.feed_shape.append([3, 3, 3])
-        self.feed_shape.append([3])
+    def init_op(self):
+        self.op = paddle.fluid.layers.relu
 
-        self.feed = {}
-        self.feed["in_0"] = np.random.uniform(
-            size=self.feed_shape[0]).astype(np.float32)
-        self.feed["in_1"] = np.random.uniform(
-            size=self.feed_shape[1]).astype(np.float32)
-
+    def set_feed_attr(self):
+        self.feed_shape = [x.shape for x in self.feed.values()]
         self.feed_list = list(self.feed.keys())
-
-    def set_attrs(self):
-        self.attrs = {}
-        self.attrs['axis'] = -1
+        self.feed_dtype = [
+            np_dtype_to_fluid_str(x.dtype) for x in self.feed.values()
+        ]
 
     def _test_base(self, run_ipu=True):
         scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        main_prog.random_seed = self.SEED
-        startup_prog.random_seed = self.SEED
+        SEED = self.SEED
+        main_prog.random_seed = SEED
+        startup_prog.random_seed = SEED
 
         with fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                a = paddle.static.data(
+                x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
-                    dtype='float32')
-                b = paddle.static.data(
-                    name=self.feed_list[1],
-                    shape=self.feed_shape[1],
-                    dtype='float32')
-                out = paddle.fluid.layers.elementwise_add(a, b, **self.attrs)
+                    dtype=self.feed_dtype[0])
+                out = self.op(x, **self.attrs)
+
                 fetch_list = [out.name]
 
             if run_ipu:
@@ -91,34 +83,43 @@ class TestBase(IPUOpTest):
             result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
             return result[0]
 
-    def test_base(self):
-        res0 = self._test_base(True)
-        res1 = self._test_base(False)
+    def run_test_base(self):
+        res0 = self._test_base(False)
+        res1 = self._test_base(True)
 
-        self.assertTrue(np.allclose(res0, res1, atol=self.atol))
+        self.assertTrue(
+            np.allclose(
+                res0.flatten(), res1.flatten(), atol=self.atol))
 
         self.assertTrue(res0.shape == res1.shape)
 
-
-class TestCase1(TestBase):
-    def set_attrs(self):
+    def test_case0(self):
+        self.feed = {
+            "x": np.random.uniform(size=[1, 3, 10, 10]).astype('float32'),
+        }
         self.attrs = {}
-        self.attrs['axis'] = 1
+        self.set_feed_attr()
+        self.run_test_base()
 
 
-class TestCase2(TestBase):
-    def set_feed(self):
-        self.feed_shape = []
-        self.feed_shape.append([3, 3, 3, 3])
-        self.feed_shape.append([3, 3, 3, 3])
+class TestTanh(TestRelu):
+    def init_op(self):
+        self.op = F.tanh
 
-        self.feed = {}
-        self.feed["in_0"] = np.random.uniform(
-            size=self.feed_shape[0]).astype(np.float32)
-        self.feed["in_1"] = np.random.uniform(
-            size=self.feed_shape[1]).astype(np.float32)
 
-        self.feed_list = list(self.feed.keys())
+class TestLog(TestRelu):
+    def init_op(self):
+        self.op = paddle.fluid.layers.log
+
+
+class TestSigmoid(TestRelu):
+    def init_op(self):
+        self.op = F.sigmoid
+
+
+class TestSqrt(TestRelu):
+    def init_op(self):
+        self.op = paddle.fluid.layers.sqrt
 
 
 if __name__ == "__main__":
