@@ -69,7 +69,8 @@ class TestBase(IPUOpTest):
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype=self.feed_dtype[0])
-                out = paddle.fluid.layers.dropout(x, **self.attrs)
+                dropout = paddle.fluid.layers.dropout(x, **self.attrs)
+                out = paddle.fluid.layers.elementwise_add(dropout, dropout)
 
                 fetch_list = [out.name]
 
@@ -95,9 +96,7 @@ class TestBase(IPUOpTest):
 
     def test_base(self):
         res0 = self._test_base(True)
-        print(np.array(res0).shape)
         res1 = self._test_base(False)
-        print(np.array(res1).shape)
 
         self.assertTrue(
             np.allclose(
@@ -111,6 +110,15 @@ class TestCase1(TestBase):
         self.attrs = {
             "dropout_prob": 0.5,
             "is_test": True,
+            "dropout_implementation": "upscale_in_train"
+        }
+
+
+class TestCase2(TestBase):
+    def set_attrs(self):
+        self.attrs = {
+            "dropout_prob": 0.0,
+            "is_test": False,
             "dropout_implementation": "upscale_in_train"
         }
 

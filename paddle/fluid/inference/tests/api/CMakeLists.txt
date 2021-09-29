@@ -690,12 +690,10 @@ if (WITH_IPU)
     set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
     inference_analysis_api_test(ipu_ernie_test ${ERNIE_INSTALL_DIR} ipu_ernie_test.cc
             ARGS --warmup=true --repeat=1000)
-    set_tests_properties(ipu_ernie_test PROPERTIES TIMEOUT 300)
 
     #resnet50
     set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
     inference_analysis_test(ipu_resnet50_test SRCS ipu_resnet50_test.cc
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
         ARGS --infer_model=${RESNET50_MODEL_DIR} --warmup=true --repeat=1000)
-    set_tests_properties(ipu_ernie_test PROPERTIES TIMEOUT 200)
 endif()

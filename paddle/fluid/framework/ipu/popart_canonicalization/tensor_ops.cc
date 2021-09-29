@@ -114,7 +114,6 @@ Node *transpose_handler(Graph *graph, Node *node) {
 
 Node *reshape_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  // TODO(yaozhixin) : Shape and ShapeTensor as inputs
   auto shape_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("shape"));
   std::vector<int64_t> shape(shape_.begin(), shape_.end());
   auto attrs = AttributeMap{
@@ -176,7 +175,6 @@ Node *lookup_table_handler(Graph *graph, Node *node) {
 
   Node *w_node;
   if (padding_idx_ >= 0 && padding_idx_ < table_size_) {
-    // TODO(yaozhixin): support other datatype
     std::vector<float> const_value_(emb_size_, 0);
     std::vector<int64_t> const_shape_{1, emb_size_};
     auto concat_const =
@@ -269,7 +267,6 @@ Node *unsqueeze_handler(Graph *graph, Node *node) {
 
 Node *concat_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  // TODO(yaozhixin): support tensor as axis
   int64_t axis_{BOOST_GET_CONST(int, op->GetAttr("axis"))};
 
   auto new_node_concat =

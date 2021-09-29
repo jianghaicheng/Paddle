@@ -239,26 +239,52 @@ Node *layer_norm_handler(Graph *graph, Node *node) {
 }
 
 Node *dropout_handler(Graph *graph, Node *node) {
-  // TODO(yaozhixin): support training
   auto *op = node->Op();
+  auto dropout_prob_ = BOOST_GET_CONST(float, op->GetAttr("dropout_prob"));
   auto dropout_implementation_ =
       BOOST_GET_CONST(std::string, op->GetAttr("dropout_implementation"));
-  auto dropout_prob_ = BOOST_GET_CONST(float, op->GetAttr("dropout_prob"));
-  if (dropout_implementation_ == "upscale_in_train") {
-    return CreateBaseOp(graph, node, "popart_identity",
-                        {GetInputVarNode("X", node)},
-                        {GetOutputVarNode("Out", node)}, {});
-  } else if (dropout_implementation_ == "downgrade_in_infer") {
-    auto scale = CreateConst(graph, node, {}, {},
-                             {{"value", std::vector<float>{1 - dropout_prob_}},
-                              {"dims", std::vector<int64_t>{1}},
-                              {"dtype", ONNXDataType::FLOAT}});
-    return CreateBaseOp(graph, node, "popart_mul",
-                        {GetInputVarNode("X", node), scale->outputs[0]},
-                        {GetOutputVarNode("Out", node)}, {});
+  auto is_test_type_ = op->GetAttrType("is_test");
+  bool is_test_;
+  if (is_test_type_ == 0) {
+    // int
+    is_test_ = BOOST_GET_CONST(int, op->GetAttr("is_test"));
   } else {
-    PADDLE_THROW(
-        platform::errors::InvalidArgument("Invalid dropout_implementation"));
+    // bool
+    is_test_ = BOOST_GET_CONST(bool, op->GetAttr("is_test"));
+  }
+
+  if (is_test_) {
+    if (dropout_implementation_ == "upscale_in_train") {
+      return CreateBaseOp(graph, node, "popart_identity",
+                          {GetInputVarNode("X", node)},
+                          {GetOutputVarNode("Out", node)}, {});
+    } else if (dropout_implementation_ == "downgrade_in_infer") {
+      auto scale =
+          CreateConst(graph, node, {}, {},
+                      {{"value", std::vector<float>{1 - dropout_prob_}},
+                       {"dims", std::vector<int64_t>{1}},
+                       {"dtype", ONNXDataType::FLOAT}});
+      return CreateBaseOp(graph, node, "popart_mul",
+                          {GetInputVarNode("X", node), scale->outputs[0]},
+                          {GetOutputVarNode("Out", node)}, {});
+    } else {
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("Invalid dropout_implementation"));
+    }
+  } else {
+    if (dropout_implementation_ == "upscale_in_train") {
+      auto attrs_ =
+          AttributeMap{{"num_outputs", (int64_t)1}, {"ratio", dropout_prob_}};
+      return CreateBaseOp(graph, node, "popart_dropout",
+                          {GetInputVarNode("X", node)},
+                          {GetOutputVarNode("Out", node)}, attrs_);
+    } else if (dropout_implementation_ == "downgrade_in_infer") {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Do not support downgrade_in_infer with training"));
+    } else {
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("Invalid dropout_implementation"));
+    }
   }
 }
 
