@@ -163,7 +163,7 @@ class TestTrainCase2(TestBase):
         self.epoch = 10
 
 
-# TODO(alleng) support `group_norm(x, param_attr=False, bias_attr=False, **self.attrs)`
+# not support `group_norm(x, param_attr=False, bias_attr=False, **self.attrs)`
 
 if __name__ == "__main__":
     unittest.main()

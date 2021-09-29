@@ -37,16 +37,6 @@ AttributeMap MakeConstAttrMapFromValue(T v, std::vector<int64_t> dims,
   return MakeConstAttrMap<T>(std::vector<T>(size, v), dims, dtype);
 }
 
-// https://stackoverflow.com/questions/21216909/these-python-functions-in-c
-template <typename T>
-std::vector<T> arange(T start, T stop, T step = 1) {
-  std::vector<T> values;
-  for (T value = start; value < stop; value += step) {
-    values.push_back(value);
-  }
-  return values;
-}
-
 const std::string GenerateVarName();
 const std::string CreateOpIdentifyId(Node *node);
 

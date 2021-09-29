@@ -66,7 +66,7 @@ Node *gaussian_random_handler(Graph *graph, Node *node) {
   auto dtype = VarType2OnnxDtype(dtype_);
   auto mean = BOOST_GET_CONST(float, op->GetAttr("mean"));
   auto scale = BOOST_GET_CONST(float, op->GetAttr("std"));
-  // TODO(alleng) seed not work
+  // seed not work
   auto seed_ = BOOST_GET_CONST(int, op->GetAttr("seed"));
   auto seed = static_cast<float>(seed_);
   return CreateBaseOp(graph, node, "popart_randomnormal", node->inputs,
@@ -86,7 +86,7 @@ Node *uniform_random_handler(Graph *graph, Node *node) {
   auto dtype = VarType2OnnxDtype(dtype_);
   auto high = BOOST_GET_CONST(float, op->GetAttr("max"));
   auto low = BOOST_GET_CONST(float, op->GetAttr("min"));
-  // TODO(alleng) seed not work
+  // seed not work
   auto seed_ = BOOST_GET_CONST(int, op->GetAttr("seed"));
   auto seed = static_cast<float>(seed_);
   return CreateBaseOp(graph, node, "popart_randomuniform", node->inputs,
@@ -342,7 +342,6 @@ Node *slice_handler(Graph *graph, Node *node) {
 
 Node *expand_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  // TODO(alleng) work with expand_times_tensor
   if (op->HasInput("expand_times_tensor") &&
       !op->Input("expand_times_tensor").empty()) {
     PADDLE_THROW(

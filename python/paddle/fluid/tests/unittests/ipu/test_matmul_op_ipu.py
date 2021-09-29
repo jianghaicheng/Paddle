@@ -204,7 +204,7 @@ class TestCase7_2(TestBase):
         }
 
 
-@unittest.skip("dim > 4 is not supported")  # TODO(alleng) FIX it
+@unittest.skip("dim > 4 is not supported")
 class TestCase8(TestBase):
     def set_feed(self):
         self.feed = {

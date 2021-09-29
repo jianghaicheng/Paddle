@@ -33,7 +33,6 @@ const std::string GenerateOpName() {
 const std::string CreateOpIdentifyId(Node *node) {
   // format: op_type|out_var0|out_var1|...|_gen_*
   // this name will be used as op name when exporting onnx model from popart
-  // TODO(alleng) limit string length
   auto op_type = node->Name();
   std::string op_out = "";
   for (auto *out_node : node->outputs) {
@@ -177,7 +176,8 @@ Node *CreateSoftmaxOpset11(Graph *graph, Node *node,
     return CreateBaseOp(graph, node, "popart_softmax", inputs, outputs,
                         {{"axis", int64_t{-1}}});
   } else {
-    auto perm = arange<int64_t>(0, x_rank);
+    auto perm = std::vector<int64_t>(x_rank);
+    std::iota(perm.begin(), perm.end(), 0);
     perm[x_rank - 1] = axis;
     perm[axis] = x_rank - 1;
     auto new_transpose_pre = CreateBaseOp(graph, node, "popart_transpose",

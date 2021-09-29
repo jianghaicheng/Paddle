@@ -111,7 +111,6 @@ Node *pool2d_handler(Graph *graph, Node *node) {
     auto padding_algorithm =
         BOOST_GET_CONST(std::string, op->GetAttr("padding_algorithm"));
     if (padding_algorithm != "EXPLICIT") {
-      // TODO(alleng) Fix this
       PADDLE_THROW(platform::errors::InvalidArgument(
           "op pool2d with unkonwn padding_algorithm: %s", padding_algorithm));
     }

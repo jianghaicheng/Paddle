@@ -28,10 +28,9 @@ void IpuRuntimeReplacerPass::ApplyImpl(ir::Graph* graph) const {
 
   // // graph_viz_pass
   // auto graph_viz_pass = PassRegistry::Instance().Get("graph_viz_pass");
-  // graph_viz_pass->Set(
-  //     "graph_viz_path",
-  //     new std::string(
-  //         "/home/Paddle/demos/before_ipu_runtime_replacer_pass.dot"));
+  // graph_viz_pass->Set("graph_viz_path",
+  //                     new
+  //                     std::string("before_ipu_runtime_replacer_pass.dot"));
   // graph_viz_pass->Apply(graph);
 
   std::vector<std::string> feed_list;
@@ -65,7 +64,6 @@ void IpuRuntimeReplacerPass::ApplyImpl(ir::Graph* graph) const {
   }
 
   // set ipu_runtime_op dtype attr
-  // TODO(alleng) support more than one output type
   if (fetch_list.size() == 1) {
     for (auto* node : graph->Nodes()) {
       if (node->IsVar()) {
@@ -96,10 +94,9 @@ void IpuRuntimeReplacerPass::ApplyImpl(ir::Graph* graph) const {
 
   // // graph_viz_pass
   // graph_viz_pass->Erase("graph_viz_path");
-  // graph_viz_pass->Set(
-  //     "graph_viz_path",
-  //     new std::string(
-  //         "/home/Paddle/demos/after_ipu_runtime_replacer_pass.dot"));
+  // graph_viz_pass->Set("graph_viz_path",
+  //                     new
+  //                     std::string("after_ipu_runtime_replacer_pass.dot"));
   // graph_viz_pass->Apply(graph);
 
   VLOG(10) << "leave IpuRuntimeReplacerPass::ApplyImpl";
