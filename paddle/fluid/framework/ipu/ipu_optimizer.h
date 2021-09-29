@@ -62,7 +62,6 @@ class OptmizerMetaInfo {
 };
 
 OptimizerType OptTypeStr2Enum(const std::string type);
-std::string OptTypeEnum2Str(OptimizerType type);
 
 std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
     const OptmizerMetaInfo &info);

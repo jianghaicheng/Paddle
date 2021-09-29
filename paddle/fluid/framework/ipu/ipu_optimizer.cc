@@ -50,19 +50,6 @@ OptimizerType OptTypeStr2Enum(const std::string type) {
   }
 }
 
-std::string OptTypeEnum2Str(OptimizerType type) {
-  switch (type) {
-    case OptimizerType::SGD:
-      return "sgd";
-    case OptimizerType::Adam:
-      return "adam";
-    case OptimizerType::Lamb:
-      return "lamb";
-    default:
-      return "undefined";
-  }
-}
-
 std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
     const OptmizerMetaInfo &opt_meta_info) {
   auto opt_type = opt_meta_info.GetType();
@@ -105,7 +92,7 @@ std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
     return optimizer;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Optimizer %s is not implemented now.", OptTypeEnum2Str(opt_type)));
+        "Optimizer %d is not implemented now.", static_cast<int>(opt_type)));
   }
 }
 

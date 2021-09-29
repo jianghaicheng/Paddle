@@ -336,10 +336,6 @@ void Compiler::SetIpuIndexStage(const std::string& tensor_id,
   VLOG(10) << "leave Compiler::SetIpuIndexStage";
 }
 
-std::vector<int64_t> Compiler::GetTensorShape(const std::string& name) {
-  return builder_->getTensorShape(tensors_[name]);
-}
-
 std::vector<popart::TensorId>& Compiler::GetWeights() { return weights_; }
 
 // convertFloatsToHalfs

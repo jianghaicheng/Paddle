@@ -99,8 +99,6 @@ class TestBase(IPUOpTest):
         res0 = self._test_base(False)
         res1 = self._test_base(True)
 
-        np.savetxt('cpu.csv', res0.flatten(), delimiter=',')
-        np.savetxt('ipu.csv', res1.flatten(), delimiter=',')
         self.assertTrue(res0.shape == res1.shape)
         mae = np.mean(np.abs(res0.flatten() - res1.flatten()))
         print("mae is ", mae)

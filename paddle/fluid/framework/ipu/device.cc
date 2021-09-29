@@ -25,17 +25,8 @@ Device::Device(const popart::DeviceInfo& device_info)
     case popart::DeviceType::IpuModel:
       device_type_ = DeviceType::IpuModel;
       break;
-    case popart::DeviceType::Cpu:
-      device_type_ = DeviceType::Cpu;
-      break;
     case popart::DeviceType::Ipu:
       device_type_ = DeviceType::Ipu;
-      break;
-    case popart::DeviceType::OfflineIpu:
-      device_type_ = DeviceType::OfflineIpu;
-      break;
-    case popart::DeviceType::Sim:
-      device_type_ = DeviceType::Sim;
       break;
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(

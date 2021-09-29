@@ -16,8 +16,10 @@ pipeline {
                     println("branch is: " + env.BRANCH_NAME)
                     def current_folder = workspace.split("/")[4]
                     println("current_folder is: " + current_folder)
-                    sh 'sudo rm build -rf'
-                    sh 'mkdir build && cp -r /home/haichengj/third_party ./build/'
+                    dir('build') {
+                     sh "pwd"
+                     sh 'ls ./ | grep -v "third_party" |xargs sudo rm -rf'
+                    }
                     try {
                         sh '/usr/bin/docker run --ulimit memlock=-1:-1 --net=host --cap-add=IPC_LOCK --device=/dev/infiniband/ --ipc=host --name paddle-with-dev-test -v /etc/ipuof.conf.d/:/etc/ipuof.conf.d/ -v $PWD:/paddle -v /home/haichengj/popsdk:/popsdk -itd paddlepaddle/paddle:latest-ipu-dev /bin/bash'sh 'docker start paddle-with-dev-test'
                     } catch(error) {
