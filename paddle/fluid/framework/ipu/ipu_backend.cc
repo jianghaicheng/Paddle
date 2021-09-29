@@ -32,6 +32,7 @@ IpuBackend::IpuBackend() {
 }
 
 void IpuBackend::Clear() {
+  executor_.reset();
   // detach device
   if (device_ != nullptr && device_->isAttached()) {
     device_->detach();
@@ -40,9 +41,7 @@ void IpuBackend::Clear() {
   }
 }
 
-IpuBackend::~IpuBackend() {
-  Clear();
-}
+IpuBackend::~IpuBackend() { Clear(); }
 
 std::shared_ptr<IpuBackend> IpuBackend::GetInstance() {
   if (!instance_) {
