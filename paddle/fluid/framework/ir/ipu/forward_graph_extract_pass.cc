@@ -22,18 +22,6 @@ namespace ir {
 
 void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter ForwardGraphExtractPass::ApplyImpl";
-  // find forward ops
-  // find forward vars
-  // remove unneeded nodes
-  // topology_sort forward_ops(outside this Pass)
-  // remove unneeded vars in scope outside this Pass
-
-  // // graph_viz_pass
-  // auto graph_viz_pass = PassRegistry::Instance().Get("graph_viz_pass");
-  // graph_viz_pass->Set("graph_viz_path",
-  //                     new std::string("/home/Paddle/demos/before_pass.dot"));
-  // graph_viz_pass->Apply(graph);
-
   std::unordered_map<OpRole, std::unordered_set<ir::Node*>> all_ops{
       {OpRole::kForward, {}},  {OpRole::kBackward, {}},
       {OpRole::kOptimize, {}}, {OpRole::kRPC, {}},
@@ -132,13 +120,6 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
 
   VLOG(10) << "Post Graph: ";
   VLOG(10) << DebugString(graph);
-
-  // // graph_viz_pass
-  // graph_viz_pass->Erase("graph_viz_path");
-  // graph_viz_pass->Set("graph_viz_path",
-  //                     new std::string("/home/Paddle/demos/after_pass.dot"));
-  // graph_viz_pass->Apply(graph);
-
   VLOG(10) << "leave ForwardGraphExtractPass::ApplyImpl";
 }
 
@@ -148,5 +129,3 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
 
 REGISTER_PASS(forward_graph_extract_pass,
               paddle::framework::ir::ForwardGraphExtractPass);
-
-// USE_PASS(graph_viz_pass);

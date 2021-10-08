@@ -26,13 +26,6 @@ void IpuRuntimeReplacerPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
-  // // graph_viz_pass
-  // auto graph_viz_pass = PassRegistry::Instance().Get("graph_viz_pass");
-  // graph_viz_pass->Set("graph_viz_path",
-  //                     new
-  //                     std::string("before_ipu_runtime_replacer_pass.dot"));
-  // graph_viz_pass->Apply(graph);
-
   std::vector<std::string> feed_list;
   feed_list = Get<std::vector<std::string>>("feed_list");
 
@@ -91,14 +84,6 @@ void IpuRuntimeReplacerPass::ApplyImpl(ir::Graph* graph) const {
 
   VLOG(10) << "Post Graph: ";
   VLOG(10) << DebugString(graph);
-
-  // // graph_viz_pass
-  // graph_viz_pass->Erase("graph_viz_path");
-  // graph_viz_pass->Set("graph_viz_path",
-  //                     new
-  //                     std::string("after_ipu_runtime_replacer_pass.dot"));
-  // graph_viz_pass->Apply(graph);
-
   VLOG(10) << "leave IpuRuntimeReplacerPass::ApplyImpl";
 }
 
@@ -110,5 +95,3 @@ REGISTER_PASS(ipu_runtime_replacer_pass,
               paddle::framework::ir::IpuRuntimeReplacerPass)
     .RequirePassAttr("feed_list")
     .RequirePassAttr("fetch_list");
-
-// USE_PASS(graph_viz_pass);
