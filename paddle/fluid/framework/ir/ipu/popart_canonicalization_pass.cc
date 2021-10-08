@@ -27,6 +27,7 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
+  std::vector<std::string> missing_ops;
   auto nodes = graph->Nodes();
   for (auto* node : nodes) {
     if (!node->IsOp()) {
@@ -46,8 +47,17 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
       ipu::ClearNode(node);
       graph->RemoveNode(node);
     } else {
-      LOG(ERROR) << "Can not find OpHandler for op_type: " << op_type;
+      missing_ops.push_back(op_type);
     }
+  }
+
+  if (!missing_ops.empty()) {
+    LOG(ERROR) << "Can not find OpHandler for op_type: ";
+    for (auto& op_type : missing_ops) {
+      LOG(ERROR) << op_type;
+    }
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Found unimplemented op_handler(s) for IPU"));
   }
 
   // post popart_canonicalization
