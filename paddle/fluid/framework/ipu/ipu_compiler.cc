@@ -39,6 +39,16 @@ nonstd::optional<T> GetOptAttrAllowNull(std::string attr, OpDesc* op_desc) {
   }
 }
 
+template <typename TI, typename TO>
+TO GetCastSigAttrAllowNull(std::string attr, OpDesc* op_desc) {
+  if (op_desc->HasAttr(attr)) {
+    auto x = BOOST_GET_CONST(TI, op_desc->GetAttr(attr));
+    return static_cast<TO>(x);
+  } else {
+    return {};
+  }
+}
+
 Compiler::Compiler() {
   builder_ = popart::Builder::create();
   RegisterOpFunc();
@@ -49,9 +59,11 @@ Compiler::~Compiler() {}
 void Compiler::RegisterOpFunc() {
   VLOG(10) << "enter Compiler::RegisterOpFunc";
 #define INT_VEC std::vector<std::int64_t>
+#define INT32_VEC std::vector<std::int32_t>
 #define FLOAT_VEC std::vector<float>
 #define FLOAT float
 #define INT std::int64_t
+#define INT32 std::int32_t
 #define BOOL bool
 #define STRING std::string
 #define STRING_VEC std::vector<std::string*>
@@ -59,6 +71,7 @@ void Compiler::RegisterOpFunc() {
 
 #define ARG(Type, Name) , GetAttrAllowNull<Type>(#Name, op_desc)
 #define OPT_ARG(Type, Name) , GetOptAttrAllowNull<Type>(#Name, op_desc)
+#define SIG_ARG(TI, TO, Name) , GetCastSigAttrAllowNull<TI, TO>(#Name, op_desc)
 #define POPART_CONST_ARG(Name) , const PopartConstant& Name
 #define HOST_SIDE_CONST_ARG(Name) , const HostSideConstant& Name
 #define POPART_ATTRIB_VEC_ARG(Name)
@@ -86,15 +99,18 @@ void Compiler::RegisterOpFunc() {
 #undef POPART_ATTRIB_VEC_ARG
 #undef HOST_SIDE_CONST_ARG
 #undef POPART_CONST_ARG
+#undef SIG_ARG
 #undef OPT_ARG
 #undef ARG
 #undef NONE
 #undef STRING_VEC
 #undef STRING
 #undef BOOL
+#undef INT32
 #undef INT
 #undef FLOAT
 #undef FLOAT_VEC
+#undef INT32_VEC
 #undef INT_VEC
 }
 
@@ -140,23 +156,6 @@ void Compiler::LowerBody(const ir::Graph* graph) {
               platform::errors::Unimplemented("popart::DataType %d", dtype));
       }
       popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
-      SetIpuIndexStage(result, op_desc);
-      InsertTensors(GetOpOutputs(op_desc), result);
-    } else if (op_type == "popart_batchnormalization") {
-      auto inputs = GetOpInputs(op_desc);
-      auto outputs = GetOpOutputs(op_desc);
-      auto num_outputs = outputs.size();
-      auto epsilon = BOOST_GET_CONST(float, op_desc->GetAttr("epsilon"));
-      auto momentum = BOOST_GET_CONST(float, op_desc->GetAttr("momentum"));
-      auto result = builder_->aiOnnxOpset11().batchnormalization(
-          inputs, num_outputs, epsilon, momentum);
-      SetIpuIndexStage(result, op_desc);
-      InsertTensors(GetOpOutputs(op_desc), result);
-    } else if (op_type == "popart_nllloss") {
-      auto inputs = GetOpInputs(op_desc);
-      auto ignoreIndex = BOOST_GET_CONST(int, op_desc->GetAttr("ignoreIndex"));
-      auto result = builder_->aiGraphcoreOpset1().nllloss(
-          inputs, popart::ReductionType::NoReduction, ignoreIndex);
       SetIpuIndexStage(result, op_desc);
       InsertTensors(GetOpOutputs(op_desc), result);
     } else if (op_type == "popart_topk") {
