@@ -50,13 +50,13 @@ void Executor::Prepare(const std::string &proto,
 
     session_ = popart::TrainingSession::createFromOnnxModel(
         proto, dataFlow, it->second, *popart_optimizer, device,
-        popart::InputShapeInfo(), ipu_strategy_->popart_options_,
+        popart::InputShapeInfo(), ipu_strategy_->popart_options,
         popart::Patterns(popart::PatternsLevel::Default));
   } else {
     VLOG(10) << "Creating InferenceSession from Onnx Model...";
     session_ = popart::InferenceSession::createFromOnnxModel(
         proto, dataFlow, device, popart::InputShapeInfo(),
-        ipu_strategy_->popart_options_,
+        ipu_strategy_->popart_options,
         popart::Patterns(popart::PatternsLevel::Default));
   }
   VLOG(10) << "Creating session from Onnx Model...done";
@@ -78,6 +78,8 @@ void Executor::Prepare(const std::string &proto,
   if (ipu_strategy_->save_init_onnx) {
     session_->modelToHost("test_init.onnx");
   }
+  // init run step
+  step_ = 0;
 }
 
 void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
@@ -128,7 +130,9 @@ void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
   session_->run(stepio);
   VLOG(10) << "Running...done";
 
-  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training) {
+  step_++;
+  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training &&
+      step_ % ipu_strategy_->save_per_n_step == 0) {
     session_->weightsToHost();
     WeightsToPaddle();
     if (ipu_strategy_->save_last_onnx) {

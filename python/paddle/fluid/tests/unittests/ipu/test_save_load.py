@@ -95,6 +95,7 @@ class TestBase(IPUOpTest):
 
                 ipu_strategy = compiler.get_ipu_strategy()
                 ipu_strategy.is_training = self.attrs['is_training']
+                ipu_strategy.save_per_n_step = self.attrs['save_at_step']
                 program = compiler.IpuCompiler(
                     main_prog, ipu_strategy=ipu_strategy).compile(
                         self.feed_list, fetch_list)
@@ -128,7 +129,7 @@ class TestBase(IPUOpTest):
         self.assertTrue(
             np.allclose(
                 res0.flatten(), res1.flatten(), atol=self.atol))
-        shutil.rmtree("model",True)
+        shutil.rmtree("model", True)
 
 
 class TestAdam(TestBase):

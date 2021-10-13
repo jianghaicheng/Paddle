@@ -43,15 +43,15 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   auto num_ipus = graph->Get<int>("num_ipus");
   ipu_strategy_instance_->num_ipus = num_ipus;
   if (num_ipus > 1) {
-    ipu_strategy_instance_->popart_options_.virtualGraphMode =
+    ipu_strategy_instance_->popart_options.virtualGraphMode =
         ipu::VirtualGraphMode::Manual;
   } else {
-    ipu_strategy_instance_->popart_options_.virtualGraphMode =
+    ipu_strategy_instance_->popart_options.virtualGraphMode =
         ipu::VirtualGraphMode::Off;
   }
 
   auto enable_pipelining = graph->Get<bool>("enable_pipelining");
-  ipu_strategy_instance_->popart_options_.enablePipelining = enable_pipelining;
+  ipu_strategy_instance_->popart_options.enablePipelining = enable_pipelining;
   if (enable_pipelining) {
     auto batches_per_step = graph->Get<int>("batches_per_step");
     PADDLE_ENFORCE_GE(

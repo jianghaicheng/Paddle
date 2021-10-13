@@ -3216,10 +3216,10 @@ All parameter, weight, gradient are variables in Paddle.
           )DOC")
       .def_property("accumulationFactor",
                     [](const ipu::IpuStrategy &self) {
-                      return self.popart_options_.accumulationFactor;
+                      return self.popart_options.accumulationFactor;
                     },
                     [](ipu::IpuStrategy &self, int accumulationFactor) {
-                      self.popart_options_.accumulationFactor =
+                      self.popart_options.accumulationFactor =
                           accumulationFactor;
                     },
                     R"DOC(
@@ -3246,25 +3246,25 @@ All parameter, weight, gradient are variables in Paddle.
           )DOC")
       .def_property("enable_pipelining",
                     [](const ipu::IpuStrategy &self) {
-                      return self.popart_options_.enablePipelining;
+                      return self.popart_options.enablePipelining;
                     },
                     [](ipu::IpuStrategy &self, bool enable_pipelining) {
-                      self.popart_options_.enablePipelining = enable_pipelining;
+                      self.popart_options.enablePipelining = enable_pipelining;
                     },
                     R"DOC(
             Bool type, True enable pipeline, otherwise disable. Default False.
           )DOC")
       .def_property("enable_manual_shard",
                     [](const ipu::IpuStrategy &self) {
-                      return self.popart_options_.virtualGraphMode ==
+                      return self.popart_options.virtualGraphMode ==
                              ipu::VirtualGraphMode::Manual;
                     },
                     [](ipu::IpuStrategy &self, bool enable_ipu_shard) {
                       if (enable_ipu_shard) {
-                        self.popart_options_.virtualGraphMode =
+                        self.popart_options.virtualGraphMode =
                             ipu::VirtualGraphMode::Manual;
                       } else {
-                        self.popart_options_.virtualGraphMode =
+                        self.popart_options.virtualGraphMode =
                             ipu::VirtualGraphMode::Off;
                       }
                     },
@@ -3297,7 +3297,31 @@ All parameter, weight, gradient are variables in Paddle.
             self.enable_fp16 = enable_fp16;
           },
           R"DOC(
-            Bool type, True enable float16 mode, otherwise disable. Default False.)DOC");
+            Bool type, True enable float16 mode, otherwise disable. Default False.)DOC")
+      .def_property(
+          "save_init_onnx",
+          [](const ipu::IpuStrategy &self) { return self.save_init_onnx; },
+          [](ipu::IpuStrategy &self, bool save_init_onnx) {
+            self.save_init_onnx = save_init_onnx;
+          },
+          R"DOC(
+            Bool type, True enable save init onnx. Default False.)DOC")
+      .def_property(
+          "save_last_onnx",
+          [](const ipu::IpuStrategy &self) { return self.save_last_onnx; },
+          [](ipu::IpuStrategy &self, bool save_last_onnx) {
+            self.save_last_onnx = save_last_onnx;
+          },
+          R"DOC(
+            Bool type, True enable save last onnx. Default False.)DOC")
+      .def_property(
+          "save_per_n_step",
+          [](const ipu::IpuStrategy &self) { return self.save_per_n_step; },
+          [](ipu::IpuStrategy &self, int save_per_n_step) {
+            self.save_per_n_step = save_per_n_step;
+          },
+          R"DOC(
+            Int type, Copy weights D2H per n steps. Default 1.)DOC");
 #endif
 
   BindFleetWrapper(&m);

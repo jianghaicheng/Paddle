@@ -76,6 +76,7 @@ class Executor {
   const IpuStrategy *ipu_strategy_ = nullptr;
   popart::WeightsIO weights_io_;
   std::vector<popart::TensorId> weights_;
+  int step_ = 0;
 };
 
 }  // namespace ipu

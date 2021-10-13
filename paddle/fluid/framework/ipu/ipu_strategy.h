@@ -28,8 +28,9 @@ struct IpuStrategy {
   int batch_size = 1;
   bool is_training = true;
   bool save_init_onnx = false;
-  bool save_last_onnx = true;
-  popart::SessionOptions popart_options_;
+  bool save_last_onnx = false;
+  int save_per_n_step = 1;
+  popart::SessionOptions popart_options;
   bool need_avg_shard = false;
   bool enable_fp16 = false;
 };

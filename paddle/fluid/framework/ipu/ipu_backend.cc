@@ -74,7 +74,10 @@ void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
   Prepare();
   auto inputs_id = compiler_->GetInputs();
   auto outputs_id = compiler_->GetOutputs();
+  timer_->Start();
   executor_->Run(inputs_id, inputs, outputs_id, outputs, ctx);
+  timer_->Pause();
+  VLOG(10) << "[IPU Run]: " << timer_->ElapsedMS() << " (ms)";
 }
 
 void IpuBackend::Prepare() {
@@ -91,6 +94,8 @@ void IpuBackend::Prepare() {
   auto tensors = compiler_->GetTensors();
   auto outputs = compiler_->GetOutputs();
   executor_->Prepare(proto, tensors, outputs, device_);
+  // Init Timer
+  timer_.reset(new platform::Timer());
 }
 
 void IpuBackend::SetScope(const Scope& scope) {

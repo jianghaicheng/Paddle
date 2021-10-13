@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace framework {
@@ -91,8 +92,11 @@ class IpuBackend {
   // not own
   const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
+
  private:
   static std::shared_ptr<IpuBackend> instance_;
+  // time record for IpuBackend::Run
+  std::unique_ptr<platform::Timer> timer_;
 };
 
 }  // namespace ipu
