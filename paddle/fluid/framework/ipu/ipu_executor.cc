@@ -187,9 +187,44 @@ void Executor::SetWeightsIO() {
   }
 }
 
-void Executor::WeightsFromPaddle() { session_->writeWeights(weights_io_); }
+void Executor::WeightsFromPaddle() {
+  // convert fp32  to fp16
+  if (ipu_strategy_->enable_fp16) {
+    for (auto tensor_id : weights_) {
+      // tensor_id equal to var_name
+      auto var = scope_->GetVar(tensor_id);
+      float *fp32_data_ptr =
+          var->GetMutable<framework::LoDTensor>()->data<float>();
+      popart::TensorInfo info = session_->getInfo(tensor_id);
+      auto elem_num = info.nelms();
+      std::vector<uint16_t> fp16_data;
 
-void Executor::WeightsToPaddle() { session_->readWeights(weights_io_); }
+      std::transform(fp32_data_ptr, fp32_data_ptr + elem_num,
+                     std::back_inserter(fp16_data),
+                     [&](float elem) { return popart::floatToHalf(elem); });
+      memcpy((void *)fp32_data_ptr, fp16_data.data(), elem_num * sizeof(float16));
+    }
+  }
+  session_->writeWeights(weights_io_);
+}
+
+void Executor::WeightsToPaddle() {
+  session_->readWeights(weights_io_);
+  // convert fp16  to fp32
+  if (ipu_strategy_->enable_fp16) {
+    for (auto tensor_id : weights_) {
+      popart::MutableVoidData mutable_data = weights_io_.weight(tensor_id);
+      uint16_t *fp16_data_ptr = (uint16_t *)mutable_data.data;
+      popart::TensorInfo info = session_->getInfo(tensor_id);
+      auto elem_num = info.nelms();
+      std::vector<float> fp32_data;
+      std::transform(fp16_data_ptr, fp16_data_ptr + elem_num,
+                     std::back_inserter(fp32_data),
+                     [&](uint16_t elem) { return popart::halfToFloat(elem); });
+      memcpy((void *)mutable_data.data, fp32_data.data(), elem_num * sizeof(float));
+    }
+  }
+}
 
 void Executor::SetIpuStrategy(const IpuStrategy &strategy) {
   ipu_strategy_ = &strategy;

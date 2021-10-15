@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <popart/dataflow.hpp>
+#include <popart/half.hpp>
 #include <popart/names.hpp>
 #include <popart/session.hpp>
 
@@ -29,11 +30,11 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
+using float16 = paddle::platform::float16;
 class Executor {
  public:
   Executor();
   ~Executor();
-
   void Prepare(const std::string &proto,
                const std::map<std::string, popart::TensorId> &tensors,
                const std::vector<popart::TensorId> &outputs,

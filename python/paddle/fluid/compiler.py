@@ -523,7 +523,7 @@ class IpuCompiler(object):
         self._graph_passes = [
             "optimizer_extract_pass", "optimizer_state_align_pass",
             "forward_graph_extract_pass", "infer_shape_pass", "avg_shard_pass",
-            "popart_canonicalization_pass"
+            "delete_scale_op_pass", "popart_canonicalization_pass"
         ]
         global ipu_compiler_ref
         ipu_compiler_ref = self

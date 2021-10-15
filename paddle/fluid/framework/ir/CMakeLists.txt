@@ -135,6 +135,8 @@ if(WITH_IPU)
     pass_library(popart_canonicalization_pass base DIR ipu DEPS ipu_pass_base)
     pass_library(ipu_inplace_pass base DIR ipu DEPS ipu_pass_base)
     pass_library(infer_shape_pass base DIR ipu DEPS ipu_pass_base)
+    pass_library(delete_scale_op_pass base DIR ipu DEPS ipu_pass_base)
+
     pass_library(avg_shard_pass base DIR ipu DEPS ipu_pass_base)
     target_link_libraries(popart_canonicalization_pass -Wl,--whole-archive popart_canonicalization_utils -Wl,--no-whole-archive)
 endif()
