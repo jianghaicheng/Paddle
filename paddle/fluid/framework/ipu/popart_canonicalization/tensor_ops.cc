@@ -244,13 +244,18 @@ Node *lookup_table_handler(Graph *graph, Node *node) {
     w_node = GetInputVarNode("W", node);
   }
 
-  auto squeeze = CreateBaseOp(graph, node, "popart_squeeze",
-                              {GetInputVarNode("Ids", node)}, {},
-                              {{"axes", std::vector<int64_t>{-1}}});
+  // support lookup_table_v2
+  auto ids = GetInputVarNode("Ids", node);
+  auto ids_shape = ids->Var()->GetShape();
+  if (ids_shape[ids_shape.size() - 1] == 1) {
+    ids = CreateBaseOp(graph, node, "popart_squeeze",
+                       {GetInputVarNode("Ids", node)}, {},
+                       {{"axes", std::vector<int64_t>{-1}}});
+    ids = ids->outputs[0];
+  }
 
-  auto gather =
-      CreateBaseOp(graph, node, "popart_gather", {w_node, squeeze->outputs[0]},
-                   {GetOutputVarNode("Out", node)}, {});
+  auto gather = CreateBaseOp(graph, node, "popart_gather", {w_node, ids},
+                             {GetOutputVarNode("Out", node)}, {});
   return gather;
 }
 
@@ -370,6 +375,56 @@ Node *expand_handler(Graph *graph, Node *node) {
   return new_node;
 }
 
+Node *assign_handler(Graph *graph, Node *node) {
+  return CreateBaseOp(graph, node, "popart_identity",
+                      {GetInputVarNode("X", node)},
+                      {GetOutputVarNode("Out", node)}, {});
+}
+
+Node *fill_any_like_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto value = BOOST_GET_CONST(float, op->GetAttr("value"));
+  auto x_shape = GetInputVarNode("X", node)->Var()->GetShape();
+  auto dtype = BOOST_GET_CONST(int, op->GetAttr("dtype"));
+  auto x_dtype = static_cast<proto::VarType::Type>(dtype);
+  size_t size = 1;
+  for (auto &dim : x_shape) {
+    size *= dim;
+  }
+
+  Attribute out_value;
+  switch (x_dtype) {
+    case proto::VarType::FP32:
+      out_value = std::vector<float>(size, value);
+      break;
+    case proto::VarType::FP64:
+      out_value = std::vector<double>(size, value);
+      break;
+    case proto::VarType::INT32:
+      out_value = std::vector<int>(size, value);
+      break;
+    case proto::VarType::INT64:
+      out_value = std::vector<int64_t>(size, value);
+      break;
+    case proto::VarType::BOOL:
+      out_value = std::vector<int64_t>(size, value);
+      break;
+    default:
+      PADDLE_THROW(
+          platform::errors::Unimplemented("fill_any_like dtype: %d", x_dtype));
+  }
+  return CreateConst(graph, node, node->inputs, node->outputs,
+                     AttributeMap{
+                         {"value", out_value},
+                         {"dims", x_shape},
+                         {"dtype", VarType2OnnxDtype(dtype)},
+                     });
+}
+
+Node *lookup_table_v2_handler(Graph *graph, Node *node) {
+  return lookup_table_handler(graph, node);
+}
+
 REGISTER_HANDLER(fill_constant, fill_constant_handler);
 REGISTER_HANDLER(gaussian_random, gaussian_random_handler);
 REGISTER_HANDLER(uniform_random, uniform_random_handler);
@@ -385,6 +440,9 @@ REGISTER_HANDLER(stack, stack_handler);
 REGISTER_HANDLER(shape, shape_handler);
 REGISTER_HANDLER(slice, slice_handler);
 REGISTER_HANDLER(expand, expand_handler);
+REGISTER_HANDLER(assign, assign_handler);
+REGISTER_HANDLER(fill_any_like, fill_any_like_handler);
+REGISTER_HANDLER(lookup_table_v2, lookup_table_v2_handler);
 
 }  // namespace
 }  // namespace ipu

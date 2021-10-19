@@ -14,9 +14,8 @@
 
 #include "paddle/fluid/framework/ir/ipu/infer_shape_pass.h"
 
-#include "paddle/fluid/framework/ipu/ipu_backend.h"
-
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/ipu/ipu_backend.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -32,9 +31,9 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << DebugString(graph);
 
   // Make batch_size fixed
+  bool need_infer_shape = false;
   std::shared_ptr<ipu::IpuBackend> ipu_backend = ipu::IpuBackend::GetInstance();
   auto batch_size = ipu_backend->GetIpuStrategy()->batch_size;
-
   auto feed_list = Get<std::vector<std::string>>("feed_list");
   for (auto node : graph->Nodes()) {
     if (!node->IsVar()) {
@@ -47,6 +46,7 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
       if (input_shape[0] <= -1) {
         input_shape[0] = batch_size;
         node->Var()->SetShape(input_shape);
+        need_infer_shape = true;
       }
       // int64->int32
       if (node->Var()->GetDataType() == proto::VarType::INT64) {
@@ -56,44 +56,50 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
   }
 
   // temp scope for shape inference
-  std::shared_ptr<paddle::framework::Scope> scope(
-      new paddle::framework::Scope());
-  for (auto node : graph->Nodes()) {
-    if (!node->IsVar()) {
-      continue;
+  if (need_infer_shape) {
+    std::shared_ptr<paddle::framework::Scope> scope(
+        new paddle::framework::Scope());
+    for (auto node : graph->Nodes()) {
+      if (!node->IsVar()) {
+        continue;
+      }
+      auto var_desc = node->Var();
+      auto* ptr = scope->Var(var_desc->Name());
+      paddle::framework::InitializeVariable(ptr, var_desc->GetType());
+
+      auto tensor = ptr->GetMutable<paddle::framework::LoDTensor>();
+      tensor->Resize(paddle::framework::make_ddim(var_desc->GetShape()));
     }
-    auto var_desc = node->Var();
-    auto* ptr = scope->Var(var_desc->Name());
-    paddle::framework::InitializeVariable(ptr, var_desc->GetType());
 
-    auto tensor = ptr->GetMutable<paddle::framework::LoDTensor>();
-    tensor->Resize(paddle::framework::make_ddim(var_desc->GetShape()));
-  }
+    // infer shape
+    auto nodes = ir::TopologySortOperations(*graph);
+    for (auto node : nodes) {
+      VLOG(10) << "InferShapePass: Infer shape for Op (" << node->Name() << ")";
+      auto op_desc = node->Op();
+      auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
+      paddle::framework::RuntimeContext ctx(op->Inputs(), op->Outputs(),
+                                            *scope);
+      op->RuntimeInferShape(*scope, paddle::platform::CPUPlace(), ctx);
 
-  // infer shape
-  auto nodes = ir::TopologySortOperations(*graph);
-  for (auto node : nodes) {
-    auto op_desc = node->Op();
-    auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
-    paddle::framework::RuntimeContext ctx(op->Inputs(), op->Outputs(), *scope);
-    op->RuntimeInferShape(*scope, paddle::platform::CPUPlace(), ctx);
-
-    for (auto it = ctx.outputs.begin(); it != ctx.outputs.end(); it++) {
-      for (int i = 0; i < it->second.size(); i++) {
-        auto output_name = op_desc->Output(it->first)[i];
-        auto dim =
-            it->second[i]->GetMutable<paddle::framework::LoDTensor>()->dims();
-        auto new_shape = paddle::framework::vectorize(dim);
-        for (auto output_node : node->outputs) {
-          if (output_node->Name() == output_name) {
-            output_node->Var()->SetShape(new_shape);
+      for (auto it = ctx.outputs.begin(); it != ctx.outputs.end(); it++) {
+        for (int i = 0; i < it->second.size(); i++) {
+          auto output_name = op_desc->Output(it->first)[i];
+          auto dim =
+              it->second[i]->GetMutable<paddle::framework::LoDTensor>()->dims();
+          auto new_shape = paddle::framework::vectorize(dim);
+          for (auto output_node : node->outputs) {
+            if (output_node->Name() == output_name) {
+              output_node->Var()->SetShape(new_shape);
+            }
           }
         }
       }
+      VLOG(10) << "InferShapePass: Infer shape for Op (" << node->Name()
+               << ") finished";
     }
+    // release the temp scope
+    scope.reset();
   }
-  // release the temp scope
-  scope.reset();
 
   VLOG(10) << "Post Graph: ";
   VLOG(10) << DebugString(graph);

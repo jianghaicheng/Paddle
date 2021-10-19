@@ -213,6 +213,10 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
         });
   } else {
     std::vector<int64_t> new_shape_{label_shape_[0]};
+    // workaround for bert
+    if (GetInputVarNode("Label", node)->Name() == "next_sentence_labels") {
+      new_shape_ = {label_shape_[0], label_shape_[1]};
+    }
     auto const_before_loss = CreateBaseOp(
         graph, node, "popart_constant", {}, {},
         {{"value", new_shape_},
@@ -248,6 +252,64 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
   }
 }
 
+Node *cumsum_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto exclusive = BOOST_GET_CONST(bool, op->GetAttr("exclusive"));
+  int64_t popart_exclusive = 1 ? exclusive : 0;
+  auto reverse = BOOST_GET_CONST(bool, op->GetAttr("reverse"));
+  int64_t popart_reverse = 1 ? reverse : 0;
+  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  auto axis_node =
+      CreateConst(graph, node, {}, {}, {{"value", std::vector<int64_t>{axis}},
+                                        {"dims", std::vector<int64_t>{1}},
+                                        {"dtype", ONNXDataType::INT64}});
+  return CreateBaseOp(
+      graph, node, "popart_cumsum",
+      {GetInputVarNode("X", node), axis_node->outputs[0]},
+      {GetOutputVarNode("Out", node)},
+      {{"exclusive", popart_exclusive}, {"reverse", popart_reverse}});
+}
+
+Node *matmul_v2_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto transpose_x = BOOST_GET_CONST(bool, op->GetAttr("trans_x"));
+  auto transpose_y = BOOST_GET_CONST(bool, op->GetAttr("trans_y"));
+  auto x_shape = GetInputVarNode("X", node)->Var()->GetShape();
+  auto y_shape = GetInputVarNode("Y", node)->Var()->GetShape();
+
+  std::vector<int64_t> perm;
+  int x_rank = x_shape.size();
+  if (x_rank == 1) {
+    perm = std::vector<int64_t>{0};
+  } else if (x_rank == 2) {
+    perm = std::vector<int64_t>{1, 0};
+  } else if (x_rank == 3) {
+    perm = std::vector<int64_t>{0, 2, 1};
+  } else if (x_rank == 4) {
+    perm = std::vector<int64_t>{0, 1, 3, 2};
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "op matmul with input rank == %d", x_rank));
+  }
+
+  Node *x_node = GetInputVarNode("X", node);
+  Node *y_node = GetInputVarNode("Y", node);
+
+  if (transpose_x) {
+    x_node = CreateBaseOp(graph, node, "popart_transpose",
+                          {GetInputVarNode("X", node)}, {}, {{"perm", perm}});
+    x_node = x_node->outputs[0];
+  }
+  if (transpose_y) {
+    y_node = CreateBaseOp(graph, node, "popart_transpose",
+                          {GetInputVarNode("Y", node)}, {}, {{"perm", perm}});
+    y_node = y_node->outputs[0];
+  }
+
+  return CreateBaseOp(graph, node, "popart_matmul", {x_node, y_node},
+                      node->outputs);
+}
+
 REGISTER_HANDLER(mean, mean_handler);
 REGISTER_HANDLER(pow, pow_handler);
 REGISTER_HANDLER(mul, mul_handler);
@@ -256,6 +318,8 @@ REGISTER_HANDLER(sum, sum_handler);
 REGISTER_HANDLER(softmax, softmax_handler);
 REGISTER_HANDLER(scale, scale_handler);
 REGISTER_HANDLER(cross_entropy2, cross_entropy2_handler);
+REGISTER_HANDLER(cumsum, cumsum_handler);
+REGISTER_HANDLER(matmul_v2, matmul_v2_handler);
 
 }  // namespace
 }  // namespace ipu

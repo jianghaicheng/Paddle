@@ -50,11 +50,13 @@ __all__ = [
     'cuda_places',
     'cpu_places',
     'xpu_places',
+    'ipu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_xpu',
+    'is_compiled_with_ipu',
     'Variable',
     'require_version',
     'device_guard',
@@ -411,6 +413,21 @@ def is_compiled_with_xpu():
     return core.is_compiled_with_xpu()
 
 
+def is_compiled_with_ipu():
+    """
+    Whether this whl package can be used to run the model on IPU.
+
+    Returns (bool): support ipu or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            support_ipu = fluid.is_compiled_with_ipu()
+    """
+    return core.is_compiled_with_ipu()
+
+
 def is_compiled_with_cuda():
     """
     Whether this whl package can be used to run the model on GPU.
@@ -525,6 +542,26 @@ def xpu_places(device_ids=None):
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.XPUPlace(dev_id) for dev_id in device_ids]
+
+
+def ipu_places():
+    """
+     This function creates a list of :code:`paddle.IPUPlace` objects, and returns the created list.
+
+    Returns:
+        list of paddle.IPUPlace: Created IPU place list.
+    Examples:
+        .. code-block:: python
+        
+            import paddle
+            import paddle.static as static
+            
+            paddle.enable_static()
+            ipu_places = static.ipu_places()
+    """
+    assert core.is_compiled_with_ipu(), \
+        "Not compiled with IPU"
+    return [core.IPUPlace()]
 
 
 def cpu_places(device_count=None):

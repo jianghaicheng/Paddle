@@ -52,13 +52,14 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
           }
         }
 
-        auto lr_var_name = node->Op()->Input("LearningRate");
-        PADDLE_ENFORCE_EQ(lr_var_name.size(), 1u,
-                          platform::errors::InvalidArgument(
-                              "In op(%s), find input(LearningRate) failed.",
-                              node->Op()->Type()));
-
-        ipu_backend->GetExecutor().SetLRVarName(lr_var_name[0]);
+        if (node->Op()->HasInput("LearningRate")) {
+          auto lr_var_name = node->Op()->Input("LearningRate");
+          PADDLE_ENFORCE_EQ(lr_var_name.size(), 1u,
+                            platform::errors::InvalidArgument(
+                                "In op(%s), find input(LearningRate) failed.",
+                                node->Op()->Type()));
+          ipu_backend->GetExecutor().SetLRVarName(lr_var_name[0]);
+        }
       }
 
       if ((op_role == static_cast<int>(framework::OpRole::kLoss))) {
