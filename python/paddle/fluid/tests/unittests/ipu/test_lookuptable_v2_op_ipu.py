@@ -32,12 +32,7 @@ class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
-        self.set_feed()
-        self.set_feed_attr()
         self.set_attrs()
-
-    def set_feed(self):
-        self.feed = {"x": np.random.uniform(size=[1, 128]).astype('float32')}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed.values()]
@@ -47,7 +42,13 @@ class TestBase(IPUOpTest):
         ]
 
     def set_attrs(self):
-        self.attrs = {}
+        self.attrs = {
+            "num_embeddings": 128,
+            "embedding_dim": 16,
+            "sparse": False,
+            "padding_idx": -1,
+            "weight_attr": None
+        }
 
     def _test_base(self, run_ipu=True):
         scope = fluid.core.Scope()
@@ -57,15 +58,35 @@ class TestBase(IPUOpTest):
         main_prog.random_seed = SEED
         startup_prog.random_seed = SEED
 
+        if run_ipu:
+            self.feed = {
+                "x": np.array(
+                    [[[1], [3]], [[2], [4]], [[4], [127]]]).astype(np.int32)
+            }
+        else:
+            self.feed = {
+                "x": np.array(
+                    [[[1], [3]], [[2], [4]], [[4], [127]]]).astype(np.int64)
+            }
+
+        self.set_feed_attr()
+
         with fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype=self.feed_dtype[0])
-                out = paddle.fluid.layers.cumsum(x, **self.attrs)
+                embedding = paddle.nn.Embedding(**self.attrs)
+                out = embedding(x)
 
-                fetch_list = [out.name]
+                if self.is_training:
+                    loss = paddle.mean(out)
+                    adam = paddle.optimizer.Adam(learning_rate=1e-2)
+                    adam.minimize(loss)
+                    fetch_list = [loss.name]
+                else:
+                    fetch_list = [out.name]
 
             if run_ipu:
                 place = paddle.IPUPlace()
@@ -84,8 +105,17 @@ class TestBase(IPUOpTest):
             else:
                 program = main_prog
 
-            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
-            return result[0]
+            if self.is_training:
+                result = []
+                for _ in range(self.epoch):
+                    loss_res = exe.run(program,
+                                       feed=self.feed,
+                                       fetch_list=fetch_list)
+                    result.append(loss_res[0])
+                return np.array(result)
+            else:
+                result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
+                return result[0]
 
     def test_base(self):
         res0 = self._test_base(False)
@@ -98,19 +128,10 @@ class TestBase(IPUOpTest):
         self.assertTrue(res0.shape == res1.shape)
 
 
-class TestCase1(TestBase):
-    def set_attrs(self):
-        self.attrs = {"exclusive": True, "reverse": False}
-
-
-class TestCase2(TestBase):
-    def set_attrs(self):
-        self.attrs = {"exclusive": False, "reverse": True}
-
-
-class TestCase3(TestBase):
-    def set_attrs(self):
-        self.attrs = {"exclusive": True, "reverse": True}
+class TestTrainCase1(TestBase):
+    def set_training(self):
+        self.is_training = True
+        self.epoch = 10
 
 
 if __name__ == "__main__":

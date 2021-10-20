@@ -166,7 +166,8 @@ Node *cast_handler(Graph *graph, Node *node) {
   return new_node_cast;
 }
 
-Node *lookup_table_handler(Graph *graph, Node *node) {
+Node *lookup_table_op_handler(Graph *graph, Node *node,
+                              const std::string &type) {
   auto *op = node->Op();
   auto padding_idx_ = BOOST_GET_CONST(int64_t, op->GetAttr("padding_idx"));
   auto w_shape_ = GetInputVarNode("W", node)->Var()->GetShape();
@@ -244,10 +245,9 @@ Node *lookup_table_handler(Graph *graph, Node *node) {
     w_node = GetInputVarNode("W", node);
   }
 
-  // support lookup_table_v2
+  // lookup_table and lookup_table_v2
   auto ids = GetInputVarNode("Ids", node);
-  auto ids_shape = ids->Var()->GetShape();
-  if (ids_shape[ids_shape.size() - 1] == 1) {
+  if (type == "v1") {
     ids = CreateBaseOp(graph, node, "popart_squeeze",
                        {GetInputVarNode("Ids", node)}, {},
                        {{"axes", std::vector<int64_t>{-1}}});
@@ -257,6 +257,14 @@ Node *lookup_table_handler(Graph *graph, Node *node) {
   auto gather = CreateBaseOp(graph, node, "popart_gather", {w_node, ids},
                              {GetOutputVarNode("Out", node)}, {});
   return gather;
+}
+
+Node *lookup_table_handler(Graph *graph, Node *node) {
+  return lookup_table_op_handler(graph, node, "v1");
+}
+
+Node *lookup_table_v2_handler(Graph *graph, Node *node) {
+  return lookup_table_op_handler(graph, node, "v2");
 }
 
 Node *unsqueeze_handler(Graph *graph, Node *node) {
@@ -419,10 +427,6 @@ Node *fill_any_like_handler(Graph *graph, Node *node) {
                          {"dims", x_shape},
                          {"dtype", VarType2OnnxDtype(dtype)},
                      });
-}
-
-Node *lookup_table_v2_handler(Graph *graph, Node *node) {
-  return lookup_table_handler(graph, node);
 }
 
 REGISTER_HANDLER(fill_constant, fill_constant_handler);

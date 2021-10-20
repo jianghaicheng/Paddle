@@ -37,7 +37,10 @@ class TestBase(IPUOpTest):
         self.set_attrs()
 
     def set_feed(self):
-        self.feed = {"x": np.random.uniform(size=[1, 128]).astype('float32')}
+        self.feed = {
+            "x": np.random.uniform(size=[2, 3]).astype('float32'),
+            "y": np.random.uniform(size=[3, 2]).astype('float32'),
+        }
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed.values()]
@@ -47,7 +50,7 @@ class TestBase(IPUOpTest):
         ]
 
     def set_attrs(self):
-        self.attrs = {}
+        self.attrs = {"transpose_x": False, "transpose_y": False}
 
     def _test_base(self, run_ipu=True):
         scope = fluid.core.Scope()
@@ -63,7 +66,11 @@ class TestBase(IPUOpTest):
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype=self.feed_dtype[0])
-                out = paddle.fluid.layers.cumsum(x, **self.attrs)
+                y = paddle.static.data(
+                    name=self.feed_list[1],
+                    shape=self.feed_shape[1],
+                    dtype=self.feed_dtype[1])
+                out = paddle.matmul(x, y, **self.attrs)
 
                 fetch_list = [out.name]
 
@@ -100,17 +107,88 @@ class TestBase(IPUOpTest):
 
 class TestCase1(TestBase):
     def set_attrs(self):
-        self.attrs = {"exclusive": True, "reverse": False}
-
-
-class TestCase2(TestBase):
-    def set_attrs(self):
-        self.attrs = {"exclusive": False, "reverse": True}
+        self.attrs = {
+            "transpose_x": True,
+            "transpose_y": True,
+        }
 
 
 class TestCase3(TestBase):
+    def set_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[5, 4, 2, 3]).astype('float32'),
+            "y": np.random.uniform(size=[5, 4, 3, 2]).astype('float32'),
+        }
+
+
+class TestCase4(TestBase):
+    def set_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[4, 2, 3]).astype('float32'),
+            "y": np.random.uniform(size=[4, 3, 2]).astype('float32'),
+        }
+
+
+class TestCase5(TestBase):
+    def set_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[4, 2, 3]).astype('float32'),
+            "y": np.random.uniform(size=[3, 2]).astype('float32'),
+        }
+
+
+class TestCase6(TestBase):
+    def set_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[3]).astype('float32'),
+            "y": np.random.uniform(size=[3]).astype('float32'),
+        }
+
+
+@unittest.skip("not supported")
+class TestCase6_2(TestCase6):
+    def set_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[3]).astype('float32'),
+            "y": np.random.uniform(size=[3]).astype('float32'),
+        }
+
     def set_attrs(self):
-        self.attrs = {"exclusive": True, "reverse": True}
+        self.attrs = {"transpose_x": True, "transpose_y": True}
+
+
+class TestCase7(TestBase):
+    def set_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[3, 1]).astype('float32'),
+            "y": np.random.uniform(size=[1, 2]).astype('float32'),
+        }
+
+
+@unittest.skip("not supported")
+class TestCase7_2(TestBase):
+    def set_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[3]).astype('float32'),
+            "y": np.random.uniform(size=[2]).astype('float32'),
+        }
+        # equal to
+        # self.feed = {
+        #     "x": np.random.uniform(size=[3, 1]).astype('float32'),
+        #     "y": np.random.uniform(size=[1, 2]).astype('float32'),
+        # }
+
+    def set_attrs(self):
+        self.attrs = {"transpose_x": True, "transpose_y": True}
+
+
+@unittest.skip("dim > 4 is not supported")
+class TestCase8(TestBase):
+    def set_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[6, 5, 4, 2, 3]).astype('float32'),
+            "y": np.random.uniform(size=[6, 5, 4, 3, 2]).astype('float32'),
+        }
 
 
 if __name__ == "__main__":

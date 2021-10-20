@@ -136,7 +136,7 @@ void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
     session_->weightsToHost();
     WeightsToPaddle();
     if (ipu_strategy_->save_last_onnx) {
-      session_->modelToHost("test_last.onnx");
+      session_->modelToHost("test_last" + std::to_string(step_) + ".onnx");
     }
   }
 }
@@ -202,7 +202,8 @@ void Executor::WeightsFromPaddle() {
       std::transform(fp32_data_ptr, fp32_data_ptr + elem_num,
                      std::back_inserter(fp16_data),
                      [&](float elem) { return popart::floatToHalf(elem); });
-      memcpy((void *)fp32_data_ptr, fp16_data.data(), elem_num * sizeof(float16));
+      memcpy((void *)fp32_data_ptr, fp16_data.data(),
+             elem_num * sizeof(float16));
     }
   }
   session_->writeWeights(weights_io_);
@@ -221,7 +222,8 @@ void Executor::WeightsToPaddle() {
       std::transform(fp16_data_ptr, fp16_data_ptr + elem_num,
                      std::back_inserter(fp32_data),
                      [&](uint16_t elem) { return popart::halfToFloat(elem); });
-      memcpy((void *)mutable_data.data, fp32_data.data(), elem_num * sizeof(float));
+      memcpy((void *)mutable_data.data, fp32_data.data(),
+             elem_num * sizeof(float));
     }
   }
 }
