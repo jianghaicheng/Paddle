@@ -88,6 +88,7 @@ class IpuBackend {
   std::unique_ptr<Executor> executor_;
   std::shared_ptr<popart::DeviceInfo> device_;
   bool is_prepared_ = false;
+  bool is_attached_ = false;
 
   // not own
   const Scope *scope_ = nullptr;

@@ -159,6 +159,17 @@ class TestCase6(TestBase):
         }
 
 
+class TestCase7(TestBase):
+    def set_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[1, 12, 128, 64]).astype('float32'),
+            "y": np.random.uniform(size=[1, 12, 128, 64]).astype('float32'),
+        }
+
+    def set_attrs(self):
+        self.attrs = {"transpose_x": False, "transpose_y": True, "alpha": 0.125}
+
+
 @unittest.skip("not supported")
 class TestCase6_2(TestCase6):
     def set_feed(self):

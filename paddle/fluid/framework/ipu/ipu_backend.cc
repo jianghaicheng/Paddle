@@ -173,6 +173,11 @@ void IpuBackend::AttachDevice(int id) {
   if (ipu_model) {
     return;
   }
+  if (is_attached_) {
+    return;
+  } else {
+    is_attached_ = true;
+  }
   device_ = popart::DeviceManager::createDeviceManager().acquireAvailableDevice(
       UpperIpuNum());
   PADDLE_ENFORCE_NOT_NULL(

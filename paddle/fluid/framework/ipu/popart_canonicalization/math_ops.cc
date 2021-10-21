@@ -122,15 +122,15 @@ Node *matmul_handler(Graph *graph, Node *node) {
     y_node = y_node->outputs[0];
   }
   if (is_float_equal(alpha, 1.0)) {
+    return CreateBaseOp(graph, node, "popart_matmul", {x_node, y_node},
+                        node->outputs);
+  } else {
     auto o_node =
         CreateBaseOp(graph, node, "popart_matmul", {x_node, y_node}, {});
     auto attr = MakeConstAttrMapFromValue(alpha, {1}, ONNXDataType::FLOAT);
     auto const_node = CreateConst(graph, node, {}, {}, attr);
     return CreateBaseOp(graph, node, "popart_mul",
                         {o_node->outputs[0], const_node->outputs[0]},
-                        node->outputs);
-  } else {
-    return CreateBaseOp(graph, node, "popart_matmul", {x_node, y_node},
                         node->outputs);
   }
 }
