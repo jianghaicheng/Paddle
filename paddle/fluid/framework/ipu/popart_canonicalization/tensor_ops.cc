@@ -346,11 +346,32 @@ Node *slice_handler(Graph *graph, Node *node) {
     auto attr = MakeConstAttrMap<int>(axes_, {dim}, ONNXDataType::INT32);
     axes = CreateConst(graph, node, {}, {}, attr);
   }
-  auto new_node = CreateBaseOp(
-      graph, node, "popart_slice",
-      {GetInputVarNode("Input", node), starts, ends, axes->outputs[0]},
-      node->outputs);
-  return new_node;
+
+  auto decrease_axis_ =
+      BOOST_GET_CONST(std::vector<int>, op->GetAttr("decrease_axis"));
+  auto input_shape_ = GetInputVarNode("Input", node)->Var()->GetShape();
+  auto output_shape_ = GetOutputVarNode("Out", node)->Var()->GetShape();
+  if (decrease_axis_.size() == 0) {
+    return CreateBaseOp(
+        graph, node, "popart_slice",
+        {GetInputVarNode("Input", node), starts, ends, axes->outputs[0]},
+        node->outputs);
+  } else if (output_shape_ == std::vector<int64_t>{0} ||
+             input_shape_.size() > output_shape_.size()) {
+    auto slice = CreateBaseOp(
+        graph, node, "popart_slice",
+        {GetInputVarNode("Input", node), starts, ends, axes->outputs[0]}, {},
+        {});
+    return CreateBaseOp(graph, node, "popart_squeeze", {slice->outputs[0]},
+                        {GetOutputVarNode("Out", node)},
+                        {{"axes", std::vector<int64_t>{decrease_axis_.begin(),
+                                                       decrease_axis_.end()}}});
+  } else {
+    return CreateBaseOp(
+        graph, node, "popart_slice",
+        {GetInputVarNode("Input", node), starts, ends, axes->outputs[0]},
+        node->outputs);
+  }
 }
 
 Node *expand_handler(Graph *graph, Node *node) {

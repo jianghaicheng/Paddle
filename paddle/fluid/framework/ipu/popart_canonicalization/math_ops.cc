@@ -213,10 +213,6 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
         });
   } else {
     std::vector<int64_t> new_shape_{label_shape_[0]};
-    // workaround for bert
-    if (GetInputVarNode("Label", node)->Name() == "next_sentence_labels") {
-      new_shape_ = {label_shape_[0], label_shape_[1]};
-    }
     auto const_before_loss = CreateBaseOp(
         graph, node, "popart_constant", {}, {},
         {{"value", new_shape_},

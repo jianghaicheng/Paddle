@@ -90,6 +90,16 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
           for (auto output_node : node->outputs) {
             if (output_node->Name() == output_name) {
               output_node->Var()->SetShape(new_shape);
+              if (VLOG_IS_ON(10)) {
+                std::ostringstream sout;
+                sout << "InferShapePass: output[" << output_node->Name()
+                     << "], infer shape:[";
+                for (auto s : new_shape) {
+                  sout << std::to_string(s) << ", ";
+                }
+                sout << "]";
+                VLOG(10) << sout.str();
+              }
             }
           }
         }
