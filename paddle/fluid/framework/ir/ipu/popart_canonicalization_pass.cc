@@ -27,6 +27,7 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
+  auto custom_ops = Get<std::unordered_set<std::string>>("custom_ops");
   std::vector<std::string> missing_ops;
   auto nodes = graph->Nodes();
   for (auto* node : nodes) {
@@ -38,6 +39,13 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
 
     ir::Node* new_node = nullptr;
     ipu::SymbolHandler handler = ipu::GetHandler(op_type);
+    if (!handler && !custom_ops.empty()) {
+      if (custom_ops.count(op_type)) {
+        VLOG(10) << "Found custom op: " << op_type;
+        handler = ipu::GetHandler("custom_op");
+      }
+    }
+
     if (handler) {
       VLOG(11) << "Raw Paddle Node:";
       VLOG(11) << node->Op()->Proto()->DebugString();
@@ -72,4 +80,5 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace paddle
 
 REGISTER_PASS(popart_canonicalization_pass,
-              paddle::framework::ir::PopartCanonicalizationPass);
+              paddle::framework::ir::PopartCanonicalizationPass)
+    .DefaultPassAttr("custom_ops", new std::unordered_set<std::string>{});

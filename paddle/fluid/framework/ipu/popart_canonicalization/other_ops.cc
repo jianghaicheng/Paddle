@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
+#include "paddle/fluid/framework/ipu/popart_canonicalization/op_builder.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -20,7 +21,16 @@ namespace framework {
 namespace ipu {
 namespace {
 
-//
+Node *custom_op_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto attrs = op->GetAttrMap();
+  attrs.insert({"__op_type", node->Op()->Type()});
+  auto new_node = CreateBaseOp(graph, node, "popart_custom_op", node->inputs,
+                               node->outputs, attrs);
+  return new_node;
+}
+
+REGISTER_HANDLER(custom_op, custom_op_handler);
 
 }  // namespace
 }  // namespace ipu

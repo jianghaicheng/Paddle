@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "popart/vendored/any.hpp"
 
 namespace paddle {
 namespace framework {
@@ -50,14 +51,14 @@ enum ONNXDataType : int {
 
 class PaddleIArray final : public popart::IArray {
  public:
-  explicit PaddleIArray(Tensor *tensor) : tensor_(tensor) {
+  explicit PaddleIArray(Tensor* tensor) : tensor_(tensor) {
     for (int i = 0; i < tensor->dims().size(); ++i) {
       shape_.push_back(tensor->dims().at(i));
     }
   }
 
  public:
-  void *data();
+  void* data();
   popart::DataType dataType() const;
   std::size_t rank() const;
   int64_t dim(size_t index) const;
@@ -65,7 +66,7 @@ class PaddleIArray final : public popart::IArray {
   const popart::Shape shape() const;
 
  private:
-  const Tensor *tensor_;
+  const Tensor* tensor_;
   std::vector<int64_t> shape_;
 };
 
@@ -75,7 +76,7 @@ popart::DataType OnnxDtype2PopartType(const int type);
 bool GetBoolEnv(std::string str);
 
 template <typename T>
-std::unique_ptr<popart::NDArrayWrapper<T>> Tensor2IArray(const Tensor &tensor) {
+std::unique_ptr<popart::NDArrayWrapper<T>> Tensor2IArray(const Tensor& tensor) {
   auto dtype = VarType2PopartType(tensor.type());
   auto shape = std::vector<int64_t>();
   for (size_t i = 0; i < tensor.dims().size(); ++i) {
@@ -84,12 +85,12 @@ std::unique_ptr<popart::NDArrayWrapper<T>> Tensor2IArray(const Tensor &tensor) {
   popart::TensorInfo tensor_info(dtype, shape);
 
   return std::make_unique<popart::NDArrayWrapper<T>>(
-      reinterpret_cast<T *>(tensor.data<void>()), tensor_info);
+      reinterpret_cast<T*>(tensor.data<void>()), tensor_info);
 }
 
 template <typename T>
 std::unique_ptr<popart::NDArrayWrapper<T>> LoDTensor2IArray(
-    LoDTensor const &lod_tensor) {
+    LoDTensor const& lod_tensor) {
   if (lod_tensor.lod().size() == 0) {
     return Tensor2IArray<T>(lod_tensor);
   } else {
@@ -97,6 +98,69 @@ std::unique_ptr<popart::NDArrayWrapper<T>> LoDTensor2IArray(
         platform::errors::Unimplemented("LoDTensor2IArray is Unimplemented"));
   }
 }
+
+struct CustomOpAttrVisitor : public boost::static_visitor<void> {
+  explicit CustomOpAttrVisitor(std::map<std::string, popart::any>* attr,
+                               const std::string& attr_name)
+      : attrs_(attr), attr_name_(attr_name) {}
+  mutable std::map<std::string, popart::any>* attrs_;
+  std::string attr_name_;
+
+  void operator()(int v) const { attrs_->emplace(attr_name_, v); }
+  void operator()(float v) const { attrs_->emplace(attr_name_, v); }
+  void operator()(const std::string& v) const {
+    attrs_->emplace(attr_name_, v);
+  }
+  void operator()(const std::vector<int>& v) const {
+    attrs_->emplace(attr_name_, v);
+  }
+  void operator()(const std::vector<float>& v) const {
+    attrs_->emplace(attr_name_, v);
+  }
+  void operator()(const std::vector<std::string>& v) const {
+    attrs_->emplace(attr_name_, v);
+  }
+  void operator()(bool v) const { attrs_->emplace(attr_name_, v); }
+  void operator()(const std::vector<bool>& v) const {
+    attrs_->emplace(attr_name_, v);
+  }
+  void operator()(BlockDesc* desc) const {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported calling method for `BlockDesc` type."));
+  }
+  void operator()(const std::vector<BlockDesc*>& v) const {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported calling method for `BlockDesc` type."));
+  }
+  void operator()(int64_t v) const { attrs_->emplace(attr_name_, v); }
+  void operator()(const std::vector<int64_t>& v) const {
+    attrs_->emplace(attr_name_, v);
+  }
+  void operator()(const std::vector<double>& v) const {
+    attrs_->emplace(attr_name_, v);
+  }
+  void operator()(boost::blank) const {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported calling method for `boost::blank` type."));
+  }
+};
+
+struct IpuCustomOpIdentifier {
+  IpuCustomOpIdentifier(const std::string& _paddle_op,
+                        const std::string& _popart_op,
+                        const std::string& _domain, unsigned int _version)
+      : paddle_op(_paddle_op), popart_op(_domain, _popart_op, _version) {}
+
+  std::string repr() {
+    std::ostringstream os;
+    os << "paddle_op: " << paddle_op << ", domain: " << popart_op.domain
+       << ", type: " << popart_op.type << ", version: " << popart_op.version;
+    return os.str();
+  }
+
+  std::string paddle_op;
+  popart::OperatorIdentifier popart_op;
+};
 
 }  // namespace ipu
 }  // namespace framework

@@ -491,12 +491,13 @@ class IpuCompiler(object):
       scope: This argument is the scope which contains model parameters.
       ipu_strategy: This argument is used to build the program with the
           specified options, such as operators' replacement, dtype, etc.
+      custom_ops: List of `IpuCustomOpIdentifier`, Custom ops will be used.
 
     Returns:
       framework.Program
     """
 
-    def __init__(self, program, scope=None, ipu_strategy=None):
+    def __init__(self, program, scope=None, ipu_strategy=None, custom_ops=None):
         if not isinstance(program, framework.Program):
             raise TypeError(
                 "The type of program is wrong, expected Program, but got %s" %
@@ -517,14 +518,18 @@ class IpuCompiler(object):
         else:
             self._ipu_strategy = get_ipu_strategy()
 
+        if custom_ops is not None:
+            self._custom_ops = custom_ops
+            self._custom_op_names = set([x.paddle_op for x in custom_ops])
+        else:
+            self._custom_ops = []
+            self._custom_op_names = ()
+
         self._backend = core.IpuBackend()
         self._backend.set_scope(self._scope)
         self._backend.set_ipu_strategy(self._ipu_strategy)
-        self._graph_passes = [
-            "optimizer_extract_pass", "optimizer_state_align_pass",
-            "forward_graph_extract_pass", "infer_shape_pass", "avg_shard_pass",
-            "delete_scale_op_pass", "popart_canonicalization_pass"
-        ]
+        if (self._custom_ops):
+            self._backend.set_custom_ops(self._custom_ops)
         global ipu_compiler_ref
         ipu_compiler_ref = self
 
@@ -534,7 +539,7 @@ class IpuCompiler(object):
         need_to_remove_op_index = []
         for i, op in enumerate(global_block.ops):
             op.desc.set_is_target(False)
-            if op.type == "feed" or op.type == "fetch":
+            if op.type == 'feed' or op.type == 'fetch':
                 need_to_remove_op_index.append(i)
 
         for index in need_to_remove_op_index[::-1]:
@@ -547,26 +552,35 @@ class IpuCompiler(object):
         self._program.desc.flush()
         self._graph = core.Graph(self._program.desc)
 
-        for pass_name in self._graph_passes:
-            graph_pass = core.get_pass(pass_name)
-            if pass_name == "infer_shape_pass":
-                graph_pass.set("feed_list", feed_list)
-            graph_pass.apply(self._graph)
+        passes = [
+            'optimizer_extract_pass',
+            'optimizer_state_align_pass',
+            'forward_graph_extract_pass',
+            'infer_shape_pass',
+            'avg_shard_pass',
+            'delete_scale_op_pass',
+        ]
+        for pass_name in passes:
+            a_pass = core.get_pass(pass_name)
+            if pass_name == 'infer_shape_pass':
+                a_pass.set('feed_list', feed_list)
+            a_pass.apply(self._graph)
 
-        ipu_inplace_pass = core.get_pass("ipu_inplace_pass")
-        ipu_inplace_pass.set("feed_list", feed_list)
-        ipu_inplace_pass.set("fetch_list", fetch_list)
-        ipu_inplace_pass.apply(self._graph)
+        a_pass = core.get_pass('popart_canonicalization_pass')
+        if (self._custom_op_names):
+            a_pass.set('custom_ops', self._custom_op_names)
+        a_pass.apply(self._graph)
 
-        ipu_graph_builder_pass = core.get_pass("ipu_graph_builder_pass")
-        ipu_graph_builder_pass.set("feed_list", feed_list)
-        ipu_graph_builder_pass.set("fetch_list", fetch_list)
-        ipu_graph_builder_pass.apply(self._graph)
-
-        ipu_runtime_replacer_pass = core.get_pass("ipu_runtime_replacer_pass")
-        ipu_runtime_replacer_pass.set("feed_list", feed_list)
-        ipu_runtime_replacer_pass.set("fetch_list", fetch_list)
-        ipu_runtime_replacer_pass.apply(self._graph)
+        passes = [
+            'ipu_inplace_pass',
+            'ipu_graph_builder_pass',
+            'ipu_runtime_replacer_pass',
+        ]
+        for pass_name in passes:
+            a_pass = core.get_pass(pass_name)
+            a_pass.set('feed_list', feed_list)
+            a_pass.set('fetch_list', fetch_list)
+            a_pass.apply(self._graph)
 
         convert_pass = core.get_pass('graph_to_program_pass')
         desc = core.ProgramDesc()
@@ -619,3 +633,26 @@ def get_ipu_strategy():
     ipu_strategy = core.IpuStrategy()
 
     return ipu_strategy
+
+
+class IpuCustomOpIdentifier(core.IpuCustomOpIdentifier):
+    if not core.is_compiled_with_ipu():
+        raise ValueError(
+            "Can't get IpuCustomOpIdentifier, since PaddlePaddle is not " \
+            "compiled with IPU"
+        )
+
+    def __init__(self,
+                 paddle_op: str,
+                 popart_op: str=None,
+                 domain: str='custom.ops',
+                 version: int=1):
+        if popart_op is None:
+            popart_op = paddle_op
+        return super().__init__(paddle_op, popart_op, domain, version)
+
+    def __repr__(self):
+        return self.repr()
+
+    def __str__(self):
+        return self.repr()

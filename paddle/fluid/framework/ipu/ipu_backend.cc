@@ -109,6 +109,11 @@ void IpuBackend::SetIpuStrategy(const IpuStrategy& strategy) {
   compiler_->SetIpuStrategy(strategy);
 }
 
+void IpuBackend::SetCustomOps(
+    const std::vector<IpuCustomOpIdentifier>& custom_ops) {
+  compiler_->SetCustomOps(custom_ops);
+}
+
 size_t IpuBackend::GetNumDevices() {
   // IpuModel
   bool ipu_model = GetBoolEnv("POPLAR_IPUMODEL");

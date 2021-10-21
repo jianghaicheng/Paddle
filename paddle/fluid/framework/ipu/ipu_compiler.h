@@ -18,6 +18,7 @@
 #include <popart/graphtransformer.hpp>
 #include "paddle/fluid/framework/ipu/common.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
+#include "paddle/fluid/framework/ipu/ipu_utils.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -42,6 +43,10 @@ class Compiler {
   void SetIpuIndexStage(const std::vector<std::string> &tensor_ids,
                         const OpDesc *op_desc);
   void SetIpuIndexStage(const std::string &tensor_id, const OpDesc *op_desc);
+  void SetIpuStrategy(const IpuStrategy &strategy) {
+    ipu_strategy_ = &strategy;
+  }
+  void SetCustomOps(const std::vector<IpuCustomOpIdentifier> &custom_ops);
 
   std::vector<popart::TensorId> GetInputs() { return inputs_; }
   std::vector<popart::TensorId> GetOutputs() { return outputs_; }
@@ -49,9 +54,6 @@ class Compiler {
   std::vector<popart::TensorId> &GetWeights();
 
   std::string GetModelProto();
-  void SetIpuStrategy(const IpuStrategy &strategy) {
-    ipu_strategy_ = &strategy;
-  };
   void SaveModelProto(const std::string &path);
   void SaveModelProtoNoCheck(const std::string &path);
   void ConvertProtoToFp16();
@@ -83,6 +85,7 @@ class Compiler {
 
   std::string converted_proto_ = "";
   const IpuStrategy *ipu_strategy_ = nullptr;
+  std::map<std::string, IpuCustomOpIdentifier> custom_ops_;
 };
 
 }  // namespace ipu

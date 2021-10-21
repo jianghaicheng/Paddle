@@ -71,6 +71,7 @@ class IpuBackend {
   const Scope *GetScope() { return scope_; }
   void SetIpuStrategy(const IpuStrategy &strategy);
   const IpuStrategy *GetIpuStrategy() { return ipu_strategy_; }
+  void SetCustomOps(const std::vector<IpuCustomOpIdentifier> &custom_ops);
 
   // Device
   size_t GetNumDevices();

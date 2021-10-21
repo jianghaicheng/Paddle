@@ -3202,7 +3202,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init(&ipu::IpuBackend::GetNewInstance))
       .def("clear", &ipu::IpuBackend::Clear)
       .def("set_scope", &ipu::IpuBackend::SetScope)
-      .def("set_ipu_strategy", &ipu::IpuBackend::SetIpuStrategy);
+      .def("set_ipu_strategy", &ipu::IpuBackend::SetIpuStrategy)
+      .def("set_custom_ops", &ipu::IpuBackend::SetCustomOps);
 
   py::class_<framework::ipu::IpuStrategy>(m, "IpuStrategy")
       .def(py::init())
@@ -3322,6 +3323,39 @@ All parameter, weight, gradient are variables in Paddle.
           },
           R"DOC(
             Int type, Copy weights D2H per n steps. Default 1.)DOC");
+
+  py::class_<framework::ipu::IpuCustomOpIdentifier>(m, "IpuCustomOpIdentifier")
+      .def(py::init<const std::string &, const std::string &,
+                    const std::string &, unsigned int>())
+      .def("repr", &framework::ipu::IpuCustomOpIdentifier::repr)
+      .def_property(
+          "paddle_op",
+          [](const ipu::IpuCustomOpIdentifier &self) { return self.paddle_op; },
+          [](ipu::IpuCustomOpIdentifier &self, const std::string &paddle_op) {
+            self.paddle_op = paddle_op;
+          })
+      .def_property("popart_op",
+                    [](const ipu::IpuCustomOpIdentifier &self) {
+                      return self.popart_op.type;
+                    },
+                    [](ipu::IpuCustomOpIdentifier &self,
+                       const std::string &type) { self.popart_op.type = type; })
+      .def_property(
+          "domain",
+          [](const ipu::IpuCustomOpIdentifier &self) {
+            return self.popart_op.domain;
+          },
+          [](ipu::IpuCustomOpIdentifier &self, const std::string &domain) {
+            self.popart_op.domain = domain;
+          })
+      .def_property(
+          "version",
+          [](const ipu::IpuCustomOpIdentifier &self) {
+            return self.popart_op.version;
+          },
+          [](ipu::IpuCustomOpIdentifier &self, const unsigned int &version) {
+            self.popart_op.version = version;
+          });
 #endif
 
   BindFleetWrapper(&m);

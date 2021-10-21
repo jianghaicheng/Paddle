@@ -158,6 +158,24 @@ void Compiler::LowerBody(const ir::Graph* graph) {
       popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
       SetIpuIndexStage(result, op_desc);
       InsertTensors(GetOpOutputs(op_desc), result);
+    } else if (op_type == "popart_custom_op") {
+      auto inputs = GetOpInputs(op_desc);
+      auto outputs = GetOpOutputs(op_desc);
+      auto debug_context = BuildDebugContext(op_desc);
+      auto attributes = std::map<std::string, popart::any>{};
+      for (auto& attr : op_desc->GetAttrMap()) {
+        CustomOpAttrVisitor visitor(&attributes, attr.first);
+        boost::apply_visitor(visitor, attr.second);
+      }
+      auto __op_type =
+          BOOST_GET_CONST(std::string, op_desc->GetAttr("__op_type"));
+      VLOG(10) << "Build graph from custom op: " << __op_type;
+      auto it = custom_ops_.find(__op_type);
+      auto output_ids =
+          builder_->customOp(it->second.popart_op, it->second.popart_op.version,
+                             inputs, outputs.size(), attributes, debug_context);
+      SetIpuIndexStage(output_ids, op_desc);
+      InsertTensors(outputs, output_ids);
     } else if (op_type == "popart_topk") {
       auto inputs = GetOpInputs(op_desc);
       auto outputs = GetOpOutputs(op_desc);
@@ -333,6 +351,13 @@ void Compiler::SetIpuIndexStage(const std::string& tensor_id,
     }
   }
   VLOG(10) << "leave Compiler::SetIpuIndexStage";
+}
+
+void Compiler::SetCustomOps(
+    const std::vector<IpuCustomOpIdentifier>& custom_ops) {
+  for (auto x : custom_ops) {
+    custom_ops_.emplace(x.paddle_op, x);
+  }
 }
 
 std::vector<popart::TensorId>& Compiler::GetWeights() { return weights_; }
