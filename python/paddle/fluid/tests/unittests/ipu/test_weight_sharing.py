@@ -36,6 +36,9 @@ class TestWeightSharing(IPUOpTest):
         self.set_feed_attr()
         self.set_attrs()
 
+    def set_atol(self):
+        self.atol = 1e-6
+
     def set_feed(self):
         x = np.random.randint(0, 768, size=(128, 1)).astype(np.int32)
         self.feed_cpu = {"x": x.astype(np.int64)}

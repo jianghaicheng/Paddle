@@ -126,7 +126,7 @@ class TestBase(IPUOpTest):
                 print('result_cpu:{} result_ipu:{} mae:{} '.format(
                     np.asarray(result_cpu).flatten(),
                     np.asarray(result_ipu).flatten(), mae))
-                self.assertTrue(mae < 0.01)
+                self.assertTrue(mae < 0.02)
 
                 paddle.static.save_inference_model(
                     self.full_name, x, loss, exe, program=program.org_program)
@@ -166,7 +166,7 @@ class TestBase(IPUOpTest):
             np.abs(
                 np.asarray(cpu_res).flatten() - np.asarray(ipu_res).flatten()))
         print('cpu_res:{} ipu_res:{} mae:{} '.format(cpu_res, ipu_res, mae))
-        self.assertTrue(mae < 0.001)
+        self.assertTrue(mae < 0.02)
 
         shutil.rmtree(self.attrs['path'], True)
 

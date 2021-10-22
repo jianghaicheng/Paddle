@@ -34,6 +34,9 @@ class TestBase(IPUOpTest):
         self.set_feed()
         self.set_attrs()
 
+    def set_atol(self):
+        self.atol = 1e-6
+
     def set_feed(self):
         self.feed_shape = []
         self.feed_shape.append([1, 3, 10, 10])
@@ -100,6 +103,9 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+    def set_atol(self):
+        self.atol = 1e-7
+
     def set_attrs(self):
         self.attrs = {}
         self.attrs['is_test'] = True
@@ -108,6 +114,9 @@ class TestCase1(TestBase):
 
 
 class TestCase2(TestBase):
+    def set_atol(self):
+        self.atol = 1e-7
+
     def set_attrs(self):
         self.attrs = {}
         self.attrs['is_test'] = True

@@ -36,9 +36,6 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
         self.set_attrs()
 
-    def set_atol(self):
-        self.atol = 1e-3
-
     def set_feed(self):
         self.feed = {
             "x": np.random.uniform(size=[1, 3, 10, 10]).astype('float32')
@@ -103,7 +100,6 @@ class TestBase(IPUOpTest):
         self.assertTrue(res0.shape == res1.shape)
 
 
-@unittest.skip('approximate=True is not supported')
 class TestCase1(TestBase):
     def set_attrs(self):
         self.attrs = {"approximate": True}

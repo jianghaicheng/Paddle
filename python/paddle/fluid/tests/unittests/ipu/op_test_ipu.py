@@ -22,7 +22,7 @@ import paddle.fluid.compiler as compiler
 
 SEED = 2021
 
-ipu_compiler_ref : Optional[compiler.IpuCompiler] = None
+ipu_compiler_ref: Optional[compiler.IpuCompiler] = None
 
 map_np_dtype_to_fluid_dtype = {
     'bool': "bool",
@@ -64,7 +64,7 @@ class IPUOpTest(unittest.TestCase):
         ipu_compiler_ref is not None and ipu_compiler_ref.clean()
 
     def set_atol(self):
-        self.atol = 1e-5
+        self.atol = 1e-10
 
     def set_training(self):
         self.is_training = False

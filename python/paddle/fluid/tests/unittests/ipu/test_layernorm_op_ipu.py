@@ -36,6 +36,9 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
         self.set_attrs()
 
+    def set_atol(self):
+        self.atol = 1e-6
+
     def set_feed(self):
         self.feed = {
             "x": np.random.uniform(size=[1, 3, 10, 10]).astype('float32'),

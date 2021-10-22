@@ -129,6 +129,9 @@ class TestBase(IPUOpTest):
 
 
 class TestTrainCase1(TestBase):
+    def set_atol(self):
+        self.atol = 1e-7
+
     def set_training(self):
         self.is_training = True
         self.epoch = 10

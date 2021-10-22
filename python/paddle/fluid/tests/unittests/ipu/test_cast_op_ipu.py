@@ -103,7 +103,71 @@ class TestBase(IPUOpTest):
         self.assertTrue(res0.shape == res1.shape)
 
 
-class TestCase1(TestBase):
+class TestCase2(TestBase):
+    def set_atol(self):
+        self.atol = 1e-10
+
+    def set_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float16'),
+        }
+
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['dtype'] = 'float32'
+
+
+class TestCase3(TestBase):
+    def set_atol(self):
+        self.atol = 1e-10
+
+    def set_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float32'),
+        }
+
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['dtype'] = 'int32'
+
+
+class TestCase4(TestBase):
+    def set_atol(self):
+        self.atol = 1e-10
+
+    def set_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[1, 3, 3, 3]).astype('int32'),
+        }
+
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['dtype'] = 'float32'
+
+
+class TestCase5(TestBase):
+    def set_atol(self):
+        self.atol = 1e-10
+
+    def set_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float16'),
+        }
+
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['dtype'] = 'int32'
+
+
+class TestCase6(TestBase):
+    def set_atol(self):
+        self.atol = 1e-10
+
+    def set_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[1, 3, 3, 3]).astype('int32'),
+        }
+
     def set_attrs(self):
         self.attrs = {}
         self.attrs['dtype'] = 'float16'

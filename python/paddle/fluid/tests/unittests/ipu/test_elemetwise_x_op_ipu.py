@@ -167,6 +167,9 @@ class TestMod(TestMul):
     def init_op(self):
         self.op = paddle.fluid.layers.elementwise_mod
 
+    def set_atol(self):
+        self.atol = 1e-7
+
 
 if __name__ == "__main__":
     unittest.main()

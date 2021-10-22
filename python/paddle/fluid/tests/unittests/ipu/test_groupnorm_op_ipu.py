@@ -36,6 +36,9 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
         self.set_attrs()
 
+    def set_atol(self):
+        self.atol = 1e-5
+
     def set_feed(self):
         self.feed = {
             "x": np.random.uniform(size=[1, 8, 10, 10]).astype('float32'),
@@ -142,6 +145,9 @@ class TestCase1(TestBase):
 
 
 class TestTrainCase1(TestBase):
+    def set_atol(self):
+        self.atol = 1e-2
+
     def set_training(self):
         self.is_training = True
         self.epoch = 10
@@ -149,7 +155,7 @@ class TestTrainCase1(TestBase):
 
 class TestTrainCase2(TestBase):
     def set_atol(self):
-        self.atol = 1e-3
+        self.atol = 1e-2
 
     def set_attrs(self):
         self.attrs = {
