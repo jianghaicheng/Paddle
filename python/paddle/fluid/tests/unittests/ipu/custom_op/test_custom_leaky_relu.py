@@ -45,8 +45,7 @@ custom_ops_list = [
 ]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
+@unittest.skipIf("disable in CI")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
