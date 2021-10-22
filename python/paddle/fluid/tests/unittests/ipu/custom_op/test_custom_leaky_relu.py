@@ -27,25 +27,28 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
 
 paddle.enable_static()
 
-# load custom ops
-cur_dir = os.path.dirname(os.path.realpath(__file__))
-custom_ops = load(
-    name="custom_jit_ops",
-    sources=[
-        f"{cur_dir}/leaky_relu_cpu.cc",
-        f"{cur_dir}/leaky_relu_ipu.cc",
-    ],
-    extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'])
+enable_test = False
 
-# build a list of IpuCustomOpIdentifier
-# `custom_leaky_relu` was defined in leaky_relu_cpu.cc
-# `LeakyRelu` was defined in leaky_relu_ipu.cc
-custom_ops_list = [
-    compiler.IpuCustomOpIdentifier("custom_leaky_relu", "LeakyRelu"),
-]
+if enable_test:
+    # load custom ops
+    cur_dir = os.path.dirname(os.path.realpath(__file__))
+    custom_ops = load(
+        name="custom_jit_ops",
+        sources=[
+            f"{cur_dir}/leaky_relu_cpu.cc",
+            f"{cur_dir}/leaky_relu_ipu.cc",
+        ],
+        extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'])
+
+    # build a list of IpuCustomOpIdentifier
+    # `custom_leaky_relu` was defined in leaky_relu_cpu.cc
+    # `LeakyRelu` was defined in leaky_relu_ipu.cc
+    custom_ops_list = [
+        compiler.IpuCustomOpIdentifier("custom_leaky_relu", "LeakyRelu"),
+    ]
 
 
-@unittest.skipIf("disable in CI")
+@unittest.skipIf(not enable_test, "disable in CI")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
