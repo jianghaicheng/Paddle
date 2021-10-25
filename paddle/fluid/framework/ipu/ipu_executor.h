@@ -18,6 +18,7 @@ limitations under the License. */
 #include <popart/half.hpp>
 #include <popart/names.hpp>
 #include <popart/session.hpp>
+#include <popart/tensorinfo.hpp>
 
 #include "paddle/fluid/framework/ipu/common.h"
 #include "paddle/fluid/framework/ipu/ipu_optimizer.h"
@@ -49,6 +50,7 @@ class Executor {
   // Optimizer
   void SetOptimizerType(const std::string &type);
   void SetOptimizerAttr(const std::string &attr, float value);
+  void SetOptimizerDType(popart::DataType type);
   void SetLoss(const std::string &loss);
   void SetLR(float lr_rate);
   void SetLRVarName(const std::string &name);
@@ -56,6 +58,7 @@ class Executor {
   void SetWeights(const std::vector<popart::TensorId> &info);
 
   void SetWeightsIO();
+  void ConvertWeights(bool align_to_popart);
   void WeightsFromPaddle();
   void WeightsToPaddle();
 
@@ -75,8 +78,13 @@ class Executor {
  private:
   const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
+  // weights_io_: map<tensor_id, paddle_var_ptr>
   popart::WeightsIO weights_io_;
+  // Just include weights, exclude optimizer states
   std::vector<popart::TensorId> weights_;
+  // <popart_var, paddle_var> pairs, include weights and optimizer states
+  std::vector<std::pair<popart::TensorId, popart::TensorId>>
+      weights_and_opt_state_;
   int step_ = 0;
 };
 

@@ -89,6 +89,7 @@ void IpuBackend::Prepare() {
   // convert Model to fp16
   if (ipu_strategy_->enable_fp16) {
     compiler_->ConvertProtoToFp16();
+    executor_->SetOptimizerDType(popart::DataType::FLOAT16);
   }
   auto proto = compiler_->GetModelProto();
   auto tensors = compiler_->GetTensors();

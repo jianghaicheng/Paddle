@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <popart/devicemanager.hpp>
 #include <popart/names.hpp>
+#include <popart/tensorinfo.hpp>
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ipu/device.h"

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <popart/adam.hpp>
 #include <popart/names.hpp>
 #include <popart/optimizer.hpp>
+#include <popart/tensorinfo.hpp>
 
 #include "paddle/fluid/platform/enforce.h"
 
@@ -46,6 +47,9 @@ class OptmizerMetaInfo {
   void SetLRVarName(const std::string &name) { lr_var_name_ = name; }
   std::string GetLRVarName() const { return lr_var_name_; }
 
+  void SetDType(popart::DataType dtype) { dtype_ = dtype; }
+  popart::DataType GetDType() const { return dtype_; }
+
  private:
   // type: adam, sgd, ...
   OptimizerType type_ = OptimizerType::Undefined;
@@ -59,6 +63,9 @@ class OptmizerMetaInfo {
   // learning rate
   float lr_rate_ = 1.0;
   std::string lr_var_name_;
+
+  // optimizer state dtype
+  popart::DataType dtype_ = popart::DataType::FLOAT;
 };
 
 OptimizerType OptTypeStr2Enum(const std::string type);

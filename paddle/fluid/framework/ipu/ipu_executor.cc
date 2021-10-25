@@ -157,6 +157,10 @@ void Executor::SetLRVarName(const std::string &name) {
   opt_info.SetLRVarName(name);
 }
 
+void Executor::SetOptimizerDType(popart::DataType type) {
+  opt_info.SetDType(type);
+}
+
 void Executor::SetWeights(const std::vector<popart::TensorId> &weights) {
   weights_ = weights;
 }
@@ -183,49 +187,100 @@ void Executor::SetWeightsIO() {
 
       auto tensor_info = session_->getInfo(popart_var_name);
       weights_io_.insert(popart_var_name, {data_ptr, tensor_info});
+      weights_and_opt_state_.emplace_back(
+          std::make_pair(popart_var_name, paddle_var_name));
     }
   }
 }
 
-void Executor::WeightsFromPaddle() {
-  // convert fp32  to fp16
-  if (ipu_strategy_->enable_fp16) {
-    for (auto tensor_id : weights_) {
-      // tensor_id equal to var_name
-      auto var = scope_->GetVar(tensor_id);
-      float *fp32_data_ptr =
-          var->GetMutable<framework::LoDTensor>()->data<float>();
-      popart::TensorInfo info = session_->getInfo(tensor_id);
-      auto elem_num = info.nelms();
-      std::vector<uint16_t> fp16_data;
+// align_to_popart: align dtype to popart if true, else to paddle
+void Executor::ConvertWeights(bool align_to_popart) {
+  for (auto weight_pair : weights_and_opt_state_) {
+    auto paddle_var = scope_->GetVar(weight_pair.second);
+    auto paddle_var_dtype = VarType2PopartType(
+        paddle_var->GetMutable<framework::LoDTensor>()->type());
 
-      std::transform(fp32_data_ptr, fp32_data_ptr + elem_num,
-                     std::back_inserter(fp16_data),
-                     [&](float elem) { return popart::floatToHalf(elem); });
-      memcpy((void *)fp32_data_ptr, fp16_data.data(),
-             elem_num * sizeof(float16));
+    PADDLE_ENFORCE_EQ((paddle_var_dtype == popart::DataType::FLOAT ||
+                       paddle_var_dtype == popart::DataType::FLOAT16),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Currently, we only support FLOAT16 and FLOAT with "
+                          "Paddle, but received type is %s.",
+                          paddle_var_dtype));
+
+    popart::TensorInfo info = session_->getInfo(weight_pair.first);
+    auto popart_var_dtype = info.dataType();
+    PADDLE_ENFORCE_EQ((popart_var_dtype == popart::DataType::FLOAT ||
+                       popart_var_dtype == popart::DataType::FLOAT16),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Currently, we only support FLOAT16 and FLOAT with "
+                          "popart, but received type is %s.",
+                          popart_var_dtype));
+
+    if (paddle_var_dtype == popart_var_dtype) {
+      VLOG(10) << weight_pair.first << " and " << weight_pair.second
+               << " have the same dtype : " << popart_var_dtype;
+      continue;
+    } else if (paddle_var_dtype == popart::DataType::FLOAT) {
+      VLOG(10) << weight_pair.first << " and " << weight_pair.second
+               << " have different dtype : " << popart_var_dtype;
+      auto *data_ptr =
+          paddle_var->GetMutable<framework::LoDTensor>()->data<float>();
+
+      auto num_elem = info.nelms();
+      if (align_to_popart) {
+        std::vector<uint16_t> fp16_data;
+        std::transform(data_ptr, data_ptr + num_elem,
+                       std::back_inserter(fp16_data),
+                       [&](float elem) { return popart::floatToHalf(elem); });
+        memcpy(reinterpret_cast<void *>(data_ptr), fp16_data.data(),
+               num_elem * sizeof(float16));
+      } else {
+        std::vector<float> fp32_data;
+        auto fp16_data_ptr = reinterpret_cast<uint16_t *>(data_ptr);
+        std::transform(fp16_data_ptr, fp16_data_ptr + num_elem,
+                       std::back_inserter(fp32_data), [&](uint16_t elem) {
+                         return popart::halfToFloat(elem);
+                       });
+        memcpy(reinterpret_cast<void *>(data_ptr), fp32_data.data(),
+               num_elem * sizeof(float));
+      }
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Convert Paddle FLOAT16 to popart FLOAT"));
     }
   }
+}
+
+// |-----------------------------------------------------|
+// | Paddle  | Popart  |             Method              |
+// |-----------------------------------------------------|
+// |  FLOAT  |  FLOAT  |         Paddle -> Popart        |
+// |  FLOAT  | FLOAT16 | floatToHalf -> Paddle -> Popart |
+// | FLOAT16 |  FLOAT  |         Unimplemented           |
+// | FLOAT16 | FLOAT16 |         Paddle -> Popart        |
+// |-----------------------------------------------------|
+// floatToHalf -> Paddle: cast then save to paddle
+// Paddle -> Popart: copy from paddle to popart
+void Executor::WeightsFromPaddle() {
+  ConvertWeights(true);
   session_->writeWeights(weights_io_);
 }
 
+// |-----------------------------------------------------|
+// | Paddle  | Popart  |             Method              |
+// |-----------------------------------------------------|
+// |  FLOAT  |  FLOAT  |         Popart -> Paddle        |
+// |  FLOAT  | FLOAT16 | Popart -> Paddle -> halfToFloat |
+// | FLOAT16 |  FLOAT  |         Unimplemented           |
+// | FLOAT16 | FLOAT16 |         Popart -> Paddle        |
+// |-----------------------------------------------------|
+// Paddle -> halfToFloat: cast then save to paddle
+// Popart -> Paddle: copy from paddle to popart
 void Executor::WeightsToPaddle() {
   session_->readWeights(weights_io_);
-  // convert fp16  to fp32
-  if (ipu_strategy_->enable_fp16) {
-    for (auto tensor_id : weights_) {
-      popart::MutableVoidData mutable_data = weights_io_.weight(tensor_id);
-      uint16_t *fp16_data_ptr = (uint16_t *)mutable_data.data;
-      popart::TensorInfo info = session_->getInfo(tensor_id);
-      auto elem_num = info.nelms();
-      std::vector<float> fp32_data;
-      std::transform(fp16_data_ptr, fp16_data_ptr + elem_num,
-                     std::back_inserter(fp32_data),
-                     [&](uint16_t elem) { return popart::halfToFloat(elem); });
-      memcpy((void *)mutable_data.data, fp32_data.data(),
-             elem_num * sizeof(float));
-    }
-  }
+  ConvertWeights(false);
 }
 
 void Executor::SetIpuStrategy(const IpuStrategy &strategy) {

@@ -38,9 +38,13 @@ class TestBase(IPUOpTest):
         self.feed_shape = []
         self.feed_shape.append([1, 3, 10, 10])
 
+        in_0 = np.random.uniform(size=self.feed_shape[0])
+
         self.feed = {}
-        self.feed["in_0"] = np.random.uniform(
-            size=self.feed_shape[0]).astype(np.float32)
+        self.feed["in_0"] = in_0.astype(np.float32)
+
+        self.feed_fp16 = {}
+        self.feed_fp16["in_0"] = in_0.astype(np.float16)
 
         self.feed_list = list(self.feed.keys())
 
@@ -50,6 +54,7 @@ class TestBase(IPUOpTest):
         self.attrs['save_at_step'] = 20
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'sgd'
+        self.attrs['enable_fp16'] = False
 
     def _test_base(self, save_otherwise_load):
         scope = fluid.core.Scope()
@@ -96,6 +101,7 @@ class TestBase(IPUOpTest):
                 ipu_strategy = compiler.get_ipu_strategy()
                 ipu_strategy.is_training = self.attrs['is_training']
                 ipu_strategy.save_per_n_step = self.attrs['save_at_step']
+                ipu_strategy.enable_fp16 = self.attrs['enable_fp16']
                 program = compiler.IpuCompiler(
                     main_prog, ipu_strategy=ipu_strategy).compile(
                         self.feed_list, fetch_list)
@@ -104,10 +110,10 @@ class TestBase(IPUOpTest):
                 run_steps = self.attrs['steps'] if save_otherwise_load \
                     else self.attrs['steps'] - self.attrs['save_at_step']
 
+                feed = self.feed_fp16 if self.attrs[
+                    'enable_fp16'] else self.feed
                 for i in range(run_steps):
-                    tmp = exe.run(program,
-                                  feed=self.feed,
-                                  fetch_list=fetch_list)
+                    tmp = exe.run(program, feed=feed, fetch_list=fetch_list)
 
                     # currently, we update opt state every sess.run,
                     # will optimize
@@ -139,6 +145,7 @@ class TestAdam(TestBase):
         self.attrs['save_at_step'] = 20
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'adam'
+        self.attrs['enable_fp16'] = False
 
 
 class TestLamb(TestBase):
@@ -148,6 +155,37 @@ class TestLamb(TestBase):
         self.attrs['save_at_step'] = 20
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'lamb'
+        self.attrs['enable_fp16'] = False
+
+
+class TestSGDFP16(TestBase):
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['steps'] = 100
+        self.attrs['save_at_step'] = 20
+        self.attrs['is_training'] = True
+        self.attrs['opt_type'] = 'sgd'
+        self.attrs['enable_fp16'] = True
+
+
+class TestAdamFP16(TestBase):
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['steps'] = 100
+        self.attrs['save_at_step'] = 20
+        self.attrs['is_training'] = True
+        self.attrs['opt_type'] = 'adam'
+        self.attrs['enable_fp16'] = True
+
+
+class TestLambFP16(TestBase):
+    def set_attrs(self):
+        self.attrs = {}
+        self.attrs['steps'] = 100
+        self.attrs['save_at_step'] = 20
+        self.attrs['is_training'] = True
+        self.attrs['opt_type'] = 'lamb'
+        self.attrs['enable_fp16'] = True
 
 
 if __name__ == "__main__":

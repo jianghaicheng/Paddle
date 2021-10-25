@@ -75,7 +75,7 @@ std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
         popart::OptimizerValue(opt_meta_info.GetAttr("epsilon"), false),
         popart::OptimizerValue(popart::Adam::getUnsetLossScaling()),
         popart::AdamMode::Adam, popart::WeightDecayMode::Decay,
-        popart::DataType::FLOAT, popart::DataType::FLOAT,
+        popart::DataType::UNDEFINED, popart::DataType::FLOAT,
         popart::DataType::FLOAT);
     return optimizer;
   } else if (opt_type == OptimizerType::Lamb) {
@@ -87,7 +87,7 @@ std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
         popart::OptimizerValue(opt_meta_info.GetAttr("epsilon"), false),
         popart::OptimizerValue(popart::Adam::getUnsetLossScaling()),
         popart::AdamMode::Lamb, popart::WeightDecayMode::Decay,
-        popart::DataType::FLOAT, popart::DataType::FLOAT,
+        popart::DataType::UNDEFINED, popart::DataType::FLOAT,
         popart::DataType::FLOAT);
     return optimizer;
   } else {
