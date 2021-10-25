@@ -58,6 +58,7 @@ class TestBase(IPUOpTest):
             "begin_norm_axis": 1,
             "epsilon": 1e-05,
         }
+        self.optimizer = None
 
     def _test_base(self, run_ipu=True):
         scope = fluid.core.Scope()
@@ -89,14 +90,18 @@ class TestBase(IPUOpTest):
                     bias = self.attrs['shift']
                     out = paddle.fluid.layers.nn.layer_norm(
                         x, param_attr=scale, bias_attr=bias, **self.attrs)
+                loss = paddle.mean(out)
+                fetch_list = [loss.name]
 
                 if self.is_training:
-                    loss = paddle.mean(out)
-                    adam = paddle.optimizer.Adam(learning_rate=1e-2)
-                    adam.minimize(loss)
-                    fetch_list = [loss.name]
-                else:
-                    fetch_list = [out.name]
+                    optimizer = None
+                    if self.optimizer == 'sgd':
+                        optimizer = paddle.optimizer.SGD(learning_rate=1e-2)
+                    elif self.optimizer == 'adam':
+                        optimizer = paddle.optimizer.Adam(learning_rate=1e-2)
+                    elif self.optimizer == 'lamb':
+                        optimizer = paddle.optimizer.Lamb(learning_rate=1e-2)
+                    optimizer.minimize(loss)
 
             if run_ipu:
                 place = paddle.IPUPlace()
@@ -168,11 +173,21 @@ class TestCase3(TestBase):
             "begin_norm_axis": 2,
             "epsilon": 1e-05,
         }
+        self.optimizer = None
 
 
 class TestTrainCase1(TestBase):
+    def set_attrs(self):
+        self.attrs = {
+            "scale": True,
+            "shift": True,
+            "begin_norm_axis": 1,
+            "epsilon": 1e-05
+        }
+        self.optimizer = 'sgd'
+
     def set_atol(self):
-        self.atol = 1e-3
+        self.atol = 1e-6
 
     def set_training(self):
         self.is_training = True
@@ -181,15 +196,34 @@ class TestTrainCase1(TestBase):
 
 class TestTrainCase2(TestBase):
     def set_atol(self):
-        self.atol = 1e-3
+        self.atol = 5e-4
 
     def set_attrs(self):
         self.attrs = {
             "scale": True,
             "shift": True,
             "begin_norm_axis": 2,
-            "epsilon": 1e-05,
+            "epsilon": 1e-05
         }
+        self.optimizer = 'adam'
+
+    def set_training(self):
+        self.is_training = True
+        self.epoch = 10
+
+
+class TestTrainCase3(TestBase):
+    def set_atol(self):
+        self.atol = 5e-3
+
+    def set_attrs(self):
+        self.attrs = {
+            "scale": True,
+            "shift": True,
+            "begin_norm_axis": 2,
+            "epsilon": 1e-05
+        }
+        self.optimizer = 'lamb'
 
     def set_training(self):
         self.is_training = True
