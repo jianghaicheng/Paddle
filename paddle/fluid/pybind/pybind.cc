@@ -3215,6 +3215,15 @@ All parameter, weight, gradient are variables in Paddle.
                     R"DOC(
             Int type, set the number ipu we need. Default 1.
           )DOC")
+      .def_property(
+          "enableGradientAccumulation",
+          [](const ipu::IpuStrategy &self) {
+            return self.popart_options.enableGradientAccumulation;
+          },
+          [](ipu::IpuStrategy &self, bool enableGradientAccumulation) {
+            self.popart_options.enableGradientAccumulation =
+                enableGradientAccumulation;
+          })
       .def_property("accumulationFactor",
                     [](const ipu::IpuStrategy &self) {
                       return self.popart_options.accumulationFactor;
@@ -3227,6 +3236,24 @@ All parameter, weight, gradient are variables in Paddle.
             Specify the number of micro-batches to accumulate before
             applying the varUpdate. Default 1.
           )DOC")
+      .def_property(
+          "enableReplicatedGraphs",
+          [](const ipu::IpuStrategy &self) {
+            return self.popart_options.enableReplicatedGraphs;
+          },
+          [](ipu::IpuStrategy &self, bool enableReplicatedGraphs) {
+            self.popart_options.enableReplicatedGraphs = enableReplicatedGraphs;
+          }
+      )
+      .def_property(
+          "replicatedGraphCount",
+          [](const ipu::IpuStrategy &self) {
+            return self.popart_options.replicatedGraphCount;
+          },
+          [](ipu::IpuStrategy &self, int replicatedGraphCount) {
+            self.popart_options.replicatedGraphCount = replicatedGraphCount;
+          }
+      )
       .def_property(
           "batches_per_step",
           [](const ipu::IpuStrategy &self) { return self.batches_per_step; },
