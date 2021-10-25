@@ -202,14 +202,15 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
                              proto::VarType::INT32);
   auto label_shape_ = GetInputVarNode("Label", node)->Var()->GetShape();
   if (label_shape_.size() == 1) {
+    auto log = CreateBaseOp(graph, node, "popart_log",
+                            {GetInputVarNode("X", node)}, {}, {});
     return CreateBaseOp(
         graph, node, "popart_nllloss_v2",
-        {GetInputVarNode("X", node), new_cast->outputs[0]},
-        {GetOutputVarNode("Y", node)},
+        {log->outputs[0], new_cast->outputs[0]}, {GetOutputVarNode("Y", node)},
         {
             {"reduction", 2},  // popart::ReductionType::NoReduction
             {"ignoreIndex", ignoreIndex},
-            {"inputIsLogProbability", false},
+            {"inputIsLogProbability", true},
         });
   } else {
     std::vector<int64_t> new_shape_{label_shape_[0]};
@@ -224,13 +225,15 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
         graph, node, "popart_reshape",
         {new_cast->outputs[0], const_before_loss->outputs[0]}, {}, {});
 
+    auto log = CreateBaseOp(graph, node, "popart_log",
+                            {GetInputVarNode("X", node)}, {}, {});
     auto nllloss = CreateBaseOp(
         graph, node, "popart_nllloss_v2",
-        {GetInputVarNode("X", node), reshape_before_loss->outputs[0]}, {},
+        {log->outputs[0], reshape_before_loss->outputs[0]}, {},
         {
             {"reduction", 2},  // popart::ReductionType::NoReduction
             {"ignoreIndex", ignoreIndex},
-            {"inputIsLogProbability", false},
+            {"inputIsLogProbability", true},
         });
 
     auto const_after_loss = CreateBaseOp(

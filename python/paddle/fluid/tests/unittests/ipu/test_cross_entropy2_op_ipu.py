@@ -123,8 +123,16 @@ class TestCase1(TestBase):
         }
 
 
-@unittest.skip("soft_label=True id not supported")
 class TestCase2(TestBase):
+    def set_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[3, 7]).astype('float32'),
+            "label": np.arange(3).reshape([3, 1]).astype(np.int64),
+        }
+
+
+@unittest.skip("soft_label=True is not supported")
+class TestCase3(TestBase):
     def set_attrs(self):
         self.attrs = {'soft_label': True, }
 

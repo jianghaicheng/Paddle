@@ -525,6 +525,7 @@ class TransformerEncoderLayer(Layer):
         self.dropout1 = Dropout(dropout, mode="upscale_in_train")
         self.dropout2 = Dropout(dropout, mode="upscale_in_train")
         self.activation = getattr(F, activation)
+        self.act_name = activation
         self.act_approximate = approximate
 
     def forward(self, src, src_mask=None, cache=None):
@@ -578,10 +579,13 @@ class TransformerEncoderLayer(Layer):
         residual = src
         if self.normalize_before:
             src = self.norm2(src)
-        src = self.linear2(
-            self.dropout(
-                self.activation(
-                    self.linear1(src), approximate=self.act_approximate)))
+        if self.act_name == "gelu":
+            src = self.linear2(
+                self.dropout(
+                    self.activation(
+                        self.linear1(src), approximate=self.act_approximate)))
+        else:
+            src = self.linear2(self.dropout(self.activation(self.linear1(src))))
         src = residual + self.dropout2(src)
         if not self.normalize_before:
             src = self.norm2(src)
