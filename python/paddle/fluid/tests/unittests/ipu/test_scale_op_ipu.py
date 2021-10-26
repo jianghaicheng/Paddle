@@ -125,13 +125,22 @@ class TestCase2(TestBase):
 class TestCase3(TestBase):
     def set_attrs(self):
         self.attrs = {
+            "scale": 5.0,
+            "bias": 0.7,
+            "bias_after_scale": True,
+        }
+
+
+class TestCase4(TestBase):
+    def set_attrs(self):
+        self.attrs = {
             "scale": 1.0,
             "bias": 0.0,
             "bias_after_scale": False,
         }
 
 
-class TestCase4(TestBase):
+class TestCase5(TestBase):
     def set_feed(self):
         self.feed = {
             "x": np.random.uniform(size=[3, 3, 10, 10]).astype('float32'),

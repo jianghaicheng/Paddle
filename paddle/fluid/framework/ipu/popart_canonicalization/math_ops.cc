@@ -153,41 +153,72 @@ Node *scale_handler(Graph *graph, Node *node) {
       BOOST_GET_CONST(bool, op->GetAttr("bias_after_scale"));
   auto data_type_ = GetInputVarNode("X", node)->Var()->GetDataType();
 
-  auto new_node_bias_var =
-      CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{bias_}},
-                                        {"dims", std::vector<int64_t>{1}},
-                                        {"dtype", ONNXDataType::FLOAT}});
-  new_node_bias_var = new_node_bias_var->outputs[0];
+  auto cast = CreateCast(graph, node, {GetInputVarNode("X", node)}, {},
+                         static_cast<int>(proto::VarType::FP32));
 
-  Node *new_node_scale_var = nullptr;
-  if (op->HasInput("ScaleTensor") && !op->Input("ScaleTensor").empty()) {
-    new_node_scale_var = GetInputVarNode("ScaleTensor", node);
-  } else {
-    new_node_scale_var =
-        CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{scale_}},
-                                          {"dims", std::vector<int64_t>{1}},
-                                          {"dtype", ONNXDataType::FLOAT}});
-    new_node_scale_var = new_node_scale_var->outputs[0];
-  }
-
-  // convert to float32
-  auto new_node_cast = CreateCast(graph, node, {GetInputVarNode("X", node)}, {},
-                                  static_cast<int>(proto::VarType::FP32));
   Node *result = nullptr;
-  if (bias_after_scale_) {
-    auto new_node_mul =
-        CreateBaseOp(graph, node, "popart_mul",
-                     {new_node_cast->outputs[0], new_node_scale_var}, {}, {});
-    result =
-        CreateBaseOp(graph, node, "popart_add",
-                     {new_node_mul->outputs[0], new_node_bias_var}, {}, {});
+  if (op->HasInput("ScaleTensor") && !op->Input("ScaleTensor").empty()) {
+    auto scale = GetInputVarNode("ScaleTensor", node);
+    if (is_float_equal(bias_, 0.0)) {
+      result = CreateBaseOp(graph, node, "popart_mul",
+                            {cast->outputs[0], scale}, {}, {});
+    } else {
+      auto bias = CreateConst(graph, node, {}, {},
+                              {{"value", std::vector<float>{bias_}},
+                               {"dims", std::vector<int64_t>{1}},
+                               {"dtype", ONNXDataType::FLOAT}});
+      bias = bias->outputs[0];
+      if (bias_after_scale_) {
+        auto mul = CreateBaseOp(graph, node, "popart_mul",
+                                {cast->outputs[0], scale}, {}, {});
+        result = CreateBaseOp(graph, node, "popart_add",
+                              {mul->outputs[0], bias}, {}, {});
+      } else {
+        auto add = CreateBaseOp(graph, node, "popart_add",
+                                {cast->outputs[0], bias}, {}, {});
+        result = CreateBaseOp(graph, node, "popart_mul",
+                              {add->outputs[0], scale}, {}, {});
+      }
+    }
   } else {
-    auto new_node_add =
-        CreateBaseOp(graph, node, "popart_add",
-                     {new_node_cast->outputs[0], new_node_bias_var}, {}, {});
-    result =
-        CreateBaseOp(graph, node, "popart_mul",
-                     {new_node_add->outputs[0], new_node_scale_var}, {}, {});
+    if (is_float_equal(bias_, 0.0) && is_float_equal(scale_, 1.0)) {
+      return CreateBaseOp(graph, node, "popart_identity",
+                          {GetInputVarNode("X", node)}, node->outputs, {});
+    } else if (is_float_equal(scale_, 1.0)) {
+      auto bias = CreateConst(graph, node, {}, {},
+                              {{"value", std::vector<float>{bias_}},
+                               {"dims", std::vector<int64_t>{1}},
+                               {"dtype", ONNXDataType::FLOAT}});
+      result = CreateBaseOp(graph, node, "popart_add",
+                            {cast->outputs[0], bias->outputs[0]}, {}, {});
+    } else if (is_float_equal(bias_, 0.0)) {
+      auto scale = CreateConst(graph, node, {}, {},
+                               {{"value", std::vector<float>{scale_}},
+                                {"dims", std::vector<int64_t>{1}},
+                                {"dtype", ONNXDataType::FLOAT}});
+      result = CreateBaseOp(graph, node, "popart_mul",
+                            {cast->outputs[0], scale->outputs[0]}, {}, {});
+    } else {
+      auto bias = CreateConst(graph, node, {}, {},
+                              {{"value", std::vector<float>{bias_}},
+                               {"dims", std::vector<int64_t>{1}},
+                               {"dtype", ONNXDataType::FLOAT}});
+      auto scale = CreateConst(graph, node, {}, {},
+                               {{"value", std::vector<float>{scale_}},
+                                {"dims", std::vector<int64_t>{1}},
+                                {"dtype", ONNXDataType::FLOAT}});
+      if (bias_after_scale_) {
+        auto mul = CreateBaseOp(graph, node, "popart_mul",
+                                {cast->outputs[0], scale->outputs[0]}, {}, {});
+        result = CreateBaseOp(graph, node, "popart_add",
+                              {mul->outputs[0], bias->outputs[0]}, {}, {});
+      } else {
+        auto add = CreateBaseOp(graph, node, "popart_add",
+                                {cast->outputs[0], bias->outputs[0]}, {}, {});
+        result = CreateBaseOp(graph, node, "popart_mul",
+                              {add->outputs[0], scale->outputs[0]}, {}, {});
+      }
+    }
   }
   auto result_after_cast =
       CreateCast(graph, node, result->outputs, node->outputs,
