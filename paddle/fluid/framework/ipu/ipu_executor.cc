@@ -109,6 +109,15 @@ void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
       output_shape.insert(output_shape.begin(),
                           ipu_strategy_->batches_per_step);
     }
+    if (ipu_strategy_->popart_options.enableGradientAccumulation) {
+      output_shape.insert(output_shape.begin(),
+                          ipu_strategy_->popart_options.accumulationFactor);
+    }
+    if (ipu_strategy_->popart_options.enableReplicatedGraphs) {
+      output_shape.insert(output_shape.begin(),
+                          ipu_strategy_->popart_options.replicatedGraphCount);
+    }
+
     tensor->Resize(framework::make_ddim(output_shape));
     auto fetch_dtype = fetch_info.dataType();
     auto paddle_type = PopartType2VarType(fetch_dtype);
