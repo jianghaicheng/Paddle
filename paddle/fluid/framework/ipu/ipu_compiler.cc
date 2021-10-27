@@ -232,9 +232,6 @@ void Compiler::InitInputs(ir::Graph* graph,
         if (feed_name == var_desc->Name()) {
           VLOG(10) << "feed_name= " << var_desc->Name();
           auto data_type = VarType2PopartType(var_desc->GetDataType());
-          if (ipu_strategy_->enable_fp16) {
-            data_type = popart::DataType::FLOAT16;
-          }
           popart::TensorInfo input_info{data_type, var_desc->GetShape()};
           VLOG(10) << "popart input_info = " << input_info;
           popart::TensorId tensor_id =
