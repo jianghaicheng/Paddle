@@ -184,7 +184,7 @@ if(WITH_PYTHON)
     endif()
     if(WITH_IPU)
       add_custom_command(OUTPUT ${impl_file}
-            COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${POPLAR_DIR}/lib:."
+            COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${POPLAR_DIR}/lib:${PADDLE_IPU_LIB_DIR}:."
                 "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator"
                 "${tmp_impl_file}"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
@@ -214,6 +214,10 @@ if(WITH_PYTHON)
 
   if(WITH_ROCM)
     target_link_libraries(paddle_pybind ${ROCM_HIPRTC_LIB})
+  endif()
+
+  if(WITH_IPU)
+    target_link_libraries(paddle_pybind paddle_ipu)
   endif()
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
