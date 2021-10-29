@@ -14,9 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include <popart/optimizer.hpp>
+#include <popart/sgd.hpp>
 #include <popart/adam.hpp>
 #include <popart/names.hpp>
-#include <popart/optimizer.hpp>
 #include <popart/tensorinfo.hpp>
 
 #include "paddle/fluid/platform/enforce.h"

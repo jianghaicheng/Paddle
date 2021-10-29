@@ -16,8 +16,8 @@ if [ $POPLAR_SDK_DIR == "" || ! -z "$POPLAR_SDK_DIR" ];then
   elif [ -d /popsdk/ ];then
     POPLAR_SDK_DIR=/popsdk/
     # enable Poplar SDK for jekin machine
-    source /popsdk/poplar-ubuntu_18_04-2.1.0+145366-ce995e299d/enable.sh
-    source /popsdk/popart-ubuntu_18_04-2.1.0+145366-ce995e299d/enable.sh
+    source /popsdk/poplar-ubuntu_18_04-2.3.0+1367-88f485e763/enable.sh
+    source /popsdk/popart-ubuntu_18_04-2.3.0+1367-88f485e763/enable.sh
   else
     err "Could not find valid popsdk directoriy!"
     exit 1
