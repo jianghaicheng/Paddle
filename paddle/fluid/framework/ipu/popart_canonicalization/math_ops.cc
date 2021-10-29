@@ -229,15 +229,22 @@ Node *scale_handler(Graph *graph, Node *node) {
 Node *cross_entropy2_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto ignoreIndex = BOOST_GET_CONST(int, op->GetAttr("ignore_index"));
-  auto new_cast = CreateCast(graph, node, {GetInputVarNode("Label", node)}, {},
-                             proto::VarType::INT32);
+  Node *new_cast = nullptr;
+  if (GetInputVarNode("Label", node)->Var()->GetDataType() ==
+      proto::VarType::INT32) {
+    new_cast = GetInputVarNode("Label", node);
+  } else {
+    auto new_cast = CreateCast(graph, node, {GetInputVarNode("Label", node)},
+                               {}, proto::VarType::INT32);
+    new_cast = new_cast->outputs[0];
+  }
   auto label_shape_ = GetInputVarNode("Label", node)->Var()->GetShape();
   if (label_shape_.size() == 1) {
     auto log = CreateBaseOp(graph, node, "popart_log",
                             {GetInputVarNode("X", node)}, {}, {});
     return CreateBaseOp(
-        graph, node, "popart_nllloss_v2",
-        {log->outputs[0], new_cast->outputs[0]}, {GetOutputVarNode("Y", node)},
+        graph, node, "popart_nllloss_v2", {log->outputs[0], new_cast},
+        {GetOutputVarNode("Y", node)},
         {
             {"reduction", 2},  // popart::ReductionType::NoReduction
             {"ignoreIndex", ignoreIndex},
@@ -252,9 +259,9 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
           std::vector<int64_t>{static_cast<int64_t>(new_shape_.size())}},
          {"dtype", ONNXDataType::INT64}});
 
-    auto reshape_before_loss = CreateBaseOp(
-        graph, node, "popart_reshape",
-        {new_cast->outputs[0], const_before_loss->outputs[0]}, {}, {});
+    auto reshape_before_loss =
+        CreateBaseOp(graph, node, "popart_reshape",
+                     {new_cast, const_before_loss->outputs[0]}, {}, {});
 
     auto log = CreateBaseOp(graph, node, "popart_log",
                             {GetInputVarNode("X", node)}, {}, {});
