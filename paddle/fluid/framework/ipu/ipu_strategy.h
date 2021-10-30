@@ -21,6 +21,7 @@ namespace framework {
 namespace ipu {
 
 using VirtualGraphMode = popart::VirtualGraphMode;
+using RecomputationType = popart::RecomputationType;
 
 struct IpuStrategy {
   int num_ipus = 1;

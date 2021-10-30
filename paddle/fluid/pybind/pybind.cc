@@ -3236,24 +3236,22 @@ All parameter, weight, gradient are variables in Paddle.
             Specify the number of micro-batches to accumulate before
             applying the varUpdate. Default 1.
           )DOC")
-      .def_property(
-          "enableReplicatedGraphs",
-          [](const ipu::IpuStrategy &self) {
-            return self.popart_options.enableReplicatedGraphs;
-          },
-          [](ipu::IpuStrategy &self, bool enableReplicatedGraphs) {
-            self.popart_options.enableReplicatedGraphs = enableReplicatedGraphs;
-          }
-      )
-      .def_property(
-          "replicatedGraphCount",
-          [](const ipu::IpuStrategy &self) {
-            return self.popart_options.replicatedGraphCount;
-          },
-          [](ipu::IpuStrategy &self, int replicatedGraphCount) {
-            self.popart_options.replicatedGraphCount = replicatedGraphCount;
-          }
-      )
+      .def_property("enableReplicatedGraphs",
+                    [](const ipu::IpuStrategy &self) {
+                      return self.popart_options.enableReplicatedGraphs;
+                    },
+                    [](ipu::IpuStrategy &self, bool enableReplicatedGraphs) {
+                      self.popart_options.enableReplicatedGraphs =
+                          enableReplicatedGraphs;
+                    })
+      .def_property("replicatedGraphCount",
+                    [](const ipu::IpuStrategy &self) {
+                      return self.popart_options.replicatedGraphCount;
+                    },
+                    [](ipu::IpuStrategy &self, int replicatedGraphCount) {
+                      self.popart_options.replicatedGraphCount =
+                          replicatedGraphCount;
+                    })
       .def_property(
           "batches_per_step",
           [](const ipu::IpuStrategy &self) { return self.batches_per_step; },
@@ -3349,7 +3347,24 @@ All parameter, weight, gradient are variables in Paddle.
             self.save_per_n_step = save_per_n_step;
           },
           R"DOC(
-            Int type, Copy weights D2H per n steps. Default 1.)DOC");
+            Int type, Copy weights D2H per n steps. Default 1.)DOC")
+      .def_property(
+          "auto_recomputation",
+          [](const ipu::IpuStrategy &self) {
+            return self.popart_options.autoRecomputation;
+          },
+          [](ipu::IpuStrategy &self, int auto_recomputation) {
+            self.popart_options.autoRecomputation =
+                static_cast<ipu::RecomputationType>(auto_recomputation);
+          },
+          R"DOC(
+            Int type:" 
+            "0: None"
+            "1: Standard (Algorithm to pick checkpoints to try and minimise max liveness)"
+            "2: NormOnly (Only Norm Ops)"
+            "3: Pipeline (Recompute all forward pipeline stages)"
+            "4: RecomputeAll (Recompute all ops)
+        .)DOC");
 
   py::class_<framework::ipu::IpuCustomOpIdentifier>(m, "IpuCustomOpIdentifier")
       .def(py::init<const std::string &, const std::string &,
