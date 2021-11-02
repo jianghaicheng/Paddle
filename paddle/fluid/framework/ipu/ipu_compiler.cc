@@ -382,13 +382,13 @@ void Compiler::SetSerializeAttributes(
   if (op_desc->Type() == "popart_matmul") {
     if (op_desc->HasAttr(sMatmulSerializeFactor)) {
       auto factor =
-          BOOST_GET_CONST(int64_t, op_desc->GetAttr(sMatmulSerializeFactor));
+          BOOST_GET_CONST(int, op_desc->GetAttr(sMatmulSerializeFactor));
       std::string mode = "output_channels";
       if (op_desc->HasAttr(sMatmulSerializeMode)) {
         mode = BOOST_GET_CONST(std::string,
                                op_desc->GetAttr(sMatmulSerializeMode));
       }
-      builder_->setSerializeMatMul(tensor_ids_set, mode, factor, true);
+      builder_->setSerializeMatMul(tensor_ids_set, mode, (int64_t)factor, true);
     }
   }
   VLOG(10) << "leave Compiler::SetSerializeAttributes";

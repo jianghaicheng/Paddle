@@ -116,6 +116,12 @@ Node *CreateBaseOp(Graph *graph, Node *node, const std::string &type,
   if (!new_node->Op()->HasAttr(sIpuStageAttr)) {
     CopyOpAttr(sIpuStageAttr, node->Op(), new_node->Op());
   }
+  if (node->Op()->HasAttr(sMatmulSerializeFactor)) {
+    CopyOpAttr(sMatmulSerializeFactor, node->Op(), new_node->Op());
+  }
+  if (node->Op()->HasAttr(sMatmulSerializeMode)) {
+    CopyOpAttr(sMatmulSerializeMode, node->Op(), new_node->Op());
+  }
   {
     new_node->Op()->SetAttr(sOpIdentifyIdAttr, CreateOpIdentifyId(node));
     new_node->Op()->Flush();
