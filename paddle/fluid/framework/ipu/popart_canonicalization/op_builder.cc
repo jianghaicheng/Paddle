@@ -31,15 +31,31 @@ const std::string GenerateOpName() {
 }
 
 const std::string CreateOpIdentifyId(Node *node) {
-  // format: op_type|out_var0|out_var1|...|_gen_*
+  // format:
+  //   if has custom op_namescope:
+  //      {op_namescope}/op_type/_gen_*
+  //   else:
+  //     {op_type}|{out_var0}|{out_var1}|...|_gen_*
   // this name will be used as op name when exporting onnx model from popart
   auto op_type = node->Name();
-  std::string op_out = "";
-  for (auto *out_node : node->outputs) {
-    op_out += "|";
-    op_out += out_node->Name();
+  std::string op_namescope;
+  if (node->Op()->HasAttr("op_namescope")) {
+    op_namescope =
+        BOOST_GET_CONST(std::string, node->Op()->GetAttr("op_namescope"));
+  } else {
+    op_namescope = "/";
   }
-  return {op_type + op_out + "|" + GenerateOpName()};
+
+  if (op_namescope != "/") {
+    return {op_namescope + op_type + "/" + GenerateOpName()};
+  } else {
+    std::string op_out = "";
+    for (auto *out_node : node->outputs) {
+      op_out += "|";
+      op_out += out_node->Name();
+    }
+    return {op_type + op_out + "|" + GenerateOpName()};
+  }
 }
 
 Node *MakeVarNode(Graph *graph, Node *node) {
