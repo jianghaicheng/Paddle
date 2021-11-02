@@ -81,6 +81,8 @@ class IpuBackend {
   void AttachDevice(int id);
   bool DeviceIsAttached();
 
+  void SaveMoldeProto(const std::string &path);
+
  private:
   int UpperIpuNum();
   void Prepare();
@@ -89,6 +91,7 @@ class IpuBackend {
   std::shared_ptr<Compiler> compiler_;
   std::unique_ptr<Executor> executor_;
   std::shared_ptr<popart::DeviceInfo> device_;
+  bool is_compiled_ = false;
   bool is_prepared_ = false;
   bool is_attached_ = false;
 

@@ -3203,7 +3203,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("clear", &ipu::IpuBackend::Clear)
       .def("set_scope", &ipu::IpuBackend::SetScope)
       .def("set_ipu_strategy", &ipu::IpuBackend::SetIpuStrategy)
-      .def("set_custom_ops", &ipu::IpuBackend::SetCustomOps);
+      .def("set_custom_ops", &ipu::IpuBackend::SetCustomOps)
+      .def("save_molde_proto", &ipu::IpuBackend::SaveMoldeProto);
 
   py::class_<framework::ipu::IpuStrategy>(m, "IpuStrategy")
       .def(py::init())

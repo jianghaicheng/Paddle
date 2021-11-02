@@ -618,6 +618,9 @@ class IpuCompiler(object):
     def __del__(self):
         self.clean()
 
+    def save_onnx_model(self, file_name):
+        self._backend.save_molde_proto(file_name)
+
 
 def get_ipu_strategy():
     """

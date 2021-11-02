@@ -65,6 +65,7 @@ void IpuBackend::Compile(ir::Graph* graph,
   compiler_->LowerBody(graph);
   compiler_->InitOutputs(fetch_list);
   executor_->SetWeights(compiler_->GetWeights());
+  is_compiled_ = true;
   VLOG(10) << "leave IpuBackend::Compile";
 }
 
@@ -204,6 +205,14 @@ int IpuBackend::UpperIpuNum() {
     i++;
   }
   return pow(2, i);
+}
+
+void IpuBackend::SaveMoldeProto(const std::string& path) {
+  if (is_compiled_) {
+    compiler_->SaveModelProtoNoCheck(path);
+  } else {
+    LOG(WARNING) << "Model is empty";
+  }
 }
 
 }  // namespace ipu
