@@ -22,6 +22,7 @@ namespace ipu {
 
 static constexpr const char *sIpuIndexAttr = "ipu_index";
 static constexpr const char *sIpuStageAttr = "ipu_stage";
+static constexpr const char *sMatmulSerializeFactor = "serialize_factor";
 static constexpr const char *sOpIdentifyIdAttr = "op_identify_id";
 static constexpr const char *sDebugInfoId = "__debug_info_id";
 

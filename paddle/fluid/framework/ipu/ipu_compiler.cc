@@ -90,6 +90,7 @@ void Compiler::RegisterOpFunc() {
      auto output_ids = OnnxImpl(inputs Args, debug_context);  \
      SetIpuIndexStage(output_ids, op_desc);                   \
      SetAMPAttributes(output_ids, op_desc);                   \
+     SetSerializeAttributes(output_ids, op_desc);             \
      InsertTensors(output_names, output_ids);                 \
    }},  // NOLINT
 #include "paddle/fluid/framework/ipu/supported_ops.h"
@@ -370,6 +371,29 @@ void Compiler::SetAMPAttributes(const std::string& tensor_id,
     }
   }
   VLOG(10) << "leave Compiler::SetAMPAttributes";
+}
+
+void Compiler::SetSerializeAttributes(
+    const std::vector<std::string>& tensor_ids, const OpDesc* op_desc) {
+  VLOG(10) << "enter Compiler::SetSerializeAttributes";
+  auto tensor_ids_set =
+      std::set<std::string>(tensor_ids.begin(), tensor_ids.end());
+
+  if (op_desc->Type() == "popart_matmul") {
+    if (op_desc->HasAttr(sMatmulSerializeFactor)) {
+      auto factor =
+          BOOST_GET_CONST(int64_t, op_desc->GetAttr(sMatmulSerializeFactor));
+      builder_->setSerializeMatMul(tensor_ids_set, "output_channels", factor,
+                                   true);
+    }
+  }
+  VLOG(10) << "leave Compiler::SetSerializeAttributes";
+}
+
+void Compiler::SetSerializeAttributes(const std::string& tensor_id,
+                                      const OpDesc* op_desc) {
+  std::vector<std::string> tensor_ids = {tensor_id};
+  SetSerializeAttributes(tensor_ids, op_desc);
 }
 
 void Compiler::SetCustomOps(

@@ -46,6 +46,10 @@ class Compiler {
   void SetAMPAttributes(const std::vector<std::string> &tensor_ids,
                         const OpDesc *op_desc);
   void SetAMPAttributes(const std::string &tensor_id, const OpDesc *op_desc);
+  void SetSerializeAttributes(const std::vector<std::string> &tensor_ids,
+                              const OpDesc *op_desc);
+  void SetSerializeAttributes(const std::string &tensor_id,
+                              const OpDesc *op_desc);
   void SetIpuStrategy(const IpuStrategy &strategy) {
     ipu_strategy_ = &strategy;
   }
