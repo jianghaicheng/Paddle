@@ -383,8 +383,12 @@ void Compiler::SetSerializeAttributes(
     if (op_desc->HasAttr(sMatmulSerializeFactor)) {
       auto factor =
           BOOST_GET_CONST(int64_t, op_desc->GetAttr(sMatmulSerializeFactor));
-      builder_->setSerializeMatMul(tensor_ids_set, "output_channels", factor,
-                                   true);
+      std::string mode = "output_channels";
+      if (op_desc->HasAttr(sMatmulSerializeMode)) {
+        mode = BOOST_GET_CONST(std::string,
+                               op_desc->GetAttr(sMatmulSerializeMode));
+      }
+      builder_->setSerializeMatMul(tensor_ids_set, mode, factor, true);
     }
   }
   VLOG(10) << "leave Compiler::SetSerializeAttributes";
