@@ -41,8 +41,30 @@ class TestConvNet(unittest.TestCase):
         ipu_strategy.num_ipus = 2
         assert ipu_strategy.num_ipus == 2, "Set num_ipus Failed"
 
+        ipu_strategy.batches_per_step = 5
+        assert ipu_strategy.batches_per_step == 5, \
+            "Set batches_per_step Failed"
+
+        ipu_strategy.batch_size = 4
+        assert ipu_strategy.batch_size == 4, "Set batch_size Failed"
+
         ipu_strategy.is_training = False
         assert ipu_strategy.is_training == False, "Set is_training Failed"
+
+        ipu_strategy.save_init_onnx = True
+        assert ipu_strategy.save_init_onnx == True, "Set save_init_onnx Failed"
+
+        ipu_strategy.save_last_onnx = True
+        assert ipu_strategy.save_last_onnx == True, "Set save_last_onnx Failed"
+
+        ipu_strategy.save_per_n_step = 10
+        assert ipu_strategy.save_per_n_step == 10, "Set save_per_n_step Failed"
+
+        ipu_strategy.need_avg_shard = True
+        assert ipu_strategy.need_avg_shard == True, "Set need_avg_shard Failed"
+
+        ipu_strategy.enable_fp16 = True
+        assert ipu_strategy.enable_fp16 == True, "Set enable_fp16 Failed"
 
         ipu_strategy.enable_pipelining = True
         assert ipu_strategy.enable_pipelining == True, \
@@ -51,6 +73,14 @@ class TestConvNet(unittest.TestCase):
         ipu_strategy.enable_manual_shard = True
         assert ipu_strategy.enable_manual_shard == True, \
             "Set enable_manual_shard Failed"
+
+        ipu_strategy.enable_half_partial = True
+        assert ipu_strategy.enable_half_partial == True, \
+            "Set enable_half_partial Failed"
+
+        ipu_strategy.available_mem_proportion = 0.5
+        assert ipu_strategy.available_mem_proportion == 0.5, \
+            "Set available_mem_proportion Failed"
 
 
 if __name__ == "__main__":

@@ -75,7 +75,7 @@ class TestBase(IPUOpTest):
                     conv2 = paddle.static.nn.conv2d(
                         conv1, num_filters=3, filter_size=3, bias_attr=False)
                     # should consider influence of bs
-                    loss = paddle.mean(conv2) * bs
+                    loss = paddle.mean(conv2)
 
                 if self.is_training:
                     opt = None
@@ -227,7 +227,7 @@ class TestReplicaTrain(TestTrainBase):
 
     def test(self):
         cpu_outputs = self._test_base(False)
-        ipu_outputs = self._test_base(True)[::2] * self.attrs['cpu_bs']
+        ipu_outputs = self._test_base(True)[::2]
 
         self.assertTrue(np.allclose(cpu_outputs, ipu_outputs, atol=self.atol))
 
@@ -257,7 +257,7 @@ class TestPipelineTrain(TestTrainBase):
 
     def test(self):
         cpu_outputs = self._test_base(False)
-        ipu_outputs = self._test_base(True)[::3] * self.attrs['cpu_bs']
+        ipu_outputs = self._test_base(True)[::3]
 
         self.assertTrue(np.allclose(cpu_outputs, ipu_outputs, atol=self.atol))
 

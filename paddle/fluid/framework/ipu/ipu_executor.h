@@ -17,6 +17,7 @@ limitations under the License. */
 #include <popart/dataflow.hpp>
 #include <popart/half.hpp>
 #include <popart/names.hpp>
+#include <popart/patterns/patterns.hpp>
 #include <popart/session.hpp>
 #include <popart/tensorinfo.hpp>
 
@@ -86,6 +87,8 @@ class Executor {
   std::vector<std::pair<popart::TensorId, popart::TensorId>>
       weights_and_opt_state_;
   int step_ = 0;
+  // Patterns
+  popart::Patterns patterns_;
 };
 
 }  // namespace ipu

@@ -3364,7 +3364,29 @@ All parameter, weight, gradient are variables in Paddle.
             "2: NormOnly (Only Norm Ops)"
             "3: Pipeline (Recompute all forward pipeline stages)"
             "4: RecomputeAll (Recompute all ops)
-        .)DOC");
+        .)DOC")
+      .def_property("enable_half_partial",
+                    [](const ipu::IpuStrategy &self) {
+                      return self.popart_options.partialsTypeMatMuls == "half";
+                    },
+                    [](ipu::IpuStrategy &self, bool enable_half_partial) {
+                      self.popart_options.partialsTypeMatMuls = "half";
+                    },
+                    R"DOC(
+            Str type. half for fp16 partial, only work with fp16. Default float.
+          )DOC")
+      .def_property(
+          "available_mem_proportion",
+          [](const ipu::IpuStrategy &self) {
+            return self.available_memory_proportion;
+          },
+          [](ipu::IpuStrategy &self, float available_memory_proportion) {
+            self.available_memory_proportion = available_memory_proportion;
+          },
+          R"DOC(
+            Float type. Set the available memory proportion for matmul/conv, bigger value
+            means more memory occupy, range [0.0f, 1.0f], 0.0 no effect, default 0.0f.
+          )DOC");
 
   py::class_<framework::ipu::IpuCustomOpIdentifier>(m, "IpuCustomOpIdentifier")
       .def(py::init<const std::string &, const std::string &,

@@ -48,16 +48,17 @@ void Executor::Prepare(const std::string &proto,
         paddle::platform::errors::InvalidArgument(
             "loss_id = %s doesn't exist in popart graph.", opt_info.GetLoss()));
 
+    patterns_.enableTiedGather(true);
+    patterns_.enableTiedGatherAccumulate(true);
+
     session_ = popart::TrainingSession::createFromOnnxModel(
         proto, dataFlow, it->second, *popart_optimizer, device,
-        popart::InputShapeInfo(), ipu_strategy_->popart_options,
-        popart::Patterns(popart::PatternsLevel::Default));
+        popart::InputShapeInfo(), ipu_strategy_->popart_options, patterns_);
   } else {
     VLOG(10) << "Creating InferenceSession from Onnx Model...";
     session_ = popart::InferenceSession::createFromOnnxModel(
         proto, dataFlow, device, popart::InputShapeInfo(),
-        ipu_strategy_->popart_options,
-        popart::Patterns(popart::PatternsLevel::Default));
+        ipu_strategy_->popart_options, patterns_);
   }
   VLOG(10) << "Creating session from Onnx Model...done";
 

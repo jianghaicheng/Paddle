@@ -89,6 +89,7 @@ void Compiler::RegisterOpFunc() {
      auto aiOnnxOpset = builder_->aiOnnxOpset11();            \
      auto output_ids = OnnxImpl(inputs Args, debug_context);  \
      SetIpuIndexStage(output_ids, op_desc);                   \
+     SetAMPAttributes(output_ids, op_desc);                   \
      InsertTensors(output_names, output_ids);                 \
    }},  // NOLINT
 #include "paddle/fluid/framework/ipu/supported_ops.h"
@@ -348,6 +349,27 @@ void Compiler::SetIpuIndexStage(const std::string& tensor_id,
     }
   }
   VLOG(10) << "leave Compiler::SetIpuIndexStage";
+}
+
+void Compiler::SetAMPAttributes(const std::vector<std::string>& tensor_ids,
+                                const OpDesc* op_desc) {
+  if (op_desc->Type() == "popart_matmul") {
+    for (const auto& tensor_id : tensor_ids) {
+      SetAMPAttributes(tensor_id, op_desc);
+    }
+  }
+}
+
+void Compiler::SetAMPAttributes(const std::string& tensor_id,
+                                const OpDesc* op_desc) {
+  VLOG(10) << "enter Compiler::SetAMPAttributes";
+  if (op_desc->Type() == "popart_matmul") {
+    auto amp = ipu_strategy_->available_memory_proportion;
+    if (amp > 0.0f && amp <= 1.0) {
+      builder_->setAvailableMemoryProportion(tensor_id, amp);
+    }
+  }
+  VLOG(10) << "leave Compiler::SetAMPAttributes";
 }
 
 void Compiler::SetCustomOps(
