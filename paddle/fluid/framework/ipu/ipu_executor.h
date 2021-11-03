@@ -87,8 +87,6 @@ class Executor {
   std::vector<std::pair<popart::TensorId, popart::TensorId>>
       weights_and_opt_state_;
   int step_ = 0;
-  // Patterns
-  popart::Patterns patterns_;
 };
 
 }  // namespace ipu

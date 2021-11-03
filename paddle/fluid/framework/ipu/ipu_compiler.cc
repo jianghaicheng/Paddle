@@ -400,6 +400,10 @@ void Compiler::SetSerializeAttributes(const std::string& tensor_id,
   SetSerializeAttributes(tensor_ids, op_desc);
 }
 
+void Compiler::SetIpuStrategy(const IpuStrategy& strategy) {
+  ipu_strategy_ = &strategy;
+}
+
 void Compiler::SetCustomOps(
     const std::vector<IpuCustomOpIdentifier>& custom_ops) {
   for (auto x : custom_ops) {

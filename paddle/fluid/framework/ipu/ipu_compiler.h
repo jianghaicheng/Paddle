@@ -50,9 +50,8 @@ class Compiler {
                               const OpDesc *op_desc);
   void SetSerializeAttributes(const std::string &tensor_id,
                               const OpDesc *op_desc);
-  void SetIpuStrategy(const IpuStrategy &strategy) {
-    ipu_strategy_ = &strategy;
-  }
+  void SetIpuStrategy(const IpuStrategy &strategy);
+
   void SetCustomOps(const std::vector<IpuCustomOpIdentifier> &custom_ops);
 
   std::vector<popart::TensorId> GetInputs() { return inputs_; }

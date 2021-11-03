@@ -3208,6 +3208,9 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::ipu::IpuStrategy>(m, "IpuStrategy")
       .def(py::init())
+      .def("enable_pattern", &ipu::IpuStrategy::enablePattern)
+      .def("disable_pattern", &ipu::IpuStrategy::disablePattern)
+      .def("is_pattern_enabled", &ipu::IpuStrategy::isPatternEnabled)
       .def_property("num_ipus",
                     [](const ipu::IpuStrategy &self) { return self.num_ipus; },
                     [](ipu::IpuStrategy &self, int num_ipus) {

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <popart/op.hpp>
 #include <popart/sessionoptions.hpp>
 #include <popart/tensorlocation.hpp>
+#include "popart/patterns/patterns.hpp"
 
 namespace paddle {
 namespace framework {
@@ -75,6 +76,12 @@ struct IpuStrategy {
 
   // popart session option
   popart::SessionOptions popart_options;
+  popart::Patterns popart_patterns;
+
+ public:
+  void enablePattern(const std::string& t);
+  void disablePattern(const std::string& t);
+  const bool isPatternEnabled(const std::string& t);
 };
 
 }  // namespace ipu

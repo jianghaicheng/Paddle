@@ -633,9 +633,14 @@ def get_ipu_strategy():
             " with IPU"
         )
 
-    ipu_strategy = core.IpuStrategy()
+    ipu_strategy = IpuStrategy()
 
     return ipu_strategy
+
+
+class IpuStrategy(core.IpuStrategy):
+    def __init__(self):
+        super().__init__()
 
 
 class IpuCustomOpIdentifier(core.IpuCustomOpIdentifier):

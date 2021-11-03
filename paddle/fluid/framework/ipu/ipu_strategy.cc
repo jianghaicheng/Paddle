@@ -13,12 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
+#include <glog/logging.h>
 
 namespace paddle {
 namespace framework {
 namespace ipu {
 
-//
+void IpuStrategy::enablePattern(const std::string& t) {
+  VLOG(10) << "enable popart pattern: " << t;
+  popart_patterns.enablePattern(t, true);
+}
+
+void IpuStrategy::disablePattern(const std::string& t) {
+  VLOG(10) << "disable popart pattern: " << t;
+  popart_patterns.enablePattern(t, false);
+}
+
+const bool IpuStrategy::isPatternEnabled(const std::string& t) {
+  return popart_patterns.isPatternEnabled(t);
+}
 
 }  // namespace ipu
 }  // namespace framework
