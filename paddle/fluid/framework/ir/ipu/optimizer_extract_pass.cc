@@ -27,6 +27,10 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << DebugString(graph);
 
   auto ipu_backend = paddle::framework::ipu::IpuBackend::GetInstance();
+  std::set<std::string> optimizers = {"adadelta", "adagrad", "adam",
+                                      "adamax",   "lamb",    "momentum",
+                                      "rmsprop",  "sgd"};
+  std::set<std::string> regularizers = {"scale"};
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()) {
@@ -37,28 +41,49 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       // graph usually have multiple optimizer node for different parameter,
       // and these node have the same type and attr value usually
       if ((op_role == static_cast<int>(framework::OpRole::kOptimize))) {
-        ipu_backend->GetExecutor().SetOptimizerType(node->Op()->Type());
-        VLOG(10) << "found optimizer type: " << node->Op()->Type();
+        auto op_type = node->Op()->Type();
 
-        for (const std::string& attr_name : node->Op()->AttrNames()) {
-          auto attr_type = node->Op()->GetAttrType(attr_name);
-          // with adam, attr are float
-          if (attr_type == proto::AttrType::FLOAT) {
-            auto attr_value =
-                BOOST_GET_CONST(float, node->Op()->GetAttr(attr_name));
-            ipu_backend->GetExecutor().SetOptimizerAttr(attr_name, attr_value);
-          } else {
-            VLOG(10) << "Skip " << attr_type;
+        // optimizer operator
+        if (optimizers.count(op_type) != 0) {
+          ipu_backend->GetExecutor().SetOptimizerType(node->Op()->Type());
+          VLOG(10) << "found optimizer type: " << node->Op()->Type();
+
+          for (const std::string& attr_name : node->Op()->AttrNames()) {
+            VLOG(10) << "Optimizer attr : " << attr_name;
+            auto attr_type = node->Op()->GetAttrType(attr_name);
+            // with adam, attr are float
+            if (attr_type == proto::AttrType::FLOAT) {
+              auto attr_value =
+                  BOOST_GET_CONST(float, node->Op()->GetAttr(attr_name));
+              ipu_backend->GetExecutor().SetOptimizerAttr(attr_name,
+                                                          attr_value);
+            } else {
+              VLOG(10) << "Skip " << attr_type;
+            }
+          }
+
+          if (node->Op()->HasInput("LearningRate")) {
+            auto lr_var_name = node->Op()->Input("LearningRate");
+            PADDLE_ENFORCE_EQ(lr_var_name.size(), 1u,
+                              platform::errors::InvalidArgument(
+                                  "In op(%s), find input(LearningRate) failed.",
+                                  node->Op()->Type()));
+            ipu_backend->GetExecutor().SetLRVarName(lr_var_name[0]);
           }
         }
 
-        if (node->Op()->HasInput("LearningRate")) {
-          auto lr_var_name = node->Op()->Input("LearningRate");
-          PADDLE_ENFORCE_EQ(lr_var_name.size(), 1u,
-                            platform::errors::InvalidArgument(
-                                "In op(%s), find input(LearningRate) failed.",
-                                node->Op()->Type()));
-          ipu_backend->GetExecutor().SetLRVarName(lr_var_name[0]);
+        // weight decay operator
+        if (regularizers.count(op_type)) {
+          for (const std::string& attr_name : node->Op()->AttrNames()) {
+            auto attr_type = node->Op()->GetAttrType(attr_name);
+            if (attr_type == proto::AttrType::FLOAT) {
+              auto attr_value =
+                  BOOST_GET_CONST(float, node->Op()->GetAttr(attr_name));
+              VLOG(10) << "Weight Decay : " << attr_name << " " << attr_value;
+              ipu_backend->GetExecutor().SetOptimizerAttr(attr_name,
+                                                          attr_value);
+            }
+          }
         }
       }
 

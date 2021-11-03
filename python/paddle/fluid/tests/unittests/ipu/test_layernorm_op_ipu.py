@@ -100,7 +100,8 @@ class TestBase(IPUOpTest):
                     elif self.optimizer == 'adam':
                         optimizer = paddle.optimizer.Adam(learning_rate=1e-2)
                     elif self.optimizer == 'lamb':
-                        optimizer = paddle.optimizer.Lamb(learning_rate=1e-2)
+                        optimizer = paddle.optimizer.Lamb(
+                            learning_rate=1e-2, lamb_weight_decay=0.0)
                     optimizer.minimize(loss)
 
             if run_ipu:

@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include <popart/optimizer.hpp>
-#include <popart/sgd.hpp>
 #include <popart/adam.hpp>
 #include <popart/names.hpp>
+#include <popart/optimizer.hpp>
+#include <popart/sgd.hpp>
 #include <popart/tensorinfo.hpp>
 
 #include "paddle/fluid/platform/enforce.h"
@@ -50,6 +50,9 @@ class OptmizerMetaInfo {
 
   void SetDType(popart::DataType dtype) { dtype_ = dtype; }
   popart::DataType GetDType() const { return dtype_; }
+
+  float GetWeightDecay() const;
+  popart::WeightDecayMode GetWeightDecayMode() const;
 
  private:
   // type: adam, sgd, ...

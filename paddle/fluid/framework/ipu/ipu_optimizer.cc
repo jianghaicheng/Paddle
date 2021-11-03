@@ -38,6 +38,32 @@ void OptmizerMetaInfo::SetAttr(const std::string &attr, float value) {
   attrs_[attr] = value;
 }
 
+float OptmizerMetaInfo::GetWeightDecay() const {
+  if (attrs_.count("scale") != 0) {
+    return attrs_.at("scale");
+  } else {
+    return 0.0f;
+  }
+}
+
+popart::WeightDecayMode OptmizerMetaInfo::GetWeightDecayMode() const {
+  if (type_ == OptimizerType::Adam) {
+    if (attrs_.count("scale") != 0 && attrs_.at("scale") > 0.0f) {
+      return popart::WeightDecayMode::L2Regularization;
+    } else {
+      return popart::WeightDecayMode::Decay;
+    }
+  } else if (type_ == OptimizerType::Lamb) {
+    if (attrs_.at("weight_decay") > 0.0f) {
+      return popart::WeightDecayMode::L2Regularization;
+    } else {
+      return popart::WeightDecayMode::Decay;
+    }
+  } else {
+    return popart::WeightDecayMode::Decay;
+  }
+}
+
 OptimizerType OptTypeStr2Enum(const std::string type) {
   if (type == "sgd") {
     return OptimizerType::SGD;
@@ -60,7 +86,7 @@ std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
   if (opt_type == OptimizerType::SGD) {
     auto optimizer = std::make_unique<popart::SGD>(
         popart::OptimizerValue(opt_meta_info.GetLR(), false),
-        popart::OptimizerValue(popart::SGD::getUnsetWeightDecay()),
+        popart::OptimizerValue(opt_meta_info.GetWeightDecay(), false),
         popart::OptimizerValue(popart::SGD::getUnsetMomentum()),
         popart::OptimizerValue(popart::SGD::getUnsetDampening()),
         popart::OptimizerValue(popart::SGD::getUnsetVelocityScaling()),
@@ -69,12 +95,12 @@ std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
   } else if (opt_type == OptimizerType::Adam) {
     auto optimizer = std::make_unique<popart::Adam>(
         popart::OptimizerValue(opt_meta_info.GetLR(), false),
-        popart::OptimizerValue(popart::Adam::getUnsetWeightDecay()),
+        popart::OptimizerValue(opt_meta_info.GetWeightDecay(), false),
         popart::OptimizerValue(opt_meta_info.GetAttr("beta1"), false),
         popart::OptimizerValue(opt_meta_info.GetAttr("beta2"), false),
         popart::OptimizerValue(opt_meta_info.GetAttr("epsilon"), false),
         popart::OptimizerValue(popart::Adam::getUnsetLossScaling()),
-        popart::AdamMode::Adam, popart::WeightDecayMode::Decay,
+        popart::AdamMode::Adam, opt_meta_info.GetWeightDecayMode(),
         popart::DataType::UNDEFINED, popart::DataType::FLOAT,
         popart::DataType::FLOAT);
     return optimizer;
@@ -86,7 +112,7 @@ std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
         popart::OptimizerValue(opt_meta_info.GetAttr("beta2"), false),
         popart::OptimizerValue(opt_meta_info.GetAttr("epsilon"), false),
         popart::OptimizerValue(popart::Adam::getUnsetLossScaling()),
-        popart::AdamMode::Lamb, popart::WeightDecayMode::Decay,
+        popart::AdamMode::Lamb, opt_meta_info.GetWeightDecayMode(),
         popart::DataType::UNDEFINED, popart::DataType::FLOAT,
         popart::DataType::FLOAT);
     return optimizer;
