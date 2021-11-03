@@ -49,7 +49,6 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
           VLOG(10) << "found optimizer type: " << node->Op()->Type();
 
           for (const std::string& attr_name : node->Op()->AttrNames()) {
-            VLOG(10) << "Optimizer attr : " << attr_name;
             auto attr_type = node->Op()->GetAttrType(attr_name);
             // with adam, attr are float
             if (attr_type == proto::AttrType::FLOAT) {
@@ -57,9 +56,10 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
                   BOOST_GET_CONST(float, node->Op()->GetAttr(attr_name));
               ipu_backend->GetExecutor().SetOptimizerAttr(attr_name,
                                                           attr_value);
+              VLOG(10) << "Optimizer attr : " << attr_name << " " << attr_value;
             } else {
-              VLOG(10) << "Skip " << attr_type;
-            }
+              VLOG(10) << "Skip Optimizer attr : " << attr_name;
+            } 
           }
 
           if (node->Op()->HasInput("LearningRate")) {
