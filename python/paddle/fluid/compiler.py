@@ -639,8 +639,20 @@ def get_ipu_strategy():
 
 
 class IpuStrategy(core.IpuStrategy):
+    if not core.is_compiled_with_ipu():
+        raise ValueError(
+            "Can't get IpuStrategy, since PaddlePaddle is not " \
+            "compiled with IPU"
+        )
+
     def __init__(self):
         super().__init__()
+
+    def load_dict(self, conf):
+        assert isinstance(conf, dict)
+        for k, v in conf.items():
+            if hasattr(self, k):
+                self.__setattr__(k, v)
 
 
 class IpuCustomOpIdentifier(core.IpuCustomOpIdentifier):
@@ -657,7 +669,7 @@ class IpuCustomOpIdentifier(core.IpuCustomOpIdentifier):
                  version: int=1):
         if popart_op is None:
             popart_op = paddle_op
-        return super().__init__(paddle_op, popart_op, domain, version)
+        super().__init__(paddle_op, popart_op, domain, version)
 
     def __repr__(self):
         return self.repr()

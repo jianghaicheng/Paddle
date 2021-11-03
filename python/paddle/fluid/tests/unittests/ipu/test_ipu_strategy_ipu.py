@@ -12,22 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
 import unittest
-import sys
+
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
 
 paddle.enable_static()
-SEED = 2021
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
-class TestConvNet(unittest.TestCase):
+class TestConfigure(unittest.TestCase):
     def test_training(self):
         ipu_strategy = compiler.get_ipu_strategy()
 
@@ -81,6 +76,44 @@ class TestConvNet(unittest.TestCase):
         ipu_strategy.available_mem_proportion = 0.5
         assert ipu_strategy.available_mem_proportion == 0.5, \
             "Set available_mem_proportion Failed"
+
+
+@unittest.skipIf(not paddle.is_compiled_with_ipu(),
+                 "core is not compiled with IPU")
+class TestEnablePattern(unittest.TestCase):
+    def test_enable_patern(self):
+        ipu_strategy = compiler.get_ipu_strategy()
+        pattern = 'LSTMOp'
+        # LSTMOp Pattern is not enabled by default
+        # assert not ipu_strategy.is_pattern_enabled(pattern)
+        ipu_strategy.enable_pattern(pattern)
+        assert ipu_strategy.is_pattern_enabled(pattern) == True
+
+    def test_disable_pattern(self):
+        ipu_strategy = compiler.get_ipu_strategy()
+        pattern = 'LSTMOp'
+        ipu_strategy.enable_pattern(pattern)
+        ipu_strategy.disable_pattern(pattern)
+        assert ipu_strategy.is_pattern_enabled(pattern) == False
+
+
+@unittest.skipIf(not paddle.is_compiled_with_ipu(),
+                 "core is not compiled with IPU")
+class TestIpuStrategyLoadDict(unittest.TestCase):
+    def test_enable_patern(self):
+        ipu_strategy = compiler.get_ipu_strategy()
+        test_conf = {
+            "batch_size": 23,
+            "batches_per_step": 233,
+            "enableGradientAccumulation": True,
+            "enableReplicatedGraphs": True,
+            "enable_fp16": True,
+            "save_init_onnx": True,
+            "save_last_onnx": True
+        }
+        ipu_strategy.load_dict(test_conf)
+        for k, v in test_conf.items():
+            assert v == getattr(ipu_strategy, k)
 
 
 if __name__ == "__main__":
