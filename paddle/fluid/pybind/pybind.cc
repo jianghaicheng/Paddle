@@ -3390,6 +3390,15 @@ All parameter, weight, gradient are variables in Paddle.
           R"DOC(
             Float type. Set the available memory proportion for matmul/conv, bigger value
             means more memory occupy, range [0.0f, 1.0f], 0.0 no effect, default 0.0f.
+          )DOC")
+      .def_property(
+          "loss_scaling",
+          [](const ipu::IpuStrategy &self) { return self.loss_scaling; },
+          [](ipu::IpuStrategy &self, float loss_scaling) {
+            self.loss_scaling = loss_scaling;
+          },
+          R"DOC(
+            Float type. Set the loss scaling for mixed-precision training. Default 1.0f.
           )DOC");
 
   py::class_<framework::ipu::IpuCustomOpIdentifier>(m, "IpuCustomOpIdentifier")

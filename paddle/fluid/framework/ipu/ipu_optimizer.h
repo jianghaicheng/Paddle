@@ -20,6 +20,7 @@ limitations under the License. */
 #include <popart/sgd.hpp>
 #include <popart/tensorinfo.hpp>
 
+#include "paddle/fluid/framework/ipu/common.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -52,6 +53,7 @@ class OptmizerMetaInfo {
   popart::DataType GetDType() const { return dtype_; }
 
   float GetWeightDecay() const;
+  float GetLossScaling() const;
   popart::WeightDecayMode GetWeightDecayMode() const;
 
  private:

@@ -77,6 +77,10 @@ class TestConfigure(unittest.TestCase):
         assert ipu_strategy.available_mem_proportion == 0.5, \
             "Set available_mem_proportion Failed"
 
+        ipu_strategy.loss_scaling = 5.0
+        assert ipu_strategy.loss_scaling == 5.0, \
+            "Set loss_scaling Failed"
+
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")

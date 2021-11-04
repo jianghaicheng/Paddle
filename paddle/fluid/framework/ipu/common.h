@@ -31,6 +31,7 @@ static constexpr const char *sBeta1 = "beta1";
 static constexpr const char *sBeta2 = "beta2";
 static constexpr const char *sBeta1Pow = "Beta1Pow";
 static constexpr const char *sBeta2Pow = "Beta2Pow";
+static constexpr const char *sLossScaling = "LossScaling";
 
 }  // namespace ipu
 }  // namespace framework

@@ -39,6 +39,9 @@ void Executor::Prepare(const std::string &proto,
                                       "IpuBackend::AttachDevice(id) first."));
 
   if (ipu_strategy_ != nullptr && ipu_strategy_->is_training) {
+    VLOG(10) << "Set Loss Scaling for optimizer...";
+    SetOptimizerAttr(sLossScaling, ipu_strategy_->loss_scaling);
+
     VLOG(10) << "Creating TrainingSession from Onnx Model...";
     auto popart_optimizer = GetPopartOptimizer(opt_info);
 

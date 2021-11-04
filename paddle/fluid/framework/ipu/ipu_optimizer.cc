@@ -46,6 +46,13 @@ float OptmizerMetaInfo::GetWeightDecay() const {
   }
 }
 
+float OptmizerMetaInfo::GetLossScaling() const {
+  if (attrs_.count(sLossScaling) != 0) {
+    return attrs_.at(sLossScaling);
+  }
+  return 1.0f;
+}
+
 popart::WeightDecayMode OptmizerMetaInfo::GetWeightDecayMode() const {
   if (type_ == OptimizerType::Adam) {
     if (attrs_.count("scale") != 0 && attrs_.at("scale") > 0.0f) {
@@ -90,7 +97,7 @@ std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
         popart::OptimizerValue(popart::SGD::getUnsetMomentum()),
         popart::OptimizerValue(popart::SGD::getUnsetDampening()),
         popart::OptimizerValue(popart::SGD::getUnsetVelocityScaling()),
-        popart::OptimizerValue(popart::SGD::getUnsetLossScaling()));
+        popart::OptimizerValue(opt_meta_info.GetLossScaling(), false));
     return optimizer;
   } else if (opt_type == OptimizerType::Adam) {
     auto optimizer = std::make_unique<popart::Adam>(
@@ -99,7 +106,7 @@ std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
         popart::OptimizerValue(opt_meta_info.GetAttr("beta1"), false),
         popart::OptimizerValue(opt_meta_info.GetAttr("beta2"), false),
         popart::OptimizerValue(opt_meta_info.GetAttr("epsilon"), false),
-        popart::OptimizerValue(popart::Adam::getUnsetLossScaling()),
+        popart::OptimizerValue(opt_meta_info.GetLossScaling(), false),
         popart::AdamMode::Adam, opt_meta_info.GetWeightDecayMode(),
         popart::DataType::UNDEFINED, popart::DataType::FLOAT,
         popart::DataType::FLOAT);
@@ -111,7 +118,7 @@ std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
         popart::OptimizerValue(opt_meta_info.GetAttr("beta1"), false),
         popart::OptimizerValue(opt_meta_info.GetAttr("beta2"), false),
         popart::OptimizerValue(opt_meta_info.GetAttr("epsilon"), false),
-        popart::OptimizerValue(popart::Adam::getUnsetLossScaling()),
+        popart::OptimizerValue(opt_meta_info.GetLossScaling(), false),
         popart::AdamMode::Lamb, opt_meta_info.GetWeightDecayMode(),
         popart::DataType::UNDEFINED, popart::DataType::FLOAT,
         popart::DataType::FLOAT);

@@ -55,6 +55,7 @@ class TestBase(IPUOpTest):
         self.attrs = {
             "optimizer": 'sgd',
             "weight_decay": 0.0,
+            "loss_scaling": 1.0,
         }
 
     def _test_optimizer(self, run_ipu=True):
@@ -97,6 +98,7 @@ class TestBase(IPUOpTest):
                 fetch_list = [loss.name]
                 ipu_strategy = compiler.get_ipu_strategy()
                 ipu_strategy.is_training = True
+                ipu_strategy.loss_scaling = self.attrs["loss_scaling"]
                 program = compiler.IpuCompiler(
                     main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
                                                                   fetch_list)
@@ -118,12 +120,12 @@ class TestBase(IPUOpTest):
         self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=self.atol))
 
 
-@unittest.skip('unsupported currently')
 class TestSGD(TestBase):
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'sgd',
             "weight_decay": 0.1,
+            "loss_scaling": 2.0,
         }
 
 
@@ -132,6 +134,7 @@ class TestAdamCase1(TestBase):
         self.attrs = {
             "optimizer": 'adam',
             "weight_decay": 0.1,
+            "loss_scaling": 3.0,
         }
 
 
@@ -140,6 +143,7 @@ class TestAdamCase2(TestBase):
         self.attrs = {
             "optimizer": 'adam',
             "weight_decay": 0.0,
+            "loss_scaling": 4.0,
         }
 
 
@@ -149,6 +153,7 @@ class TestLambCase1(TestBase):
         self.attrs = {
             "optimizer": 'lamb',
             "weight_decay": 0.0,
+            "loss_scaling": 5.0,
         }
 
 
@@ -158,6 +163,7 @@ class TestLamb(TestBase):
         self.attrs = {
             "optimizer": 'lamb',
             "weight_decay": 0.1,
+            "loss_scaling": 6.0,
         }
 
 

@@ -74,6 +74,10 @@ struct IpuStrategy {
   // available memory proportion, 0.0f for disable
   float available_memory_proportion = 0.0f;
 
+  // loss scaling, currently we can't get loss scaling from
+  // optimizer_extract_pass, so we have to set it here
+  float loss_scaling = 1.0f;
+
   // popart session option
   popart::SessionOptions popart_options;
   popart::Patterns popart_patterns;
