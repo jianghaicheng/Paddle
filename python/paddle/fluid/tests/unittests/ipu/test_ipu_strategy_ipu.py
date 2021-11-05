@@ -120,5 +120,20 @@ class TestIpuStrategyLoadDict(unittest.TestCase):
             assert v == getattr(ipu_strategy, k)
 
 
+@unittest.skipIf(not paddle.is_compiled_with_ipu(),
+                 "core is not compiled with IPU")
+class TestIpuStrategyEngineOptions(unittest.TestCase):
+    def test_enable_patern(self):
+        ipu_strategy = compiler.get_ipu_strategy()
+        engine_conf = {
+            'debug.allowOutOfMemory': 'true',
+            'autoReport.directory': 'path',
+            'autoReport.all': 'true'
+        }
+        ipu_strategy.engine_options = engine_conf
+        for k, v in engine_conf.items():
+            assert v == ipu_strategy.engine_options[k]
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -3211,14 +3211,55 @@ All parameter, weight, gradient are variables in Paddle.
       .def("enable_pattern", &ipu::IpuStrategy::enablePattern)
       .def("disable_pattern", &ipu::IpuStrategy::disablePattern)
       .def("is_pattern_enabled", &ipu::IpuStrategy::isPatternEnabled)
-      .def_property("num_ipus",
-                    [](const ipu::IpuStrategy &self) { return self.num_ipus; },
-                    [](ipu::IpuStrategy &self, int num_ipus) {
-                      self.num_ipus = num_ipus;
+      .def_readwrite(
+          "num_ipus", &ipu::IpuStrategy::num_ipus,
+          R"DOC(Int type, set the number ipu we need. Default 1.)DOC")
+      .def_readwrite("batches_per_step", &ipu::IpuStrategy::batches_per_step,
+                     R"DOC(Int type, set batches_per_step. Default 1.)DOC")
+      .def_readwrite(
+          "is_training", &ipu::IpuStrategy::is_training,
+          R"DOC(Bool type, True for training, False inference. Default True.)DOC")
+      .def_readwrite(
+          "need_avg_shard", &ipu::IpuStrategy::need_avg_shard,
+          R"DOC( Bool type, True enable avg shard, otherwise disable. Default False.)DOC")
+      .def_readwrite(
+          "batch_size", &ipu::IpuStrategy::batch_size,
+          R"DOC(Int type, used to make batch size fixed. Default 1.)DOC")
+      .def_readwrite(
+          "enable_fp16", &ipu::IpuStrategy::enable_fp16,
+          R"DOC(Bool type, True enable float16 mode, otherwise disable. Default False.)DOC")
+      .def_readwrite(
+          "save_init_onnx", &ipu::IpuStrategy::save_init_onnx,
+          R"DOC(Bool type, True enable save init onnx. Default False.)DOC")
+      .def_readwrite(
+          "save_last_onnx", &ipu::IpuStrategy::save_last_onnx,
+          R"DOC(Bool type, True enable save last onnx. Default False.)DOC")
+      .def_readwrite(
+          "save_per_n_step", &ipu::IpuStrategy::save_per_n_step,
+          R"DOC(Int type, Copy weights D2H per n steps. Default 1.)DOC")
+      .def_readwrite(
+          "available_mem_proportion",
+          &ipu::IpuStrategy::available_memory_proportion,
+          R"DOC(Float type. Set the available memory proportion for matmul/conv,
+          bigger value means more memory occupy, range [0.0f, 1.0f], 0.0 no effect,
+          default 0.0f.)DOC")
+      .def_readwrite(
+          "loss_scaling", &ipu::IpuStrategy::loss_scaling,
+          R"DOC(Float type. Set the loss scaling for mixed-precision training.
+          Default 1.0f.)DOC")
+      .def_property("engine_options",
+                    [](const ipu::IpuStrategy &self) {
+                      return self.popart_options.engineOptions;
                     },
-                    R"DOC(
-            Int type, set the number ipu we need. Default 1.
-          )DOC")
+                    [](ipu::IpuStrategy &self, py::dict dict) {
+                      {
+                        for (auto item : dict) {
+                          auto k = item.first.cast<std::string>();
+                          auto v = item.second.cast<std::string>();
+                          self.popart_options.engineOptions[k] = v;
+                        }
+                      }
+                    })
       .def_property(
           "enableGradientAccumulation",
           [](const ipu::IpuStrategy &self) {
@@ -3256,24 +3297,6 @@ All parameter, weight, gradient are variables in Paddle.
                       self.popart_options.replicatedGraphCount =
                           replicatedGraphCount;
                     })
-      .def_property(
-          "batches_per_step",
-          [](const ipu::IpuStrategy &self) { return self.batches_per_step; },
-          [](ipu::IpuStrategy &self, int batches_per_step) {
-            self.batches_per_step = batches_per_step;
-          },
-          R"DOC(
-            Int type, set batches_per_step. Default 1.
-          )DOC")
-      .def_property(
-          "is_training",
-          [](const ipu::IpuStrategy &self) { return self.is_training; },
-          [](ipu::IpuStrategy &self, bool is_training) {
-            self.is_training = is_training;
-          },
-          R"DOC(
-            Bool type, True for training, False inference. Default True.
-          )DOC")
       .def_property("enable_pipelining",
                     [](const ipu::IpuStrategy &self) {
                       return self.popart_options.enablePipelining;
@@ -3303,56 +3326,6 @@ All parameter, weight, gradient are variables in Paddle.
             "False.
           )DOC")
       .def_property(
-          "need_avg_shard",
-          [](const ipu::IpuStrategy &self) { return self.need_avg_shard; },
-          [](ipu::IpuStrategy &self, bool need_avg_shard) {
-            self.need_avg_shard = need_avg_shard;
-          },
-          R"DOC(
-            Bool type, True enable avg shard, otherwise disable. Default False.
-          )DOC")
-      .def_property(
-          "batch_size",
-          [](const ipu::IpuStrategy &self) { return self.batch_size; },
-          [](ipu::IpuStrategy &self, int batch_size) {
-            self.batch_size = batch_size;
-          },
-          R"DOC(
-            Int type, used to make batch size fixed. Default 1.
-          )DOC")
-      .def_property(
-          "enable_fp16",
-          [](const ipu::IpuStrategy &self) { return self.enable_fp16; },
-          [](ipu::IpuStrategy &self, bool enable_fp16) {
-            self.enable_fp16 = enable_fp16;
-          },
-          R"DOC(
-            Bool type, True enable float16 mode, otherwise disable. Default False.)DOC")
-      .def_property(
-          "save_init_onnx",
-          [](const ipu::IpuStrategy &self) { return self.save_init_onnx; },
-          [](ipu::IpuStrategy &self, bool save_init_onnx) {
-            self.save_init_onnx = save_init_onnx;
-          },
-          R"DOC(
-            Bool type, True enable save init onnx. Default False.)DOC")
-      .def_property(
-          "save_last_onnx",
-          [](const ipu::IpuStrategy &self) { return self.save_last_onnx; },
-          [](ipu::IpuStrategy &self, bool save_last_onnx) {
-            self.save_last_onnx = save_last_onnx;
-          },
-          R"DOC(
-            Bool type, True enable save last onnx. Default False.)DOC")
-      .def_property(
-          "save_per_n_step",
-          [](const ipu::IpuStrategy &self) { return self.save_per_n_step; },
-          [](ipu::IpuStrategy &self, int save_per_n_step) {
-            self.save_per_n_step = save_per_n_step;
-          },
-          R"DOC(
-            Int type, Copy weights D2H per n steps. Default 1.)DOC")
-      .def_property(
           "auto_recomputation",
           [](const ipu::IpuStrategy &self) {
             return self.popart_options.autoRecomputation;
@@ -3362,7 +3335,7 @@ All parameter, weight, gradient are variables in Paddle.
                 static_cast<ipu::RecomputationType>(auto_recomputation);
           },
           R"DOC(
-            Int type:" 
+            Int type:"
             "0: None"
             "1: Standard (Algorithm to pick checkpoints to try and minimise max liveness)"
             "2: NormOnly (Only Norm Ops)"
@@ -3378,27 +3351,6 @@ All parameter, weight, gradient are variables in Paddle.
                     },
                     R"DOC(
             Str type. half for fp16 partial, only work with fp16. Default float.
-          )DOC")
-      .def_property(
-          "available_mem_proportion",
-          [](const ipu::IpuStrategy &self) {
-            return self.available_memory_proportion;
-          },
-          [](ipu::IpuStrategy &self, float available_memory_proportion) {
-            self.available_memory_proportion = available_memory_proportion;
-          },
-          R"DOC(
-            Float type. Set the available memory proportion for matmul/conv, bigger value
-            means more memory occupy, range [0.0f, 1.0f], 0.0 no effect, default 0.0f.
-          )DOC")
-      .def_property(
-          "loss_scaling",
-          [](const ipu::IpuStrategy &self) { return self.loss_scaling; },
-          [](ipu::IpuStrategy &self, float loss_scaling) {
-            self.loss_scaling = loss_scaling;
-          },
-          R"DOC(
-            Float type. Set the loss scaling for mixed-precision training. Default 1.0f.
           )DOC");
 
   py::class_<framework::ipu::IpuCustomOpIdentifier>(m, "IpuCustomOpIdentifier")
