@@ -120,6 +120,7 @@ class TestBase(IPUOpTest):
         self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=self.atol))
 
 
+@unittest.skip('do not support L2 regularization')
 class TestSGD(TestBase):
     def set_attrs(self):
         self.attrs = {
@@ -129,6 +130,7 @@ class TestSGD(TestBase):
         }
 
 
+@unittest.skip('do not support L2 regularization')
 class TestAdamCase1(TestBase):
     def set_attrs(self):
         self.attrs = {

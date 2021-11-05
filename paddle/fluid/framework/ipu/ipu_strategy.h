@@ -41,6 +41,8 @@ struct IpuStrategy {
         popart::ReductionType::Mean;
     popart_options.meanAccumulationAndReplicationReductionStrategy =
         popart::MeanReductionStrategy::Post;
+
+    popart_options.enableFloatingPointChecks = false;
   }
   ~IpuStrategy() {}
 
