@@ -211,6 +211,17 @@ void Compiler::LowerBody(const ir::Graph* graph) {
       VLOG(10) << "[Compiler::LowerBody] output[0]: "
                << GetOpOutputs(op_desc)[0] << " -> " << result[0];
       tensors_.emplace(GetOpOutputs(op_desc)[0], result[0]);  // topk values
+    } else if (op_type == "popart_printtensor") {
+      auto inputs = GetOpInputs(op_desc);
+      auto outputs = GetOpOutputs(op_desc);
+      auto debug_context = BuildDebugContext(op_desc);
+      auto print_gradient =
+          BOOST_GET_CONST(int64_t, op_desc->GetAttr("print_gradient"));
+      auto title = BOOST_GET_CONST(std::string, op_desc->GetAttr("title"));
+      auto output_ids = builder_->aiGraphcoreOpset1().printtensor(
+          inputs, print_gradient, debug_context, title);
+      SetIpuIndexStage(output_ids, op_desc);
+      InsertTensors(outputs, output_ids);
     } else {
       auto itr = name_function_.find(op_type);
       if (itr != name_function_.end()) {

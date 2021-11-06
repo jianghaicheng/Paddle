@@ -30,7 +30,25 @@ Node *custom_op_handler(Graph *graph, Node *node) {
   return new_node;
 }
 
+Node *print_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto print_phase = BOOST_GET_CONST(std::string, op->GetAttr("print_phase"));
+  int64_t print_gradient = 0;
+  if (print_phase != "forward") {
+    print_gradient = 1;
+  }
+  auto title = BOOST_GET_CONST(std::string, op->GetAttr("message"));
+  if (title.empty()) {
+    title = GetInputVarNode("In", node)->Var()->Name();
+  }
+  auto attrs =
+      AttributeMap{{"print_gradient", print_gradient}, {"title", title}};
+  return CreateBaseOp(graph, node, "popart_printtensor", node->inputs,
+                      node->outputs, attrs);
+}
+
 REGISTER_HANDLER(custom_op, custom_op_handler);
+REGISTER_HANDLER(print, print_handler);
 
 }  // namespace
 }  // namespace ipu
