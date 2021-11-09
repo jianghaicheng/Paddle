@@ -5,9 +5,9 @@ on:
     branches:
       - develop-ipu
 
-  push:
-    branches:
-      - develop-ipu
+  # push:
+  #   branches:
+  #     - develop-ipu
 
 jobs:
   build_py_wheel:
