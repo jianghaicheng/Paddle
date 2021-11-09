@@ -1,0 +1,31 @@
+name: ipu_build
+
+on:
+  pull_request:
+    branches:
+      - develop-ipu
+
+  push:
+    branches:
+      - develop-ipu
+
+jobs:
+  build_py_wheel:
+    runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: build
+        run: |
+          gc-docker -- \
+            -v $PWD:/checkout \
+            -v paddle_ccahe:/paddle_ccahe \
+            -e CCACHE_DIR=/paddle_ccahe \
+            -e CCACHE_MAXSIZE=20G \
+            -v paddle_ipuof:/ipuof \
+            -e IPUOF_CONFIG_PATH=/ipuof/ipu.conf \
+            --workdir /checkout \
+            --rm \
+            paddle_ipu_ci:2.3.0 \
+            bash /checkout/paddle/scripts/ipu/github_action/action_build_and_test.sh
