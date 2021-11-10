@@ -5,6 +5,10 @@ on:
     branches:
       - develop-ipu
 
+  pull_request_target:
+    branches:
+      - develop-ipu
+
   # push:
   #   branches:
   #     - develop-ipu
