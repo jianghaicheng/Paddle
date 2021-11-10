@@ -307,6 +307,22 @@ class TestAdamPipelineTrain(TestPipelineTrain):
         }
 
 
+class TestAdamRecomputationTrain(TestPipelineTrain):
+    def set_attr(self):
+        self.attrs = {
+            "batches_per_step": 3,
+            "enable_pipeline": True,
+            "enableGradientAccumulation": True,
+            "accumulationFactor": 3,
+            "enableReplicatedGraphs": False,
+            "replicatedGraphCount": 1,
+            "optimizer": 'adam',
+            "auto_recomputation": 3,
+            "cpu_bs": 3,
+            "ipu_bs": 1
+        }
+
+
 @unittest.skip('skip TestLambTrain')
 class TestLambTrain(TestAdamTrain):
     def set_attr(self):
