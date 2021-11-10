@@ -57,7 +57,9 @@ Node *GetOutputVarNodeByVarName(const std::string &var_name,
                                 const Node *op_node);
 
 const bool is_float_equal(float a, float b, float eps = 1e-8);
-const int GetOutputVarDtype(Node *node);
+const int GetOutputVarDtype(const Node *node,
+                            const std::string &output_name = "Out");
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

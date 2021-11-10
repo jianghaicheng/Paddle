@@ -61,6 +61,7 @@ void IpuBackend::Compile(ir::Graph* graph,
                          const std::vector<std::string>& fetch_list) {
   VLOG(10) << "enter IpuBackend::Compile";
   compiler_->InitInputs(graph, feed_list);
+  compiler_->LowerConstants(graph, scope_);
   compiler_->LowerWeights(graph, scope_);
   compiler_->LowerBody(graph);
   compiler_->InitOutputs(fetch_list);

@@ -21,6 +21,10 @@ if(WITH_XBYAK)
     add_subdirectory(gen)
 endif()
 
+if(WITH_IPU)
+    list(APPEND JIT_KERNEL_DEPS ipu_backend)
+endif()
+
 cc_library(jit_kernel_helper INTERFACE SRCS ${jit_kernel_cc_srcs} DEPS jit_kernel_base ${JIT_KERNEL_DEPS})
 cc_test(jit_kernel_test SRCS test.cc DEPS jit_kernel_helper)
 if(NOT WIN32)

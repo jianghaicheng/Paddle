@@ -91,6 +91,10 @@ if (WITH_PSCORE)
     set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service)
 endif ()
 
+if (WITH_IPU)
+    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_ipu)
+endif ()
+
 # Create shared inference library
 cc_library(paddle_inference_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
     DEPS ${SHARED_INFERENCE_DEPS})

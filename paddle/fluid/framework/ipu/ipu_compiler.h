@@ -34,7 +34,8 @@ class Compiler {
   void LowerBody(const ir::Graph *graph);
   void InitInputs(ir::Graph *graph, const std::vector<std::string> &feed_list);
   void InitOutputs(const std::vector<std::string> &fetch_list);
-  void LowerWeights(const ir::Graph *graph, const Scope *scope_);
+  void LowerConstants(const ir::Graph *graph, const Scope *scope);
+  void LowerWeights(const ir::Graph *graph, const Scope *scope);
 
   void InsertTensors(const std::vector<std::string> &output_names,
                      const std::vector<std::string> &tensor_ids);

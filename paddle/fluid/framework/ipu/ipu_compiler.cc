@@ -125,62 +125,7 @@ void Compiler::LowerBody(const ir::Graph* graph) {
     VLOG(10) << "node->type: " << op_type;
 
     if (op_type == "popart_constant") {
-      auto dims =
-          BOOST_GET_CONST(std::vector<int64_t>, op_desc->GetAttr("dims"));
-      auto dtype_ = BOOST_GET_CONST(int, op_desc->GetAttr("dtype"));
-      auto dtype = OnnxDtype2PopartType(dtype_);
-      popart::TensorInfo tensor_info{dtype, dims};
-      auto value_attr = op_desc->GetAttr("value");
-      auto const_data = std::unique_ptr<popart::ConstVoidData>{};
-
-      auto convert2fp16 = [&](std::vector<float> data) -> void* {
-        int data_num = data.size();
-        uint16_t* fp16_malloc = new uint16_t[data_num];
-        std::vector<uint16_t> fp16_data;
-        std::transform(data.data(), data.data() + data_num,
-                       std::back_inserter(fp16_data),
-                       [&](float elem) { return popart::floatToHalf(elem); });
-        memcpy(reinterpret_cast<void*>(fp16_malloc), fp16_data.data(),
-               data_num * sizeof(uint16_t));
-        return fp16_malloc;
-      };
-      switch (dtype) {
-        case popart::DataType::FLOAT16:
-          const_data.reset(new popart::ConstVoidData(
-              convert2fp16(BOOST_GET_CONST(std::vector<float>, value_attr)),
-              tensor_info));
-          break;
-        case popart::DataType::FLOAT:
-          const_data.reset(
-              new popart::ConstVoidData(DynamicMalloc<float>(BOOST_GET_CONST(
-                                            std::vector<float>, value_attr)),
-                                        tensor_info));
-          break;
-        case popart::DataType::INT32:
-          const_data.reset(new popart::ConstVoidData(
-              DynamicMalloc<int>(BOOST_GET_CONST(std::vector<int>, value_attr)),
-              tensor_info));
-          break;
-        case popart::DataType::DOUBLE:
-          const_data.reset(
-              new popart::ConstVoidData(DynamicMalloc<double>(BOOST_GET_CONST(
-                                            std::vector<double>, value_attr)),
-                                        tensor_info));
-          break;
-        case popart::DataType::INT64:
-          const_data.reset(
-              new popart::ConstVoidData(DynamicMalloc<int64_t>(BOOST_GET_CONST(
-                                            std::vector<int64_t>, value_attr)),
-                                        tensor_info));
-          break;
-        default:
-          PADDLE_THROW(
-              platform::errors::Unimplemented("popart::DataType %d", dtype));
-      }
-
-      popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
-      SetIpuIndexStage(result, op_desc);
-      InsertTensors(GetOpOutputs(op_desc), result);
+      // pass
     } else if (op_type == "popart_custom_op") {
       auto inputs = GetOpInputs(op_desc);
       auto outputs = GetOpOutputs(op_desc);
@@ -260,8 +205,46 @@ void Compiler::InitOutputs(const std::vector<std::string>& fetch_list) {
   }
 }
 
-void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope_) {
-  PADDLE_ENFORCE_NOT_NULL(scope_,
+void Compiler::LowerConstants(const ir::Graph* graph, const Scope* scope) {
+  auto& kid_scope = scope->NewScope();
+  VLOG(10) << "enter Compiler::LowerConstants";
+  for (auto* node : graph->Nodes()) {
+    if (!node->IsOp()) {
+      continue;
+    }
+
+    auto* op_desc = node->Op();
+    auto op_type = op_desc->Type();
+    if (op_type == "popart_constant") {
+      auto shape =
+          BOOST_GET_CONST(std::vector<int64_t>, op_desc->GetAttr("dims"));
+      auto dtype_ = BOOST_GET_CONST(int, op_desc->GetAttr("dtype"));
+      auto dtype = PopartType2VarType(OnnxDtype2PopartType(dtype_));
+      auto tensor_name = op_desc->Output("__outputs__")[0];
+      auto* var = kid_scope.Var(tensor_name);
+      VLOG(10) << "lowering constant: " << tensor_name;
+      auto* tensor = var->GetMutable<framework::LoDTensor>();
+      ConstantOpAttrVisitor visitor(tensor, dtype);
+      auto value = op_desc->GetAttr("value");
+      boost::apply_visitor(visitor, value);
+      auto ddim = make_ddim(shape);
+      tensor->Resize(ddim);
+
+      auto const_data = std::unique_ptr<popart::ConstVoidData>();
+      popart::TensorInfo tensor_info(VarType2PopartType(tensor->type()), shape);
+      const_data.reset(
+          new popart::ConstVoidData(tensor->data<void>(), tensor_info));
+      popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
+      SetIpuIndexStage(result, op_desc);
+      tensors_.emplace(tensor_name, result);
+    }
+  }
+  VLOG(10) << "leave Compiler::LowerConstants";
+}
+
+void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope) {
+  VLOG(10) << "enter Compiler::LowerWeights";
+  PADDLE_ENFORCE_NOT_NULL(scope,
                           platform::errors::PreconditionNotMet(
                               "You should call set_scope before LowerWeights"));
   // at this step, the graph doesn't contains optimizer related states
@@ -269,12 +252,12 @@ void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope_) {
     if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
       if (node->Var()->Persistable() && node->inputs.empty()) {
         auto var_name = node->Var()->Name();
-        // workround: https://github.com/graphcore/Paddle/issues/151
         if (tensors_.count(var_name) != 0) {
           continue;
         }
+        VLOG(10) << "lowering weight: " << var_name;
 
-        auto var = scope_->FindVar(var_name);
+        auto var = scope->FindVar(var_name);
         if (var) {
           auto tensor = var->Get<framework::LoDTensor>();
           auto dtype = VarType2PopartType(tensor.type());
@@ -292,6 +275,7 @@ void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope_) {
       }
     }
   }
+  VLOG(10) << "leave Compiler::LowerWeights";
 }
 
 void Compiler::InsertTensors(const std::vector<std::string>& output_names,

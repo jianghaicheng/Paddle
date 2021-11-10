@@ -179,8 +179,9 @@ Node *GetOutputVarNodeByVarName(const std::string &var_name,
 const bool is_float_equal(float a, float b, float eps) {
   return std::fabs(a - b) <= eps;
 }
-const int GetOutputVarDtype(Node *node) {
-  auto out_node = GetOutputVarNode("Out", node);
+
+const int GetOutputVarDtype(const Node *node, const std::string &output_name) {
+  auto out_node = GetOutputVarNode(output_name, node);
   PADDLE_ENFORCE_NOT_NULL(out_node, platform::errors::Unavailable(
                                         "Node's out node does not exist."));
   auto var = out_node->Var();

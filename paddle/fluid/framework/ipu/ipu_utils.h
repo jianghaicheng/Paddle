@@ -21,11 +21,15 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/float16.h"
 #include "popart/vendored/any.hpp"
 
 namespace paddle {
 namespace framework {
 namespace ipu {
+
+using platform::float16;
 
 // onnx dtype
 // https://github.com/onnx/onnx/blob/master/onnx/onnx-ml.proto3
@@ -162,13 +166,49 @@ struct IpuCustomOpIdentifier {
   popart::OperatorIdentifier popart_op;
 };
 
-template <typename T>
-void* DynamicMalloc(std::vector<T> data) {
-  int64_t data_size = sizeof(T) * data.size();
-  char* converted_ptr = new char[data_size];
-  std::memcpy(converted_ptr, data.data(), data_size);
-  return converted_ptr;
-}
+struct ConstantOpAttrVisitor : public boost::static_visitor<void> {
+  explicit ConstantOpAttrVisitor(framework::LoDTensor* tensor,
+                                 proto::VarType::Type dtype)
+      : tensor_(tensor), dtype_(dtype) {}
+  framework::LoDTensor* tensor_;
+  proto::VarType::Type dtype_;
+
+  void operator()(const std::vector<int>& vec) const {
+    TensorFromVector<int>(vec, tensor_);
+  }
+  void operator()(const std::vector<float>& vec) const {
+    if (dtype_ == proto::VarType::FP16) {
+      std::vector<float16> vec_fp16;
+      std::transform(vec.begin(), vec.end(), vec_fp16.begin(),
+                     [](float f) -> float16 { return float16(f); });
+      TensorFromVector<float16>(vec_fp16, tensor_);
+    } else {
+      TensorFromVector<float>(vec, tensor_);
+    }
+  }
+  void operator()(const std::vector<bool>& vec) const {
+    TensorFromVector<bool>(vec, tensor_);
+  }
+  void operator()(const std::vector<int64_t>& vec) const {
+    TensorFromVector<int64_t>(vec, tensor_);
+  }
+  void operator()(const std::vector<double>& vec) const {
+    TensorFromVector<double>(vec, tensor_);
+  }
+  void RaiseError() const {
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("Constant value must be a vector"));
+  }
+  void operator()(int v) const { RaiseError(); }
+  void operator()(float v) const { RaiseError(); }
+  void operator()(const std::string& v) const { RaiseError(); }
+  void operator()(const std::vector<std::string>& v) const { RaiseError(); }
+  void operator()(bool v) const { RaiseError(); }
+  void operator()(BlockDesc* desc) const { RaiseError(); }
+  void operator()(const std::vector<BlockDesc*>& v) const { RaiseError(); }
+  void operator()(int64_t v) const { RaiseError(); }
+  void operator()(boost::blank) const { RaiseError(); }
+};
 
 }  // namespace ipu
 }  // namespace framework
