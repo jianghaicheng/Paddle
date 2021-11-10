@@ -41,7 +41,8 @@ Node *pow_handler(Graph *graph, Node *node) {
     // Op(pow) -> Op(Constant)->Var(const_out)->Op(Pow)
     auto value_ = BOOST_GET_CONST(float, op->GetAttr("factor"));
     auto attrs =
-        MakeConstAttrMapFromValue<float>(value_, {1}, ONNXDataType::FLOAT);
+        MakeConstAttrMapFromValue<float>(value_, {1}, GetOutputVarDtype(node));
+
     auto new_node_const = CreateConst(graph, node, {}, {}, attrs);
     return CreateBaseOp(graph, node, "popart_pow", {GetInputVarNode("X", node),
                                                     new_node_const->outputs[0]},
@@ -127,7 +128,7 @@ Node *matmul_handler(Graph *graph, Node *node) {
   } else {
     auto o_node =
         CreateBaseOp(graph, node, "popart_matmul", {x_node, y_node}, {});
-    auto attr = MakeConstAttrMapFromValue(alpha, {1}, ONNXDataType::FLOAT);
+    auto attr = MakeConstAttrMapFromValue(alpha, {1}, GetOutputVarDtype(node));
     auto const_node = CreateConst(graph, node, {}, {}, attr);
     return CreateBaseOp(graph, node, "popart_mul",
                         {o_node->outputs[0], const_node->outputs[0]},

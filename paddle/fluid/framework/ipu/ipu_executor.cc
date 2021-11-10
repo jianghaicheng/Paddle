@@ -194,7 +194,7 @@ void Executor::SetWeightsIO() {
       }
 
       auto var = scope_->GetVar(paddle_var_name);
-      auto data_ptr = var->GetMutable<framework::LoDTensor>()->data<float>();
+      auto data_ptr = var->GetMutable<framework::LoDTensor>()->data<void>();
 
       auto tensor_info = session_->getInfo(popart_var_name);
       weights_io_.insert(popart_var_name, {data_ptr, tensor_info});

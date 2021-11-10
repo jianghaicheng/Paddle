@@ -132,31 +132,52 @@ void Compiler::LowerBody(const ir::Graph* graph) {
       popart::TensorInfo tensor_info{dtype, dims};
       auto value_attr = op_desc->GetAttr("value");
       auto const_data = std::unique_ptr<popart::ConstVoidData>{};
+
+      auto convert2fp16 = [&](std::vector<float> data) -> void* {
+        int data_num = data.size();
+        uint16_t* fp16_malloc = new uint16_t[data_num];
+        std::vector<uint16_t> fp16_data;
+        std::transform(data.data(), data.data() + data_num,
+                       std::back_inserter(fp16_data),
+                       [&](float elem) { return popart::floatToHalf(elem); });
+        memcpy(reinterpret_cast<void*>(fp16_malloc), fp16_data.data(),
+               data_num * sizeof(uint16_t));
+        return fp16_malloc;
+      };
       switch (dtype) {
-        case popart::DataType::FLOAT:
+        case popart::DataType::FLOAT16:
           const_data.reset(new popart::ConstVoidData(
-              BOOST_GET_CONST(std::vector<float>, value_attr).data(),
+              convert2fp16(BOOST_GET_CONST(std::vector<float>, value_attr)),
               tensor_info));
+          break;
+        case popart::DataType::FLOAT:
+          const_data.reset(
+              new popart::ConstVoidData(DynamicMalloc<float>(BOOST_GET_CONST(
+                                            std::vector<float>, value_attr)),
+                                        tensor_info));
           break;
         case popart::DataType::INT32:
           const_data.reset(new popart::ConstVoidData(
-              BOOST_GET_CONST(std::vector<int>, value_attr).data(),
+              DynamicMalloc<int>(BOOST_GET_CONST(std::vector<int>, value_attr)),
               tensor_info));
           break;
         case popart::DataType::DOUBLE:
-          const_data.reset(new popart::ConstVoidData(
-              BOOST_GET_CONST(std::vector<double>, value_attr).data(),
-              tensor_info));
+          const_data.reset(
+              new popart::ConstVoidData(DynamicMalloc<double>(BOOST_GET_CONST(
+                                            std::vector<double>, value_attr)),
+                                        tensor_info));
           break;
         case popart::DataType::INT64:
-          const_data.reset(new popart::ConstVoidData(
-              BOOST_GET_CONST(std::vector<int64_t>, value_attr).data(),
-              tensor_info));
+          const_data.reset(
+              new popart::ConstVoidData(DynamicMalloc<int64_t>(BOOST_GET_CONST(
+                                            std::vector<int64_t>, value_attr)),
+                                        tensor_info));
           break;
         default:
           PADDLE_THROW(
               platform::errors::Unimplemented("popart::DataType %d", dtype));
       }
+
       popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
       SetIpuIndexStage(result, op_desc);
       InsertTensors(GetOpOutputs(op_desc), result);

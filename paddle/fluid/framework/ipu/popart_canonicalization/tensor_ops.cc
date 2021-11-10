@@ -181,7 +181,7 @@ Node *lookup_table_op_handler(Graph *graph, Node *node,
     auto concat_const =
         CreateConst(graph, node, {}, {}, {{"value", const_value_},
                                           {"dims", const_shape_},
-                                          {"dtype", ONNXDataType::FLOAT}});
+                                          {"dtype", GetOutputVarDtype(node)}});
     auto axes =
         CreateConst(graph, node, {}, {}, {{"value", std::vector<int64_t>{0}},
                                           {"dims", std::vector<int64_t>{1}},

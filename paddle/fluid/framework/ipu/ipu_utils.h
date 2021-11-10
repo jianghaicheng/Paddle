@@ -162,6 +162,14 @@ struct IpuCustomOpIdentifier {
   popart::OperatorIdentifier popart_op;
 };
 
+template <typename T>
+void* DynamicMalloc(std::vector<T> data) {
+  int64_t data_size = sizeof(T) * data.size();
+  char* converted_ptr = new char[data_size];
+  std::memcpy(converted_ptr, data.data(), data_size);
+  return converted_ptr;
+}
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle
