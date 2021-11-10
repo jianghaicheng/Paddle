@@ -41,7 +41,8 @@ cmake \
     -H/checkout \
     -B/paddle_build
 
-cmake --build /paddle_build --config Release --target paddle_python -j 25
+cmake --build /paddle_build --config Release --target all -j 25
+# cmake --build /paddle_build --config Release --target all -j `grep -c ^processor /proc/cpuinfo`
 
 # ccache
 ccache -s
