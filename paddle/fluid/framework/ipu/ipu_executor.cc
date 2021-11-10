@@ -146,7 +146,7 @@ void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
       step_ % ipu_strategy_->save_per_n_step == 0) {
     session_->weightsToHost();
     WeightsToPaddle();
-    if (ipu_strategy_->save_last_onnx) {
+    if (ipu_strategy_->save_onnx_checkpoint) {
       session_->modelToHost("test_last" + std::to_string(step_) + ".onnx");
     }
   }

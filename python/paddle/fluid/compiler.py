@@ -625,7 +625,7 @@ class IpuCompiler(object):
 def get_ipu_strategy():
     """
     Create and return IpuStrategy instance. We get IpuStrategy from
-    python side, and the set by IpuBackend.set_ipu_strategy.
+    python side, and then set by IpuBackend.set_ipu_strategy.
     """
     if not core.is_compiled_with_ipu():
         raise ValueError(
@@ -649,7 +649,7 @@ class IpuStrategy(core.IpuStrategy):
         super().__init__()
 
     def load_dict(self, conf):
-        assert isinstance(conf, dict)
+        assert isinstance(conf, dict), "Config should dict."
         for k, v in conf.items():
             if hasattr(self, k):
                 self.__setattr__(k, v)

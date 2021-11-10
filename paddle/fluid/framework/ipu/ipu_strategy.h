@@ -53,7 +53,7 @@ struct IpuStrategy {
   int batches_per_step = 1;
 
   // micro batch-size
-  int batch_size = 1;
+  int micro_batch_size = 1;
 
   // training flag, true for training
   bool is_training = true;
@@ -62,7 +62,7 @@ struct IpuStrategy {
   bool save_init_onnx = false;
 
   // save the trained model
-  bool save_last_onnx = false;
+  bool save_onnx_checkpoint = false;
 
   // save paddle model per n steps
   int save_per_n_step = 1;

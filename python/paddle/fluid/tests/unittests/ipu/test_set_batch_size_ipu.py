@@ -87,7 +87,7 @@ class TestBase(IPUOpTest):
                 ipu_strategy = compiler.get_ipu_strategy()
                 ipu_strategy.is_training = self.is_training
                 # set batch size
-                ipu_strategy.batch_size = 2
+                ipu_strategy.micro_batch_size = 2
                 program = compiler.IpuCompiler(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)

@@ -3211,42 +3211,67 @@ All parameter, weight, gradient are variables in Paddle.
       .def("enable_pattern", &ipu::IpuStrategy::enablePattern)
       .def("disable_pattern", &ipu::IpuStrategy::disablePattern)
       .def("is_pattern_enabled", &ipu::IpuStrategy::isPatternEnabled)
-      .def_readwrite(
-          "num_ipus", &ipu::IpuStrategy::num_ipus,
-          R"DOC(Int type, set the number ipu we need. Default 1.)DOC")
+      .def_readwrite("num_ipus", &ipu::IpuStrategy::num_ipus,
+                     R"DOC(The type is INT, set the number of ipu. Default 1.
+                          .. note::
+                              The num_ipus should be power of 2, like 1,2,4...
+                    )DOC")
       .def_readwrite("batches_per_step", &ipu::IpuStrategy::batches_per_step,
-                     R"DOC(Int type, set batches_per_step. Default 1.)DOC")
-      .def_readwrite(
-          "is_training", &ipu::IpuStrategy::is_training,
-          R"DOC(Bool type, True for training, False inference. Default True.)DOC")
+                     R"DOC(The Type is INT, set batches_per_step. Default 1.
+
+                    .. note::
+                        1. with pipelining enable, batches_per_step should bigger
+                          than pipelining depth
+                        2. mini_batch_size = batches_per_step * micro_batch_size
+
+                     )DOC")
+      .def_readwrite("is_training", &ipu::IpuStrategy::is_training,
+                     R"DOC(The type is BOOL, True for training, False inference.
+                Default True.
+          )DOC")
       .def_readwrite(
           "need_avg_shard", &ipu::IpuStrategy::need_avg_shard,
-          R"DOC( Bool type, True enable avg shard, otherwise disable. Default False.)DOC")
+          R"DOC(The type is BOOL, True enable avg shard, otherwise disable.
+                Default False. It's mainy for debugging.
+          )DOC")
       .def_readwrite(
-          "batch_size", &ipu::IpuStrategy::batch_size,
-          R"DOC(Int type, used to make batch size fixed. Default 1.)DOC")
+          "micro_batch_size", &ipu::IpuStrategy::micro_batch_size,
+          R"DOC(The type is INT, used to make batch size fixed. Default 1.)DOC")
       .def_readwrite(
           "enable_fp16", &ipu::IpuStrategy::enable_fp16,
-          R"DOC(Bool type, True enable float16 mode, otherwise disable. Default False.)DOC")
+          R"DOC(The type is INT, True enable float16 mode, otherwise disable.
+                Default False.
+          .. note::
+              1. Set True will convert the whole model to fp16 and run with pure
+                 fp16.
+          )DOC")
       .def_readwrite(
           "save_init_onnx", &ipu::IpuStrategy::save_init_onnx,
-          R"DOC(Bool type, True enable save init onnx. Default False.)DOC")
-      .def_readwrite(
-          "save_last_onnx", &ipu::IpuStrategy::save_last_onnx,
-          R"DOC(Bool type, True enable save last onnx. Default False.)DOC")
+          R"DOC(The type is BOOL, True enable save init onnx. Default False.
+          .. note::
+              The init_onnx is the not-trained model, it's mainly for debugging.
+          )DOC")
+      .def_readwrite("save_onnx_checkpoint",
+                     &ipu::IpuStrategy::save_onnx_checkpoint,
+                     R"DOC(The type is BOOL, True enable save onnx checkpoint.
+                Default False.
+          )DOC")
       .def_readwrite(
           "save_per_n_step", &ipu::IpuStrategy::save_per_n_step,
-          R"DOC(Int type, Copy weights D2H per n steps. Default 1.)DOC")
+          R"DOC(The type is INT, Copy weights to host per n steps. Default 1.
+          )DOC")
       .def_readwrite(
           "available_mem_proportion",
           &ipu::IpuStrategy::available_memory_proportion,
-          R"DOC(Float type. Set the available memory proportion for matmul/conv,
-          bigger value means more memory occupy, range [0.0f, 1.0f], 0.0 no effect,
-          default 0.0f.)DOC")
+          R"DOC(The type is FLOAT. Set the available memory proportion for
+                matmul/conv, bigger value means more memory occupy,
+                range [0.0f, 1.0f]. 0.0 no effect, default 0.0f.
+          )DOC")
       .def_readwrite(
           "loss_scaling", &ipu::IpuStrategy::loss_scaling,
-          R"DOC(Float type. Set the loss scaling for mixed-precision training.
-          Default 1.0f.)DOC")
+          R"DOC(The type is FLOAT. Set the loss scaling for mixed-precision
+                training. Default 1.0f.
+          )DOC")
       .def_property("engine_options",
                     [](const ipu::IpuStrategy &self) {
                       return self.popart_options.engineOptions;
@@ -3268,7 +3293,10 @@ All parameter, weight, gradient are variables in Paddle.
           [](ipu::IpuStrategy &self, bool enableGradientAccumulation) {
             self.popart_options.enableGradientAccumulation =
                 enableGradientAccumulation;
-          })
+          },
+          R"DOC(The type is BOOL. True for enable gradient accumulation.
+                Default False.
+          )DOC")
       .def_property("accumulationFactor",
                     [](const ipu::IpuStrategy &self) {
                       return self.popart_options.accumulationFactor;
@@ -3288,7 +3316,10 @@ All parameter, weight, gradient are variables in Paddle.
                     [](ipu::IpuStrategy &self, bool enableReplicatedGraphs) {
                       self.popart_options.enableReplicatedGraphs =
                           enableReplicatedGraphs;
-                    })
+                    },
+                    R"DOC(The type is BOOL. True for enable model replica,
+                          Default False.
+                    )DOC")
       .def_property("replicatedGraphCount",
                     [](const ipu::IpuStrategy &self) {
                       return self.popart_options.replicatedGraphCount;
@@ -3296,7 +3327,9 @@ All parameter, weight, gradient are variables in Paddle.
                     [](ipu::IpuStrategy &self, int replicatedGraphCount) {
                       self.popart_options.replicatedGraphCount =
                           replicatedGraphCount;
-                    })
+                    },
+                    R"DOC(The type is INT. Number of model replica. Default 1.
+                    )DOC")
       .def_property("enable_pipelining",
                     [](const ipu::IpuStrategy &self) {
                       return self.popart_options.enablePipelining;
@@ -3304,9 +3337,9 @@ All parameter, weight, gradient are variables in Paddle.
                     [](ipu::IpuStrategy &self, bool enable_pipelining) {
                       self.popart_options.enablePipelining = enable_pipelining;
                     },
-                    R"DOC(
-            Bool type, True enable pipeline, otherwise disable. Default False.
-          )DOC")
+                    R"DOC(The type is BOOL, True for enable pipelining.
+                          Default False.
+                    )DOC")
       .def_property("enable_manual_shard",
                     [](const ipu::IpuStrategy &self) {
                       return self.popart_options.virtualGraphMode ==
@@ -3321,10 +3354,9 @@ All parameter, weight, gradient are variables in Paddle.
                             ipu::VirtualGraphMode::Off;
                       }
                     },
-                    R"DOC(
-            Bool type, True enable model sharding, otherwise disable. Default "
-            "False.
-          )DOC")
+                    R"DOC(The type is BOOL, True enable manual sharding.
+                          Default False.
+                    )DOC")
       .def_property(
           "auto_recomputation",
           [](const ipu::IpuStrategy &self) {
@@ -3341,7 +3373,7 @@ All parameter, weight, gradient are variables in Paddle.
             "2: NormOnly (Only Norm Ops)"
             "3: Pipeline (Recompute all forward pipeline stages)"
             "4: RecomputeAll (Recompute all ops)
-        .)DOC")
+          )DOC")
       .def_property("enable_half_partial",
                     [](const ipu::IpuStrategy &self) {
                       return self.popart_options.partialsTypeMatMuls == "half";
@@ -3349,9 +3381,9 @@ All parameter, weight, gradient are variables in Paddle.
                     [](ipu::IpuStrategy &self, bool enable_half_partial) {
                       self.popart_options.partialsTypeMatMuls = "half";
                     },
-                    R"DOC(
-            Str type. half for fp16 partial, only work with fp16. Default float.
-          )DOC");
+                    R"DOC(The type is String. "half" for fp16 partial, only work
+                          with fp16. Default "float". half partial fp16.16.
+                    )DOC");
 
   py::class_<framework::ipu::IpuCustomOpIdentifier>(m, "IpuCustomOpIdentifier")
       .def(py::init<const std::string &, const std::string &,

@@ -40,8 +40,8 @@ class TestConfigure(unittest.TestCase):
         assert ipu_strategy.batches_per_step == 5, \
             "Set batches_per_step Failed"
 
-        ipu_strategy.batch_size = 4
-        assert ipu_strategy.batch_size == 4, "Set batch_size Failed"
+        ipu_strategy.micro_batch_size = 4
+        assert ipu_strategy.micro_batch_size == 4, "Set micro_batch_size Failed"
 
         ipu_strategy.is_training = False
         assert ipu_strategy.is_training == False, "Set is_training Failed"
@@ -49,8 +49,8 @@ class TestConfigure(unittest.TestCase):
         ipu_strategy.save_init_onnx = True
         assert ipu_strategy.save_init_onnx == True, "Set save_init_onnx Failed"
 
-        ipu_strategy.save_last_onnx = True
-        assert ipu_strategy.save_last_onnx == True, "Set save_last_onnx Failed"
+        ipu_strategy.save_onnx_checkpoint = True
+        assert ipu_strategy.save_onnx_checkpoint == True, "Set save_onnx_checkpoint Failed"
 
         ipu_strategy.save_per_n_step = 10
         assert ipu_strategy.save_per_n_step == 10, "Set save_per_n_step Failed"
@@ -107,13 +107,13 @@ class TestIpuStrategyLoadDict(unittest.TestCase):
     def test_enable_patern(self):
         ipu_strategy = compiler.get_ipu_strategy()
         test_conf = {
-            "batch_size": 23,
+            "micro_batch_size": 23,
             "batches_per_step": 233,
             "enableGradientAccumulation": True,
             "enableReplicatedGraphs": True,
             "enable_fp16": True,
             "save_init_onnx": True,
-            "save_last_onnx": True
+            "save_onnx_checkpoint": True
         }
         ipu_strategy.load_dict(test_conf)
         for k, v in test_conf.items():

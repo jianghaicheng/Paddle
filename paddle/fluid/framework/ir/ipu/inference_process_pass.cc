@@ -60,7 +60,8 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
                                           "greater than the number of IPUs"));
     ipu_strategy_instance_->batches_per_step = batches_per_step;
   }
-  ipu_strategy_instance_->batch_size = graph->Get<int>("batch_size");
+  ipu_strategy_instance_->micro_batch_size =
+      graph->Get<int>("micro_batch_size");
   ipu_strategy_instance_->need_avg_shard = graph->Get<bool>("need_avg_shard");
 
   ipu_backend->SetIpuStrategy(*(ipu_strategy_instance_.get()));
