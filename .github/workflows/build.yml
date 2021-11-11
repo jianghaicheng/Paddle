@@ -1,13 +1,13 @@
 name: ipu_build
 
 on:
-  # pull_request:
-  #   branches:
-  #     - develop-ipu
-
-  pull_request_target:
+  pull_request:
     branches:
       - develop-ipu
+
+  # pull_request_target:
+  #   branches:
+  #     - develop-ipu
 
   # push:
   #   branches:
