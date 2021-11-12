@@ -22,6 +22,7 @@ import paddle.optimizer
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
                                                           np_dtype_to_fluid_str)
+import paddle.fluid.contrib.mixed_precision.fp16_utils as fp16_utils
 
 paddle.enable_static()
 
@@ -44,32 +45,42 @@ class TestMean(IPUOpTest):
             np_dtype_to_fluid_str(x.dtype) for x in self.feed.values()
         ]
 
-    def _test_base(self, run_ipu=True):
+    def _test_base(self, run_mode=0):
         scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         SEED = self.SEED
         main_prog.random_seed = SEED
         startup_prog.random_seed = SEED
+        dtype = 'float32' if run_mode != self.TEST_IPU_FP16 else 'float16'
+
+        self.feed_fp16 = {"in_0": self.feed["in_0"].astype(np.float16)}
+        feed = self.feed_fp16 if run_mode == self.TEST_IPU_FP16 else self.feed
 
         with fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                x = paddle.static.data(
-                    name=self.feed_list[0],
-                    shape=self.feed_shape[0],
-                    dtype='float32')
-                out = self.op(x, **self.attrs)
+                with paddle.static.amp.fp16_guard():
+                    x = paddle.static.data(
+                        name=self.feed_list[0],
+                        shape=self.feed_shape[0],
+                        dtype=dtype)
+                    out = self.op(x, **self.attrs)
 
                 fetch_list = [out.name]
 
-            if run_ipu:
+            if run_mode != self.TEST_CPU_FP32:
                 place = paddle.IPUPlace()
             else:
                 place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
+            if run_mode == self.TEST_IPU_FP16:
+                fp16_utils.rewrite_program_v2(
+                    startup_prog=startup_prog,
+                    main_prog=main_prog,
+                    amp_lists=self.amp_list)
             exe.run(startup_prog)
 
-            if run_ipu:
+            if run_mode != self.TEST_CPU_FP32:
                 feed_list = self.feed_list
                 ipu_strategy = compiler.get_ipu_strategy()
                 ipu_strategy.is_training = self.is_training
@@ -79,16 +90,22 @@ class TestMean(IPUOpTest):
             else:
                 program = main_prog
 
-            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
+            result = exe.run(program, feed=feed, fetch_list=fetch_list)
             return result[0]
 
     def run_test_base(self):
-        res0 = self._test_base(True)
-        res1 = self._test_base(False)
+        res0 = self._test_base(self.TEST_CPU_FP32)
+        res1 = self._test_base(self.TEST_IPU_FP32)
+        res2 = self._test_base(self.TEST_IPU_FP16)
 
         self.assertTrue(
             np.allclose(
                 res0.flatten(), res1.flatten(), atol=self.atol))
+        self.assertTrue(
+            np.allclose(
+                res1.flatten(), res2.flatten(), atol=self.atol_fp16))
+
+        self.assertTrue(res0.shape == res1.shape)
 
     def set_feed0(self):
         self.feed = {}

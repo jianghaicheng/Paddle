@@ -22,6 +22,7 @@ import paddle.optimizer
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
                                                           np_dtype_to_fluid_str)
+import paddle.fluid.contrib.mixed_precision.fp16_utils as fp16_utils
 
 paddle.enable_static()
 
@@ -38,18 +39,19 @@ class TestBase(IPUOpTest):
 
     def set_atol(self):
         self.atol = 1e-5
+        self.atol_fp16 = 1e-3
+        self.rtol_fp16 = 1e-3
 
     def set_feed(self):
-        self.feed = {
-            "x": np.random.uniform(size=[1, 8, 10, 10]).astype('float32'),
-        }
+        self.feed_shape = []
+        self.feed_shape.append([1, 8, 10, 10])
+        data = np.random.uniform(size=self.feed_shape[0])
+        self.feed_fp32 = {'in_0': data.astype(np.float32)}
+        self.feed_fp16 = {'in_0': data.astype(np.float16)}
 
     def set_feed_attr(self):
-        self.feed_shape = [x.shape for x in self.feed.values()]
-        self.feed_list = list(self.feed.keys())
-        self.feed_dtype = [
-            np_dtype_to_fluid_str(x.dtype) for x in self.feed.values()
-        ]
+        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
+        self.feed_list = list(self.feed_fp32.keys())
 
     def set_attrs(self):
         self.attrs = {
@@ -58,51 +60,62 @@ class TestBase(IPUOpTest):
             "data_layout": 'NCHW',
         }
 
-    def _test_base(self, run_ipu=True):
+    def _test_base(self, run_mode=0):
         scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         SEED = self.SEED
         main_prog.random_seed = SEED
         startup_prog.random_seed = SEED
+        dtype = 'float16' if run_mode == self.TEST_IPU_FP16 and not self.is_training else 'float32'
+        feed = self.feed_fp16 if run_mode == self.TEST_IPU_FP16 and not self.is_training else self.feed_fp32
 
         with fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                x = paddle.static.data(
-                    name=self.feed_list[0],
-                    shape=self.feed_shape[0],
-                    dtype=self.feed_dtype[0])
+                with paddle.static.amp.fp16_guard():
+                    x = paddle.static.data(
+                        name=self.feed_list[0],
+                        shape=self.feed_shape[0],
+                        dtype=dtype)
 
-                if self.is_training:
-                    ch = self.feed_shape[0][1]
-                    conv1 = paddle.static.nn.conv2d(
-                        x, num_filters=ch, filter_size=3, bias_attr=False)
-                    scale = paddle.ParamAttr(trainable=True)
-                    bias = paddle.ParamAttr(trainable=True)
-                    out = paddle.fluid.layers.nn.group_norm(
-                        conv1, param_attr=scale, bias_attr=bias, **self.attrs)
-                else:
-                    scale = True
-                    bias = True
-                    out = paddle.fluid.layers.nn.group_norm(
-                        x, param_attr=scale, bias_attr=bias, **self.attrs)
+                    if self.is_training:
+                        ch = self.feed_shape[0][1]
+                        conv1 = paddle.static.nn.conv2d(
+                            x, num_filters=ch, filter_size=3, bias_attr=False)
+                        scale = paddle.ParamAttr(trainable=True)
+                        bias = paddle.ParamAttr(trainable=True)
+                        out = paddle.fluid.layers.nn.group_norm(
+                            conv1,
+                            param_attr=scale,
+                            bias_attr=bias,
+                            **self.attrs)
+                    else:
+                        scale = True
+                        bias = True
+                        out = paddle.fluid.layers.nn.group_norm(
+                            x, param_attr=scale, bias_attr=bias, **self.attrs)
 
-                if self.is_training:
-                    loss = paddle.mean(out)
-                    adam = paddle.optimizer.Adam(learning_rate=1e-2)
-                    adam.minimize(loss)
-                    fetch_list = [loss.name]
-                else:
-                    fetch_list = [out.name]
+                    if self.is_training:
+                        loss = paddle.mean(out)
+                        adam = paddle.optimizer.Adam(learning_rate=1e-2)
+                        adam.minimize(loss)
+                        fetch_list = [loss.name]
+                    else:
+                        fetch_list = [out.name]
 
-            if run_ipu:
+            if run_mode != self.TEST_CPU_FP32:
                 place = paddle.IPUPlace()
             else:
                 place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
+            if run_mode == self.TEST_IPU_FP16 and not self.is_training:
+                fp16_utils.rewrite_program_v2(
+                    startup_prog=startup_prog,
+                    main_prog=main_prog,
+                    amp_lists=self.amp_list)
             exe.run(startup_prog)
 
-            if run_ipu:
+            if run_mode != self.TEST_CPU_FP32:
                 feed_list = self.feed_list
                 ipu_strategy = compiler.get_ipu_strategy()
                 ipu_strategy.is_training = self.is_training
@@ -116,23 +129,23 @@ class TestBase(IPUOpTest):
                 result = []
                 for _ in range(self.epoch):
                     loss_res = exe.run(program,
-                                       feed=self.feed,
+                                       feed=feed,
                                        fetch_list=fetch_list)
                     result.append(loss_res[0])
                 return np.array(result)
             else:
-                result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
+                result = exe.run(program, feed=feed, fetch_list=fetch_list)
                 return result[0]
 
     def test_base(self):
-        res0 = self._test_base(False)
-        res1 = self._test_base(True)
+        res0 = self._test_base(self.TEST_CPU_FP32)
+        res1 = self._test_base(self.TEST_IPU_FP32)
+        res2 = self._test_base(self.TEST_IPU_FP16)
 
         self.assertTrue(
             np.allclose(
                 res0.flatten(), res1.flatten(), atol=self.atol))
-
-        self.assertTrue(res0.shape == res1.shape)
+        self.assertTrue(np.allclose(res1.flatten(), res2.flatten(), atol=1e-2))
 
 
 class TestCase1(TestBase):
@@ -147,6 +160,8 @@ class TestCase1(TestBase):
 class TestTrainCase1(TestBase):
     def set_atol(self):
         self.atol = 1e-2
+        self.atol_fp16 = 1e-3
+        self.rtol_fp16 = 1e-3
 
     def set_training(self):
         self.is_training = True
@@ -156,6 +171,8 @@ class TestTrainCase1(TestBase):
 class TestTrainCase2(TestBase):
     def set_atol(self):
         self.atol = 1e-2
+        self.atol_fp16 = 1e-3
+        self.rtol_fp16 = 1e-3
 
     def set_attrs(self):
         self.attrs = {

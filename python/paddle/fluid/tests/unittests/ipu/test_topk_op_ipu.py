@@ -21,6 +21,7 @@ import paddle.fluid.compiler as compiler
 import paddle.optimizer
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+import paddle.fluid.contrib.mixed_precision.fp16_utils as fp16_utils
 
 paddle.enable_static()
 
@@ -67,7 +68,7 @@ class TestTopKOp(IPUOpTest):
         if not self.use_K_as_const_variable:
             self.attrs["k"] = self.k
 
-    def _test_base(self, run_ipu=True, op=None, data_feed=None):
+    def _test_base(self, run_mode=0, op=None, data_feed=None):
         assert (op is not None)
         assert (data_feed is not None)
         scope = fluid.core.Scope()
@@ -76,31 +77,40 @@ class TestTopKOp(IPUOpTest):
         SEED = self.SEED
         main_prog.random_seed = SEED
         startup_prog.random_seed = SEED
+        dtype = 'float32' if run_mode != self.TEST_IPU_FP16 else 'float16'
+        self.feed_fp16 = {"in_0": self.feed["in_0"].astype(np.float16)}
+        feed = self.feed_fp16 if run_mode == self.TEST_IPU_FP16 else self.feed
 
         with fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                x = paddle.static.data(
-                    name=self.feed_list[0],
-                    shape=self.feed_shape[0],
-                    dtype='float32')
-                if not self.use_K_as_const_variable:
-                    topk_values, topk_indices = op(x, **self.attrs)
-                else:
-                    # !important, popart cannot accept non const tensor
-                    # K_t = paddle.static.data(name="in_1", shape=[1], dtype='int32')
-                    K_t = fluid.layers.fill_constant(
-                        shape=[1], dtype='int32', value=self.k, name="in_2")
-                    topk_values, topk_indices = op(x, K_t, **self.attrs)
-                fetch_list = [topk_values.name, topk_indices.name]
+                with paddle.static.amp.fp16_guard():
+                    x = paddle.static.data(
+                        name=self.feed_list[0],
+                        shape=self.feed_shape[0],
+                        dtype=dtype)
+                    if not self.use_K_as_const_variable:
+                        topk_values, topk_indices = op(x, **self.attrs)
+                    else:
+                        # !important, popart cannot accept non const tensor
+                        # K_t = paddle.static.data(name="in_1", shape=[1], dtype='int32')
+                        K_t = fluid.layers.fill_constant(
+                            shape=[1], dtype='int32', value=self.k, name="in_2")
+                        topk_values, topk_indices = op(x, K_t, **self.attrs)
+                    fetch_list = [topk_values.name, topk_indices.name]
 
-            if run_ipu:
+            if run_mode != self.TEST_CPU_FP32:
                 place = paddle.IPUPlace()
             else:
                 place = paddle.CPUPlace()
+            if run_mode == self.TEST_IPU_FP16:
+                fp16_utils.rewrite_program_v2(
+                    startup_prog=startup_prog,
+                    main_prog=main_prog,
+                    amp_lists=self.amp_list)
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
 
-            if run_ipu:
+            if run_mode != self.TEST_CPU_FP32:
                 feed_list = self.feed_list
                 ipu_strategy = compiler.get_ipu_strategy()
                 ipu_strategy.is_training = self.is_training
@@ -110,17 +120,34 @@ class TestTopKOp(IPUOpTest):
             else:
                 program = main_prog
 
-            result = exe.run(program, feed=data_feed, fetch_list=fetch_list)
+            print("Running inference ...")
+            result = exe.run(program, feed=feed, fetch_list=fetch_list)
+            print("Complete running infrence.")
             return result
 
     def test_base(self):
         for op in self.ops:
-            res0_topk_values, res0_topk_indices = self._test_base(
-                True, op=op, data_feed=self.feed)
             res1_topk_values, res1_topk_indices = self._test_base(
-                False, op=paddle.fluid.layers.topk, data_feed=self.feed)
+                self.TEST_CPU_FP32,
+                op=paddle.fluid.layers.topk,
+                data_feed=self.feed)
+            res0_topk_values, res0_topk_indices = self._test_base(
+                self.TEST_IPU_FP32, op=op, data_feed=self.feed)
+            res2_topk_values, res2_topk_indices = self._test_base(
+                self.TEST_IPU_FP16,
+                op=paddle.fluid.layers.topk,
+                data_feed=self.feed)
+
+            print("[TestTopKop] IPU fp32 res0 values:\n%s\n" % res0_topk_values)
+            print("[TestTopKop] CPU res1 values:\n%s\n" % res1_topk_values)
+            print("[TestTopKop] IPU fp16 res2 values:\n%s\n" % res2_topk_values)
 
             view_type = np.uint32
+            print("[TestTopKop] IPU res0 fp32 indices:\n%s\n" %
+                  res0_topk_indices.astype(view_type))
+            print("[TestTopKop] CPU res1 indices:\n%s\n" % res1_topk_indices)
+            print("[TestTopKop] CPU res1 fp16 indices:\n%s\n" %
+                  res2_topk_indices)
 
             self.assertTrue(
                 np.allclose(
@@ -132,6 +159,11 @@ class TestTopKOp(IPUOpTest):
                 np.allclose(
                     res0_topk_indices.astype(view_type).flatten(),
                     res1_topk_indices.flatten(),
+                    atol=self.atol))
+            self.assertTrue(
+                np.allclose(
+                    res0_topk_indices.astype(view_type).flatten(),
+                    res2_topk_indices.flatten(),
                     atol=self.atol))
 
 

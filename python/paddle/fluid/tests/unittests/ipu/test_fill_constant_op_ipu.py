@@ -22,6 +22,7 @@ import paddle.optimizer
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
                                                           np_dtype_to_fluid_str)
+import paddle.fluid.contrib.mixed_precision.fp16_utils as fp16_utils
 
 paddle.enable_static()
 
@@ -54,7 +55,7 @@ class TestBase(IPUOpTest):
             'value': 0.3,
         }
 
-    def _test_base(self, run_ipu=True):
+    def _test_base(self, run_mode=0):
         scope = fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -64,19 +65,24 @@ class TestBase(IPUOpTest):
 
         with fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                x = paddle.fluid.layers.fill_constant(**self.attrs)
-                out = paddle.fluid.layers.elementwise_add(x, x)
-
+                with paddle.static.amp.fp16_guard():
+                    x = paddle.fluid.layers.fill_constant(**self.attrs)
+                    out = paddle.fluid.layers.elementwise_add(x, x)
                 fetch_list = [out.name]
 
-            if run_ipu:
+            if run_mode != self.TEST_CPU_FP32:
                 place = paddle.IPUPlace()
             else:
                 place = paddle.CPUPlace()
+            if run_mode == self.TEST_IPU_FP16:
+                fp16_utils.rewrite_program_v2(
+                    startup_prog=startup_prog,
+                    main_prog=main_prog,
+                    amp_lists=self.amp_list)
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
 
-            if run_ipu:
+            if run_mode != self.TEST_CPU_FP32:
                 feed_list = self.feed_list
                 ipu_strategy = compiler.get_ipu_strategy()
                 ipu_strategy.is_training = self.is_training
@@ -90,14 +96,16 @@ class TestBase(IPUOpTest):
             return result[0]
 
     def test_base(self):
-        res0 = self._test_base(False)
-        res1 = self._test_base(True)
+        res0 = self._test_base(self.TEST_CPU_FP32)
+        res1 = self._test_base(self.TEST_IPU_FP32)
+        res2 = self._test_base(self.TEST_IPU_FP16)
 
         self.assertTrue(
             np.allclose(
                 res0.flatten(), res1.flatten(), atol=self.atol))
-
-        self.assertTrue(res0.shape == res1.shape)
+        self.assertTrue(
+            np.allclose(
+                res1.flatten(), res2.flatten(), atol=self.atol_fp16))
 
 
 class TestCase1(TestBase):

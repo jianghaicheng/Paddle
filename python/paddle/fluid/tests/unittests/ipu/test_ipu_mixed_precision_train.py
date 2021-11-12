@@ -129,7 +129,6 @@ class TestBase(IPUOpTest):
         print('result_cpu:{} result_ipu:{} mae:{} '.format(
             np.asarray(result_cpu).flatten(),
             np.asarray(result_ipu).flatten(), mae))
-        # self.assertTrue(mae < 0.01)
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ import numpy as np
 from paddle.fluid.tests.unittests.op_test import _set_use_system_allocator
 from typing import Optional
 import paddle.fluid.compiler as compiler
-
+import paddle.static.amp as amp
 SEED = 2021
 
 ipu_compiler_ref: Optional[compiler.IpuCompiler] = None
@@ -41,6 +41,10 @@ def np_dtype_to_fluid_str(dtype: np.dtype) -> str:
 
 
 class IPUOpTest(unittest.TestCase):
+    TEST_CPU_FP32 = 0
+    TEST_IPU_FP32 = 1
+    TEST_IPU_FP16 = 2
+
     @classmethod
     def setUpClass(cls):
         cls._np_rand_state = np.random.get_state()
@@ -51,6 +55,8 @@ class IPUOpTest(unittest.TestCase):
         random.seed(cls.SEED)
 
         cls._use_system_allocator = _set_use_system_allocator(True)
+        cls.amp_list = amp.CustomOpLists(
+            custom_black_list=[], custom_white_list=[])
 
     @classmethod
     def tearDownClass(cls):
@@ -65,6 +71,8 @@ class IPUOpTest(unittest.TestCase):
 
     def set_atol(self):
         self.atol = 1e-10
+        self.atol_fp16 = 1e-3
+        self.rtol_fp16 = 1e-3
 
     def set_training(self):
         self.is_training = False

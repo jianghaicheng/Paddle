@@ -179,7 +179,7 @@ struct ConstantOpAttrVisitor : public boost::static_visitor<void> {
   void operator()(const std::vector<float>& vec) const {
     if (dtype_ == proto::VarType::FP16) {
       std::vector<float16> vec_fp16;
-      std::transform(vec.begin(), vec.end(), vec_fp16.begin(),
+      std::transform(vec.begin(), vec.end(), std::back_inserter(vec_fp16),
                      [](float f) -> float16 { return float16(f); });
       TensorFromVector<float16>(vec_fp16, tensor_);
     } else {
