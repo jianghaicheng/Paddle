@@ -28,7 +28,14 @@ Node *equal_handler(Graph *graph, Node *node) {
   return new_node;
 }
 
+Node *logical_not_handler(Graph *graph, Node *node) {
+  return CreateBaseOp(graph, node, "popart_logical_not",
+                      {GetInputVarNode("X", node)},
+                      {GetOutputVarNode("Out", node)}, {});
+}
+
 REGISTER_HANDLER(equal, equal_handler);
+REGISTER_HANDLER(logical_not, logical_not_handler);
 
 }  // namespace
 }  // namespace ipu
