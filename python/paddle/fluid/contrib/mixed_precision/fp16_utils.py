@@ -694,8 +694,8 @@ def _insert_cast_op_v2(startup_block, main_block, op, idx, src_dtype,
     Insert cast op and rename args of input and output.
 
     Args:
-        startup_block (Program): The startup block.
-        main_block (Program): The main block.
+        startup_block (Block): The startup block.
+        main_block (Block): The main block.
         op (Operator): The operator to insert cast op.
         idx (int): The index of current operator.
         src_dtype (VarType): The input variable dtype of cast op.
@@ -705,70 +705,67 @@ def _insert_cast_op_v2(startup_block, main_block, op, idx, src_dtype,
         num_cast_op (int): The number of cast ops in main_block that have been inserted.
     """
     num_cast_ops = 0
-    all_op_outputs ={}
+    all_op_outputs = {}
     for in_name in op.input_names:
         for in_var_name in op.input(in_name):
             in_var = main_block._find_var_recursive(in_var_name)
             if in_var.type not in _valid_types or in_var.dtype == dest_dtype:
                 continue
+
             if in_var.dtype == src_dtype:
-                # not input tensor and not do not have producer
-                if in_name not in {'Input', 'X', 'Y'} and not have_producer(
-                        main_block.ops, in_var_name, all_op_outputs):
-                    in_var.desc.set_dtype(dest_dtype)
-                    # change startup_prog
-                    insert_cast_in_startup(startup_block, in_var_name,
-                                           dest_dtype)
-                    # for op like lookup_table
-                    for out_name in op.output_names:
-                        for out_var_name in op.output(out_name):
-                            output_var = main_block.var(out_var_name)
-                            if output_var.type not in _valid_types:
-                                continue
-                            output_var.desc.set_dtype(dest_dtype)
-                            if op.has_attr('out_dtype'):
-                                op._set_attr('out_dtype', dest_dtype)
-                    continue
-                cast_name = in_var.name + '.cast_' + _dtype_to_str(dest_dtype)
-                out_var = main_block.vars.get(cast_name)
-                if out_var is None or out_var.dtype != dest_dtype:
-                    out_var = main_block.create_var(
-                        name=cast_name,
-                        dtype=dest_dtype,
-                        persistable=False,
-                        stop_gradient=in_var.stop_gradient)
+                # inputs or parameters
+                if not have_producer(main_block.ops, in_var_name,
+                                     all_op_outputs):
+                    if not in_var.persistable:  # inputs
+                        in_var.desc.set_dtype(dest_dtype)
+                    else:  # parameters
+                        insert_cast_in_startup(startup_block, in_var_name,
+                                               dest_dtype)
+                        in_var.desc.set_dtype(dest_dtype)
+                else:  # intermediate variable
+                    cast_name = in_var.name + '.cast_' + _dtype_to_str(
+                        dest_dtype)
+                    out_var = main_block.vars.get(cast_name)
+                    if out_var is None or out_var.dtype != dest_dtype:
+                        out_var = main_block.create_var(
+                            name=cast_name,
+                            dtype=dest_dtype,
+                            persistable=False,
+                            stop_gradient=in_var.stop_gradient)
 
-                    main_block._insert_op_without_sync(
-                        idx,
-                        type="cast",
-                        inputs={"X": in_var},
-                        outputs={"Out": out_var},
-                        attrs={
-                            "in_dtype": in_var.dtype,
-                            "out_dtype": out_var.dtype,
-                            "op_device": op.attr("op_device")
-                        })
-                    for out_name in op.output_names:
-                        for out_var_name in op.output(out_name):
-                            output_var = main_block.var(out_var_name)
-                            if output_var.type not in _valid_types:
-                                continue
-                            output_var.desc.set_dtype(out_var.dtype)
-                            if op.has_attr('out_dtype'):
-                                op._set_attr('out_dtype', out_var.dtype)
-
-                    num_cast_ops += 1
-                _rename_arg(op, in_var.name, out_var.name)
+                        main_block._insert_op_without_sync(
+                            idx,
+                            type="cast",
+                            inputs={"X": in_var},
+                            outputs={"Out": out_var},
+                            attrs={
+                                "in_dtype": in_var.dtype,
+                                "out_dtype": out_var.dtype,
+                                "op_device": op.attr("op_device")
+                            })
+                        num_cast_ops += 1
+                    _rename_arg(op, in_var.name, out_var.name)
             else:
                 if op.has_attr('in_dtype'):
                     op._set_attr('in_dtype', dest_dtype)
+
+    for out_name in op.output_names:
+        for out_var_name in op.output(out_name):
+            out_var = main_block.var(out_var_name)
+            if out_var.dtype in [
+                    core.VarDesc.VarType.FP32, core.VarDesc.VarType.FP16
+            ]:
+                out_var.desc.set_dtype(dest_dtype)
+                if op.has_attr('out_dtype'):
+                    op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
+
     return num_cast_ops
 
 
 def rewrite_program_v2(startup_prog, main_prog, amp_lists):
     """
-    Traverse all ops in current block and insert cast op according to 
-    which set current op belongs to.
+    Traverse all ops in startup and main block and insert cast op according
+    to which set current op belongs to.
 
     1. When an op belongs to the black list, add it to black set.
     2. When an op belongs to the white list, add it to white set. 
@@ -777,15 +774,16 @@ def rewrite_program_v2(startup_prog, main_prog, amp_lists):
     3. Add necessary cast ops to make sure that black set op will be 
        computed in fp32 mode, while white set op will be computed in 
        fp16 mode.
-    4. priority: custom_black_list  > fp16_gurard
+    4. priority: custom_black_list > fp16_gurard
+
     Args:
         startup_prog (Program): The startup program for training.
         main_prog (Program): The main program for training. 
     """
-    ipu_black_list = {'batch_norm', }
+    ipu_black_list = {}
     ipu_white_list = {}
-    # reset black_list and white list in 
-    # amp_lists.black_list = ipu_white_list
+
+    # reset black_list and white_list
     amp_lists.white_list = ipu_white_list
     amp_lists.black_list = ipu_black_list
     amp_lists._update_list()
@@ -795,11 +793,12 @@ def rewrite_program_v2(startup_prog, main_prog, amp_lists):
 
     main_block = main_prog.global_block()
     main_block._sync_with_cpp()
+
     ops = main_block.ops
     white_op_set = set()
     black_op_set = set()
 
-    # applied fp16_guard indicate that user want to compute the op in float16 type.
+    # fp16_guard indicate that user want to compute the op with fp16
     for op in ops:
         if op.has_attr("op_namescope") and (
                 _fp16_guard_pattern in op.attr("op_namescope")):
@@ -807,9 +806,7 @@ def rewrite_program_v2(startup_prog, main_prog, amp_lists):
         else:
             black_op_set.add(op)
 
-    # user use amp_lists to specify the which data type user want to compute the kind of operator. 
-    # if the kind of op is in black_list we will compute it in float32 type.
-    # attention: we only use black set and white set here.
+    # note: we only use black set and white set here.
     for op in ops:
         if amp_lists.black_varnames is not None and _is_in_black_varnames(
                 op, amp_lists):

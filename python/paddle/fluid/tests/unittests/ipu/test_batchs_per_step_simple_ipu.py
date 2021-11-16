@@ -17,7 +17,6 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
 
 paddle.enable_static()
@@ -28,7 +27,7 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestFunc(unittest.TestCase):
     def _test_func(self, run_ipu=True):
-        scope = fluid.core.Scope()
+        scope = paddle.fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
@@ -40,22 +39,20 @@ class TestFunc(unittest.TestCase):
         c, h, w = 3, 10, 10
         np_image = np.random.uniform(size=[1 * bps, c, h, w]).astype(np.float32)
 
-        with fluid.scope_guard(scope):
+        with paddle.fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 image = paddle.static.data(
                     name='image', shape=[n, c, h, w], dtype='float32')
                 conv2d = paddle.static.nn.conv2d(
                     image, num_filters=3, filter_size=3, bias_attr=False)
 
-                # paddle.mean oshape on ipu is [bps], need another mean()
-                # paddle.mean oshape on cpu is [1]
-                # out = paddle.mean(conv2d)
                 out = conv2d
 
             if run_ipu:
                 place = paddle.IPUPlace()
             else:
                 place = paddle.CPUPlace()
+
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
 

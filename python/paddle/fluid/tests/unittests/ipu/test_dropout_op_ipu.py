@@ -16,15 +16,9 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
-import paddle.optimizer
-import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
-                                                          np_dtype_to_fluid_str)
 import paddle.fluid.contrib.mixed_precision.fp16_utils as fp16_utils
-
-paddle.enable_static()
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMode
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -54,7 +48,7 @@ class TestBase(IPUOpTest):
         }
 
     def _test_base(self, run_mode=0):
-        scope = fluid.core.Scope()
+        scope = paddle.fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         SEED = self.SEED
@@ -63,7 +57,7 @@ class TestBase(IPUOpTest):
         dtype = 'float32' if run_mode != self.TEST_IPU_FP16 else 'float16'
         feed = self.feed_fp16 if run_mode == self.TEST_IPU_FP16 else self.feed_fp32
 
-        with fluid.scope_guard(scope):
+        with paddle.fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 with paddle.static.amp.fp16_guard():
                     x = paddle.static.data(
