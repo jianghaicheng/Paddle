@@ -16,15 +16,9 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
-import paddle.optimizer
-import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
-                                                          np_dtype_to_fluid_str)
 import paddle.fluid.contrib.mixed_precision.fp16_utils as fp16_utils
-
-paddle.enable_static()
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMode
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -33,108 +27,99 @@ class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
-        self.set_feed()
+        self.set_data_feed()
         self.set_feed_attr()
-        self.set_attrs()
+        self.set_op_attrs()
 
-    def set_feed(self):
-        data = np.random.uniform(size=[10, 20])
-        self.feed_fp32 = {
-            "x": data.astype('float32'),
-            "y": np.array([1, 3, 5]).astype('int32'),
-        }
-        self.feed_fp16 = {
-            "x": data.astype('float16'),
-            "y": np.array([1, 3, 5]).astype('int32'),
-        }
+    @property
+    def fp16_enabled(self):
+        return True
+
+    def set_data_feed(self):
+        x = np.random.uniform(size=[10, 20])
+        y = np.array([1, 3, 5])
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.int32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.int32)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
-        self.feed_fp32dtype = [
-            np_dtype_to_fluid_str(x.dtype) for x in self.feed_fp32.values()
-        ]
-        self.feed_fp16dtype = [
-            np_dtype_to_fluid_str(x.dtype) for x in self.feed_fp16.values()
-        ]
 
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {}
 
-    def _test_base(self, run_mode=0):
-        scope = fluid.core.Scope()
+    def _test_base(self, exec_mode):
+        scope = paddle.fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        SEED = self.SEED
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
-        dtype = self.feed_fp32dtype if run_mode != self.TEST_IPU_FP16 else self.feed_fp16dtype
-        feed = self.feed_fp16 if run_mode == self.TEST_IPU_FP16 else self.feed_fp32
+        main_prog.random_seed = self.SEED
+        startup_prog.random_seed = self.SEED
 
-        with fluid.scope_guard(scope):
+        with paddle.fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.static.data(
+                    name=self.feed_list[0],
+                    shape=self.feed_shape[0],
+                    dtype='float32')
+                y = paddle.static.data(
+                    name=self.feed_list[1],
+                    shape=self.feed_shape[1],
+                    dtype='int32')
+
                 with paddle.static.amp.fp16_guard():
-                    x = paddle.static.data(
-                        name=self.feed_list[0],
-                        shape=self.feed_shape[0],
-                        dtype=dtype[0])
-                    y = paddle.static.data(
-                        name=self.feed_list[1],
-                        shape=self.feed_shape[1],
-                        dtype=dtype[1])
                     out = paddle.fluid.layers.gather(x, index=y, **self.attrs)
 
                 fetch_list = [out.name]
 
-            if run_mode != self.TEST_CPU_FP32:
-                place = paddle.IPUPlace()
-            else:
+            if exec_mode == ExecutionMode.CPU_FP32:
                 place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            if run_mode == self.TEST_IPU_FP16:
+            else:
+                place = paddle.IPUPlace()
+
+            if exec_mode == ExecutionMode.IPU_PADDLE_FP16:
                 fp16_utils.rewrite_program_v2(
                     startup_prog=startup_prog,
                     main_prog=main_prog,
                     amp_lists=self.amp_list)
+
+            exe = paddle.static.Executor(place)
             exe.run(startup_prog)
 
-            if run_mode != self.TEST_CPU_FP32:
+            if exec_mode != ExecutionMode.CPU_FP32:
                 feed_list = self.feed_list
                 ipu_strategy = compiler.get_ipu_strategy()
                 ipu_strategy.is_training = self.is_training
+                if exec_mode == ExecutionMode.IPU_POPART_FP16:
+                    ipu_strategy.enable_fp16 = True
                 program = compiler.IpuCompiler(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
             else:
                 program = main_prog
 
+            feed = self.feed_fp32
+            if exec_mode > ExecutionMode.IPU_FP32:
+                feed = self.feed_fp16
+
             result = exe.run(program, feed=feed, fetch_list=fetch_list)
             return result[0]
 
-    def test_base(self):
-        res0 = self._test_base(self.TEST_CPU_FP32)
-        res1 = self._test_base(self.TEST_IPU_FP32)
-        res2 = self._test_base(self.TEST_IPU_FP16)
+    def test(self):
+        output_dict = {}
+        for mode in ExecutionMode:
+            if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
+                break
+            output_dict[mode] = self._test_base(mode).flatten()
 
-        self.assertTrue(
-            np.allclose(
-                res0.flatten(), res1.flatten(), atol=self.atol))
-        self.assertTrue(
-            np.allclose(
-                res1.flatten(), res2.flatten(), atol=self.atol_fp16))
+        self.check(output_dict)
 
 
 class TestCase1(TestBase):
-    def set_feed(self):
-        data = np.random.uniform(size=[100])
-        self.feed_fp32 = {
-            "x": data.astype('float32'),
-            "y": np.array([1, 3, 5]).astype('int32'),
-        }
-        self.feed_fp16 = {
-            "x": data.astype('float16'),
-            "y": np.array([1, 3, 5]).astype('int32'),
-        }
+    def set_data_feed(self):
+        x = np.random.uniform(size=[100])
+        y = np.array([1, 3, 5])
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.int32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.int32)}
 
 
 if __name__ == "__main__":

@@ -16,16 +16,10 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
-import paddle.optimizer
-import paddle.static
 import paddle.nn.functional as F
-import paddle.static.amp as amp
 import paddle.fluid.contrib.mixed_precision.fp16_utils as fp16_utils
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
-paddle.enable_static()
-import datetime
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMode
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -33,87 +27,109 @@ import datetime
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
-        self.set_feed()
+        self.set_data_feed()
+        self.set_feed_attr()
 
-    def set_feed(self):
-        self.feed_shape = []
-        self.feed_shape.append([1, 10, 27, 27])
+    @property
+    def fp16_enabled(self):
+        return True
 
-        self.feed_cpu = {}
-        self.feed_ipu = {}
-        feed = np.random.uniform(size=self.feed_shape[0])
-        self.feed_cpu["in_0"] = feed.astype(np.float32)
-        self.feed_ipu["in_0"] = feed.astype(np.float16)
-        self.feed_list = list(self.feed_cpu.keys())
+    def set_atol(self):
+        self.atol = 1e-6
+        self.rtol = 1e-6
+        self.atol_fp16 = 1e-3
+        self.rtol_fp16 = 1e-3
 
-    def _test_base(self, run_ipu=True):
-        generator = fluid.unique_name.UniqueNameGenerator()
-        scope = fluid.core.Scope()
+    def set_data_feed(self):
+        data = np.random.uniform(size=[1, 10, 27, 27])
+        self.feed_fp32 = {"in_0": data.astype(np.float32)}
+        self.feed_fp16 = {"in_0": data.astype(np.float16)}
+
+    def set_feed_attr(self):
+        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
+        self.feed_list = list(self.feed_fp32.keys())
+
+    def _test_base(self, exec_mode):
+        generator = paddle.fluid.unique_name.UniqueNameGenerator()
+        scope = paddle.fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
+        main_prog.random_seed = self.SEED
+        startup_prog.random_seed = self.SEED
 
-        SEED = self.SEED
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
-
-        with fluid.unique_name.guard(generator):
-            with fluid.scope_guard(scope):
+        with paddle.fluid.unique_name.guard(generator):
+            with paddle.fluid.scope_guard(scope):
                 with paddle.static.program_guard(main_prog, startup_prog):
+                    data = paddle.static.data(
+                        name=self.feed_list[0],
+                        shape=self.feed_shape[0],
+                        dtype='float32')
+
                     with paddle.static.amp.fp16_guard():
-                        data = paddle.static.data(
-                            name=self.feed_list[0],
-                            shape=self.feed_shape[0],
-                            dtype='float16' if run_ipu else 'float32')
                         conv2d = paddle.static.nn.conv2d(
                             input=data, num_filters=3, filter_size=3)
+
                     pool_0 = F.max_pool2d(conv2d, kernel_size=2, stride=2)
+
                     with paddle.static.amp.fp16_guard():
                         conv2d1 = paddle.static.nn.conv2d(
                             input=pool_0, num_filters=6, filter_size=3)
                         bn = paddle.static.nn.batch_norm(
                             input=conv2d1, act="relu")
+
                     pool = F.max_pool2d(bn, kernel_size=2, stride=2)
+
                     with paddle.static.amp.fp16_guard():
                         hidden = paddle.static.nn.fc(pool, size=10)
+
                     loss = paddle.mean(hidden)
-                    # ipu rewrite program
-                    if run_ipu:
-                        # define which op should run with float32
-                        amp_list = amp.CustomOpLists(custom_black_list=[
-                            # 'conv2d', 'batch_norm', 'reduce_mean',
-                        ])
+                    fetch_list = [loss.name]
+
+                    if exec_mode == ExecutionMode.CPU_FP32:
+                        place = paddle.CPUPlace()
+                    else:
+                        place = paddle.IPUPlace()
+
+                    if exec_mode == ExecutionMode.IPU_PADDLE_FP16:
+                        amp_list = paddle.static.amp.CustomOpLists(
+                            custom_black_list=[])
                         fp16_utils.rewrite_program_v2(
                             startup_prog=startup_prog,
                             main_prog=main_prog,
                             amp_lists=amp_list)
-                    place = paddle.IPUPlace()
+
                     exe = paddle.static.Executor(place)
                     exe.run(startup_prog)
-                    # strategy 
-                    ipu_strategy = compiler.get_ipu_strategy()
-                    ipu_strategy.is_training = False
-                    # ipu compile
-                    fetch_list = [loss.name]
-                    if run_ipu:
+
+                    if exec_mode != ExecutionMode.CPU_FP32:
+                        ipu_strategy = compiler.get_ipu_strategy()
+                        ipu_strategy.is_training = False
+                        ipu_strategy.save_init_onnx = True
+                        if exec_mode == ExecutionMode.IPU_POPART_FP16:
+                            ipu_strategy.enable_fp16 = True
                         program = compiler.IpuCompiler(
                             main_prog, ipu_strategy=ipu_strategy).compile(
                                 self.feed_list, fetch_list)
-                    # return result
-                    return exe.run(program if run_ipu else main_prog,
-                                   feed=self.feed_ipu
-                                   if run_ipu else self.feed_cpu,
-                                   fetch_list=fetch_list)
+                    else:
+                        program = main_prog
 
-    def test_base(self):
-        result_ipu = self._test_base(True)
-        result_cpu = self._test_base(False)
-        mae = np.mean(
-            np.abs(
-                np.asarray(result_cpu).flatten() - np.asarray(result_ipu)
-                .flatten()))
-        print('result_cpu:{} result_ipu:{} mae:{} '.format(
-            np.asarray(result_cpu).flatten(),
-            np.asarray(result_ipu).flatten(), mae))
+                    feed = self.feed_fp32
+                    if exec_mode > ExecutionMode.IPU_FP32:
+                        feed = self.feed_fp16
+
+                    result = exe.run(program, feed=feed, fetch_list=fetch_list)
+                    return result[0]
+
+    def test(self):
+        output_dict = {}
+        for mode in ExecutionMode:
+            if mode == ExecutionMode.IPU_POPART_FP16:
+                continue
+            if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
+                break
+            output_dict[mode] = self._test_base(mode).flatten()
+
+        self.check(output_dict)
 
 
 if __name__ == "__main__":
