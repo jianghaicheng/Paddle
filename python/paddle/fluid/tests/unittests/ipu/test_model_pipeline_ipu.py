@@ -17,7 +17,6 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
 
 paddle.enable_static()
@@ -28,7 +27,7 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestCastNet(unittest.TestCase):
     def _test(self, run_ipu=True):
-        scope = fluid.core.Scope()
+        scope = paddle.fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
@@ -37,14 +36,14 @@ class TestCastNet(unittest.TestCase):
 
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
 
-        with fluid.scope_guard(scope):
+        with paddle.fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 image = paddle.static.data(
                     name='image', shape=[1, 3, 10, 10], dtype='float32')
-                with fluid.ipu_shard(ipu_index=0):
+                with paddle.fluid.ipu_shard(ipu_index=0):
                     conv1 = paddle.static.nn.conv2d(
                         image, num_filters=3, filter_size=3, bias_attr=False)
-                with fluid.ipu_shard(ipu_index=1):
+                with paddle.fluid.ipu_shard(ipu_index=1):
                     conv2 = paddle.static.nn.conv2d(
                         conv1, num_filters=3, filter_size=3, bias_attr=False)
                     loss = paddle.mean(conv2)

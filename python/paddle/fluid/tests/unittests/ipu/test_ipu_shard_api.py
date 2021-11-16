@@ -16,9 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 import unittest
-import sys
 import paddle
-import paddle.fluid as fluid
 
 paddle.enable_static()
 

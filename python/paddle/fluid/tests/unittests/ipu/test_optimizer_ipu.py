@@ -18,13 +18,8 @@ import numpy as np
 import unittest
 import sys
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
-                                                          np_dtype_to_fluid_str)
-
-paddle.enable_static()
-SEED = 2021
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -32,14 +27,14 @@ SEED = 2021
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
-        self.set_feed()
+        self.set_data_feed()
         self.set_feed_attr()
-        self.set_attrs()
+        self.set_op_attrs()
 
     def set_atol(self):
         self.atol = 1e-6
 
-    def set_feed(self):
+    def set_data_feed(self):
         self.feed = {
             "image": np.random.uniform(size=[1, 3, 10, 10]).astype('float32'),
         }
@@ -47,11 +42,9 @@ class TestBase(IPUOpTest):
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed.values()]
         self.feed_list = list(self.feed.keys())
-        self.feed_dtype = [
-            np_dtype_to_fluid_str(x.dtype) for x in self.feed.values()
-        ]
+        self.feed_dtype = [x.dtype for x in self.feed.values()]
 
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {
             "optimizer": 'sgd',
             "weight_decay": 0.0,
@@ -59,14 +52,14 @@ class TestBase(IPUOpTest):
         }
 
     def _test_optimizer(self, run_ipu=True):
-        scope = fluid.core.Scope()
+        scope = paddle.fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
-        np.random.seed(SEED)
+        main_prog.random_seed = self.SEED
+        startup_prog.random_seed = self.SEED
+        np.random.seed(self.SEED)
 
-        with fluid.scope_guard(scope):
+        with paddle.fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 image = paddle.static.data(
                     name='image', shape=[1, 3, 10, 10], dtype='float32')

@@ -16,14 +16,8 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
-import paddle.optimizer
-import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
-                                                          np_dtype_to_fluid_str)
-
-paddle.enable_static()
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 def set_serialize_factor(serialize_factor):
@@ -38,11 +32,11 @@ class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
-        self.set_feed()
+        self.set_data_feed()
         self.set_feed_attr()
-        self.set_attrs()
+        self.set_op_attrs()
 
-    def set_feed(self):
+    def set_data_feed(self):
         self.feed = {
             "x": np.random.uniform(size=[2048, 3072]).astype('float32'),
             "y": np.random.uniform(size=[3072, 2048]).astype('float32'),
@@ -51,22 +45,19 @@ class TestBase(IPUOpTest):
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed.values()]
         self.feed_list = list(self.feed.keys())
-        self.feed_dtype = [
-            np_dtype_to_fluid_str(x.dtype) for x in self.feed.values()
-        ]
+        self.feed_dtype = [x.dtype for x in self.feed.values()]
 
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {"transpose_x": False, "transpose_y": False}
 
     def _test_base(self, run_ipu=True):
-        scope = fluid.core.Scope()
+        scope = paddle.fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        SEED = self.SEED
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
+        main_prog.random_seed = self.SEED
+        startup_prog.random_seed = self.SEED
 
-        with fluid.scope_guard(scope):
+        with paddle.fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],

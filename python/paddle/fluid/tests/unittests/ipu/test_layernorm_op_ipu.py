@@ -16,14 +16,9 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
-import paddle.optimizer
-import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
-                                                          np_dtype_to_fluid_str)
-
-paddle.enable_static()
+import paddle.fluid.contrib.mixed_precision.fp16_utils as fp16_utils
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMode
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -32,26 +27,31 @@ class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
-        self.set_feed()
+        self.set_data_feed()
         self.set_feed_attr()
-        self.set_attrs()
+        self.set_op_attrs()
+
+    @property
+    def fp16_enabled(self):
+        return True
 
     def set_atol(self):
         self.atol = 1e-6
+        self.rtol = 1e-5
+        self.atol_fp16 = 1e-2
+        self.rtol_fp16 = 1e-3
 
-    def set_feed(self):
-        self.feed = {
-            "x": np.random.uniform(size=[1, 3, 10, 10]).astype('float32'),
-        }
+    def set_data_feed(self):
+        x = np.random.uniform(size=[1, 3, 10, 10])
+        self.feed_fp32 = {"x": x.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16)}
 
     def set_feed_attr(self):
-        self.feed_shape = [x.shape for x in self.feed.values()]
-        self.feed_list = list(self.feed.keys())
-        self.feed_dtype = [
-            np_dtype_to_fluid_str(x.dtype) for x in self.feed.values()
-        ]
+        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
+        self.feed_list = list(self.feed_fp32.keys())
+        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {
             "scale": True,
             "shift": True,
@@ -60,37 +60,39 @@ class TestBase(IPUOpTest):
         }
         self.optimizer = None
 
-    def _test_base(self, run_ipu=True):
-        scope = fluid.core.Scope()
+    def _test_base(self, exec_mode):
+        scope = paddle.fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        SEED = self.SEED
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
+        main_prog.random_seed = self.SEED
+        startup_prog.random_seed = self.SEED
 
-        with fluid.scope_guard(scope):
+        with paddle.fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
-                    dtype=self.feed_dtype[0])
+                    dtype='float32')
 
-                if self.is_training:
-                    ch = self.feed_shape[0][1]
-                    conv1 = paddle.static.nn.conv2d(
-                        x, num_filters=ch, filter_size=3, bias_attr=False)
-                    scale = paddle.ParamAttr(trainable=True)
-                    bias = paddle.ParamAttr(trainable=True)
-                    out = paddle.fluid.layers.nn.layer_norm(
-                        conv1, param_attr=scale, bias_attr=bias, **self.attrs)
-                else:
-                    # scale = True
-                    # bias = True
-                    scale = self.attrs['scale']
-                    bias = self.attrs['shift']
-                    out = paddle.fluid.layers.nn.layer_norm(
-                        x, param_attr=scale, bias_attr=bias, **self.attrs)
-                loss = paddle.mean(out)
+                with paddle.static.amp.fp16_guard():
+                    if self.is_training:
+                        ch = self.feed_shape[0][1]
+                        conv1 = paddle.static.nn.conv2d(
+                            x, num_filters=ch, filter_size=3, bias_attr=False)
+                        scale = paddle.ParamAttr(trainable=True)
+                        bias = paddle.ParamAttr(trainable=True)
+                        out = paddle.fluid.layers.nn.layer_norm(
+                            conv1,
+                            param_attr=scale,
+                            bias_attr=bias,
+                            **self.attrs)
+                    else:
+                        scale = self.attrs['scale']
+                        bias = self.attrs['shift']
+                        out = paddle.fluid.layers.nn.layer_norm(
+                            x, param_attr=scale, bias_attr=bias, **self.attrs)
+                    loss = paddle.mean(out)
+
                 fetch_list = [loss.name]
 
                 if self.is_training:
@@ -102,16 +104,17 @@ class TestBase(IPUOpTest):
                     elif self.optimizer == 'lamb':
                         optimizer = paddle.optimizer.Lamb(
                             learning_rate=1e-2, lamb_weight_decay=0.0)
-                    optimizer.minimize(loss)
+                    if optimizer is not None:
+                        optimizer.minimize(loss)
 
-            if run_ipu:
+            if exec_mode:
                 place = paddle.IPUPlace()
             else:
                 place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
 
-            if run_ipu:
+            if exec_mode:
                 feed_list = self.feed_list
                 ipu_strategy = compiler.get_ipu_strategy()
                 ipu_strategy.is_training = self.is_training
@@ -125,12 +128,14 @@ class TestBase(IPUOpTest):
                 result = []
                 for _ in range(self.epoch):
                     loss_res = exe.run(program,
-                                       feed=self.feed,
+                                       feed=self.feed_fp32,
                                        fetch_list=fetch_list)
                     result.append(loss_res[0])
                 return np.array(result)
             else:
-                result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
+                result = exe.run(program,
+                                 feed=self.feed_fp32,
+                                 fetch_list=fetch_list)
                 return result[0]
 
     def test_base(self):
@@ -146,7 +151,7 @@ class TestBase(IPUOpTest):
 
 @unittest.skip('raise error')
 class TestCase1(TestBase):
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {
             "scale": False,
             "shift": True,
@@ -157,7 +162,7 @@ class TestCase1(TestBase):
 
 @unittest.skip('raise error')
 class TestCase2(TestBase):
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {
             "scale": True,
             "shift": False,
@@ -167,7 +172,7 @@ class TestCase2(TestBase):
 
 
 class TestCase3(TestBase):
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {
             "scale": True,
             "shift": True,
@@ -178,7 +183,7 @@ class TestCase3(TestBase):
 
 
 class TestTrainCase1(TestBase):
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {
             "scale": True,
             "shift": True,
@@ -199,7 +204,7 @@ class TestTrainCase2(TestBase):
     def set_atol(self):
         self.atol = 5e-4
 
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {
             "scale": True,
             "shift": True,
@@ -217,7 +222,7 @@ class TestTrainCase3(TestBase):
     def set_atol(self):
         self.atol = 5e-3
 
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {
             "scale": True,
             "shift": True,

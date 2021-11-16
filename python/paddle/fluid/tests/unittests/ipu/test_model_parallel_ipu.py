@@ -14,16 +14,12 @@
 
 from __future__ import print_function
 
-import numpy as np
 import unittest
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
-                                                          np_dtype_to_fluid_str)
 
-paddle.enable_static()
-SEED = 2021
+import numpy as np
+import paddle
+import paddle.fluid.compiler as compiler
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -32,14 +28,14 @@ class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
-        self.set_attr()
-        self.set_feed()
+        self.set_op_attr()
+        self.set_data_feed()
 
     def set_training(self):
         self.is_training = False
         self.epoch = 10
 
-    def set_attr(self):
+    def set_op_attr(self):
         self.attrs = {
             "batches_per_step": 1,
             "enable_pipeline": False,
@@ -51,27 +47,27 @@ class TestBase(IPUOpTest):
             "ipu_bs": 1
         }
 
-    def set_feed(self):
+    def set_data_feed(self):
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
         self.feed_cpu = {"image": np_image}
         self.feed_ipu = {"image": np_image}
 
     def _test_base(self, run_ipu=True):
-        scope = fluid.core.Scope()
+        scope = paddle.fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
+        main_prog.random_seed = self.SEED
+        startup_prog.random_seed = self.SEED
 
         bs = self.attrs['ipu_bs'] if run_ipu else self.attrs['cpu_bs']
-        with fluid.scope_guard(scope):
+        with paddle.fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 image = paddle.static.data(
                     name='image', shape=[bs, 3, 10, 10], dtype='float32')
-                with fluid.ipu_shard(ipu_index=0):
+                with paddle.fluid.ipu_shard(ipu_index=0):
                     conv1 = paddle.static.nn.conv2d(
                         image, num_filters=3, filter_size=3, bias_attr=False)
-                with fluid.ipu_shard(ipu_index=1):
+                with paddle.fluid.ipu_shard(ipu_index=1):
                     conv2 = paddle.static.nn.conv2d(
                         conv1, num_filters=3, filter_size=3, bias_attr=False)
                     # should consider influence of bs
@@ -139,7 +135,7 @@ class TestBase(IPUOpTest):
 
 
 class TestReplicaInference(TestBase):
-    def set_attr(self):
+    def set_op_attr(self):
         self.attrs = {
             "batches_per_step": 1,
             "enable_pipeline": False,
@@ -151,7 +147,7 @@ class TestReplicaInference(TestBase):
             "ipu_bs": 1
         }
 
-    def set_feed(self):
+    def set_data_feed(self):
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
         self.feed_cpu = {"image": np_image}
         self.feed_ipu = {
@@ -161,7 +157,7 @@ class TestReplicaInference(TestBase):
 
 
 class TestPipelineInference(TestBase):
-    def set_attr(self):
+    def set_op_attr(self):
         self.attrs = {
             "batches_per_step": 2,
             "enable_pipeline": True,
@@ -173,7 +169,7 @@ class TestPipelineInference(TestBase):
             "ipu_bs": 1
         }
 
-    def set_feed(self):
+    def set_data_feed(self):
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
         self.feed_cpu = {"image": np_image}
         self.feed_ipu = {
@@ -187,7 +183,7 @@ class TestTrainBase(TestBase):
         self.is_training = True
         self.epoch = 10
 
-    def set_attr(self):
+    def set_op_attr(self):
         self.attrs = {
             "batches_per_step": 1,
             "enable_pipeline": False,
@@ -202,7 +198,7 @@ class TestTrainBase(TestBase):
 
 
 class TestReplicaTrain(TestTrainBase):
-    def set_attr(self):
+    def set_op_attr(self):
         self.attrs = {
             "batches_per_step": 1,
             "enable_pipeline": False,
@@ -215,7 +211,7 @@ class TestReplicaTrain(TestTrainBase):
             "ipu_bs": 1
         }
 
-    def set_feed(self):
+    def set_data_feed(self):
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
         self.feed_cpu = {
             "image": np.tile(np_image, [self.attrs['cpu_bs'], 1, 1, 1])
@@ -233,7 +229,7 @@ class TestReplicaTrain(TestTrainBase):
 
 
 class TestPipelineTrain(TestTrainBase):
-    def set_attr(self):
+    def set_op_attr(self):
         self.attrs = {
             "batches_per_step": 3,
             "enable_pipeline": True,
@@ -246,7 +242,7 @@ class TestPipelineTrain(TestTrainBase):
             "ipu_bs": 1
         }
 
-    def set_feed(self):
+    def set_data_feed(self):
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
         self.feed_cpu = {
             "image": np.tile(np_image, [self.attrs['cpu_bs'], 1, 1, 1])
@@ -263,7 +259,7 @@ class TestPipelineTrain(TestTrainBase):
 
 
 class TestAdamTrain(TestTrainBase):
-    def set_attr(self):
+    def set_op_attr(self):
         self.attrs = {
             "batches_per_step": 1,
             "enable_pipeline": False,
@@ -278,7 +274,7 @@ class TestAdamTrain(TestTrainBase):
 
 
 class TestAdamReplicaTrain(TestReplicaTrain):
-    def set_attr(self):
+    def set_op_attr(self):
         self.attrs = {
             "batches_per_step": 1,
             "enable_pipeline": False,
@@ -293,7 +289,7 @@ class TestAdamReplicaTrain(TestReplicaTrain):
 
 
 class TestAdamPipelineTrain(TestPipelineTrain):
-    def set_attr(self):
+    def set_op_attr(self):
         self.attrs = {
             "batches_per_step": 3,
             "enable_pipeline": True,
@@ -308,7 +304,7 @@ class TestAdamPipelineTrain(TestPipelineTrain):
 
 
 class TestAdamRecomputationTrain(TestPipelineTrain):
-    def set_attr(self):
+    def set_op_attr(self):
         self.attrs = {
             "batches_per_step": 3,
             "enable_pipeline": True,
@@ -325,7 +321,7 @@ class TestAdamRecomputationTrain(TestPipelineTrain):
 
 @unittest.skip('skip TestLambTrain')
 class TestLambTrain(TestAdamTrain):
-    def set_attr(self):
+    def set_op_attr(self):
         self.attrs = {
             "batches_per_step": 1,
             "enable_pipeline": False,
@@ -341,7 +337,7 @@ class TestLambTrain(TestAdamTrain):
 
 @unittest.skip('skip TestLambReplicaTrain')
 class TestLambReplicaTrain(TestAdamReplicaTrain):
-    def set_attr(self):
+    def set_op_attr(self):
         self.attrs = {
             "batches_per_step": 1,
             "enable_pipeline": False,
@@ -357,7 +353,7 @@ class TestLambReplicaTrain(TestAdamReplicaTrain):
 
 @unittest.skip('skip TestLambPipelineTrain')
 class TestLambPipelineTrain(TestAdamPipelineTrain):
-    def set_attr(self):
+    def set_op_attr(self):
         self.attrs = {
             "batches_per_step": 3,
             "enable_pipeline": True,
