@@ -57,10 +57,6 @@ def np_dtype_to_fluid_str(dtype: np.dtype) -> str:
 
 
 class IPUOpTest(unittest.TestCase):
-    TEST_CPU_FP32 = 0
-    TEST_IPU_FP32 = 1
-    TEST_IPU_FP16 = 2
-
     @classmethod
     def setUpClass(cls):
         """Get random seeds"""
@@ -99,14 +95,16 @@ class IPUOpTest(unittest.TestCase):
         self.is_training = False
         self.epoch = 1
 
-    def check(self, outputs):
+    def check(self, outputs, check_shape=False):
         cpu_fp32 = outputs[ExecutionMode.CPU_FP32]
         ipu_fp32 = outputs[ExecutionMode.IPU_FP32]
         max_diff = np.abs(cpu_fp32 - ipu_fp32).max()
         fp32_flag = np.allclose(
             cpu_fp32, ipu_fp32, rtol=self.rtol, atol=self.atol)
-
         self.assertTrue(fp32_flag, "max diff is %f" % (max_diff))
+
+        if check_shape:
+            self.assertTrue(cpu_fp32.shape == ipu_fp32.shape)
 
         ipu_popart_fp16 = None
         if ExecutionMode.IPU_POPART_FP16 in outputs.keys():
@@ -120,6 +118,9 @@ class IPUOpTest(unittest.TestCase):
                 atol=self.atol_fp16)
             self.assertTrue(fp16_flag, "max diff is %f" % (max_diff))
 
+            if check_shape:
+                self.assertTrue(ipu_popart_fp16.shape == cpu_fp32.shape)
+
         ipu_paddle_fp16 = None
         if ExecutionMode.IPU_PADDLE_FP16 in outputs.keys():
             ipu_paddle_fp16 = outputs[ExecutionMode.IPU_PADDLE_FP16]
@@ -132,9 +133,15 @@ class IPUOpTest(unittest.TestCase):
                 atol=self.atol_fp16)
             self.assertTrue(fp16_flag, "max diff is %f" % (max_diff))
 
+            if check_shape:
+                self.assertTrue(ipu_paddle_fp16.shape == cpu_fp32.shape)
+
         if ExecutionMode.IPU_POPART_FP16 in outputs.keys(
         ) and ExecutionMode.IPU_PADDLE_FP16 in outputs.keys():
             max_diff = np.abs(ipu_popart_fp16 - ipu_paddle_fp16).max()
             self.assertEqual(ipu_popart_fp16.all(),
                              ipu_paddle_fp16.all(),
                              "max diff is %f" % (max_diff))
+
+            if check_shape:
+                self.assertTrue(ipu_popart_fp16.shape == ipu_paddle_fp16.shape)

@@ -20,8 +20,6 @@ import paddle.fluid.compiler as compiler
 import paddle.fluid.contrib.mixed_precision.fp16_utils as fp16_utils
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMode
 
-paddle.enable_static()
-
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")

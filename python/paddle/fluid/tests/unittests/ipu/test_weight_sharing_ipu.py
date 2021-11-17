@@ -16,14 +16,8 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
-import paddle.optimizer
-import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
-                                                          np_dtype_to_fluid_str)
-
-paddle.enable_static()
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -31,15 +25,18 @@ paddle.enable_static()
 class TestWeightSharing(IPUOpTest):
     def setUp(self):
         self.set_atol()
-        self.set_feed()
         self.set_training()
+        self.set_data_feed()
         self.set_feed_attr()
-        self.set_attrs()
+        self.set_op_attrs()
 
     def set_atol(self):
         self.atol = 1e-6
+        self.rtol = 1e-5
+        self.atol_fp16 = 1e-2
+        self.rtol_fp16 = 1e-3
 
-    def set_feed(self):
+    def set_data_feed(self):
         x = np.random.randint(0, 768, size=(128, 1)).astype(np.int32)
         self.feed_cpu = {"x": x.astype(np.int64)}
         self.feed_ipu = {
@@ -50,18 +47,17 @@ class TestWeightSharing(IPUOpTest):
         self.feed_shape = [x.shape for x in self.feed_cpu.values()]
         self.feed_list = list(self.feed_cpu.keys())
 
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {}
 
     def _test_base(self, run_ipu=True):
-        scope = fluid.core.Scope()
+        scope = paddle.fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        SEED = self.SEED
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
+        main_prog.random_seed = self.SEED
+        startup_prog.random_seed = self.SEED
 
-        with fluid.scope_guard(scope):
+        with paddle.fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 dtype = 'int32' if run_ipu else 'int64'
                 x = paddle.static.data(
@@ -69,26 +65,28 @@ class TestWeightSharing(IPUOpTest):
                     shape=self.feed_shape[0],
                     dtype=dtype)
 
-                with fluid.ipu_shard(ipu_index=0, ipu_stage=0):
-                    y = fluid.layers.embedding(
+                with paddle.fluid.ipu_shard(ipu_index=0, ipu_stage=0):
+                    y = paddle.fluid.layers.embedding(
                         input=x,
                         size=[768, 768],
                         dtype='float32',
-                        param_attr=fluid.ParamAttr(name='word_embedding'),
+                        param_attr=paddle.fluid.ParamAttr(
+                            name='word_embedding'),
                         is_sparse=False)
 
-                with fluid.ipu_shard(ipu_index=1, ipu_stage=1):
-                    z = fluid.layers.fc(input=y,
-                                        size=768,
-                                        param_attr=fluid.ParamAttr(name="fc"))
+                with paddle.fluid.ipu_shard(ipu_index=1, ipu_stage=1):
+                    z = paddle.fluid.layers.fc(
+                        input=y,
+                        size=768,
+                        param_attr=paddle.fluid.ParamAttr(name="fc"))
 
-                with fluid.ipu_shard(ipu_index=0, ipu_stage=2):
-                    out = fluid.layers.matmul(
+                with paddle.fluid.ipu_shard(ipu_index=0, ipu_stage=2):
+                    out = paddle.fluid.layers.matmul(
                         x=z,
                         y=main_prog.global_block().var('word_embedding'),
                         transpose_y=True)
 
-                fetch_list = [out.name]
+            fetch_list = [out.name]
 
             if run_ipu:
                 place = paddle.IPUPlace()

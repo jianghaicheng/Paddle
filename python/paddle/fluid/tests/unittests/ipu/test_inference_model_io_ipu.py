@@ -17,13 +17,8 @@ import shutil
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
-import paddle.optimizer
-import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
-
-paddle.enable_static()
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -31,20 +26,25 @@ paddle.enable_static()
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
-        self.set_feed()
-        self.set_attrs()
+        self.set_data_feed()
+        self.set_feed_attr()
+        self.set_op_attrs()
 
-    def set_feed(self):
-        self.feed_shape = []
-        self.feed_shape.append([1, 3, 10, 10])
+    def set_atol(self):
+        self.atol = 1e-6
+        self.rtol = 1e-5
+        self.atol_fp16 = 1e-2
+        self.rtol_fp16 = 1e-3
 
-        self.feed = {}
-        self.feed["in_0"] = np.random.uniform(
-            size=self.feed_shape[0]).astype(np.float32)
+    def set_data_feed(self):
+        data = np.random.uniform(size=[1, 3, 10, 10])
+        self.feed = {"in_0": data.astype(np.float32)}
 
+    def set_feed_attr(self):
+        self.feed_shape = [x.shape for x in self.feed.values()]
         self.feed_list = list(self.feed.keys())
 
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {}
         self.attrs['steps'] = 100
         self.attrs['save_at_step'] = 20
@@ -54,17 +54,17 @@ class TestBase(IPUOpTest):
         self.attrs['model_name'] = 'test'
 
     def _test_save(self):
-        scope = fluid.core.Scope()
+        scope = paddle.fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
         startup_prog.random_seed = self.SEED
-        generator = fluid.unique_name.UniqueNameGenerator()
+        generator = paddle.fluid.unique_name.UniqueNameGenerator()
         self.full_name = '/'.join(
             [self.attrs['path'], self.attrs['model_name']])
 
-        with fluid.unique_name.guard(generator):
-            with fluid.scope_guard(scope):
+        with paddle.fluid.unique_name.guard(generator):
+            with paddle.fluid.scope_guard(scope):
                 with paddle.static.program_guard(main_prog, startup_prog):
                     x = paddle.static.data(
                         name=self.feed_list[0],
@@ -88,7 +88,7 @@ class TestBase(IPUOpTest):
                         elif self.attrs['opt_type'] == 'lamb':
                             lamb = paddle.optimizer.Lamb(learning_rate=1e-2)
                             lamb.minimize(loss)
-                    fetch_list = [loss.name]
+                fetch_list = [loss.name]
 
                 place = paddle.IPUPlace()
                 exe = paddle.static.Executor(place)
@@ -133,7 +133,7 @@ class TestBase(IPUOpTest):
 
         tmp = exe.run(program, feed=self.feed, fetch_list=[fetch_targets])
 
-        return tmp
+        return np.array(tmp)
 
     def test_base(self):
         self._test_save()
@@ -146,7 +146,7 @@ class TestBase(IPUOpTest):
 
 
 class TestAdam(TestBase):
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {}
         self.attrs['steps'] = 100
         self.attrs['is_training'] = True
@@ -156,7 +156,7 @@ class TestAdam(TestBase):
 
 
 class TestLamb(TestBase):
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {}
         self.attrs['steps'] = 100
         self.attrs['is_training'] = True
