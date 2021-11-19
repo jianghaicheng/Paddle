@@ -43,6 +43,9 @@ struct IpuStrategy {
         popart::MeanReductionStrategy::Post;
 
     popart_options.enableFloatingPointChecks = false;
+
+    // A directory for log traces to be written into.
+    popart_options.logDir = "popart_log";
   }
   ~IpuStrategy() {}
 
