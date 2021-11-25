@@ -29,7 +29,7 @@ class TestBase(IPUOpTest):
         self.set_training()
         self.set_data_feed()
         self.set_feed_attr()
-        self.set_op_sattrs()
+        self.set_op_attrs()
 
     @property
     def fp16_enabled(self):
@@ -37,7 +37,7 @@ class TestBase(IPUOpTest):
 
     def set_data_feed(self):
         x = np.random.uniform(size=[3, 7])
-        label = np.arange(3).reshape([3])
+        label = np.arange(3).reshape([3, 1])
         self.feed_fp32 = {
             "x": x.astype(np.float32),
             "label": label.astype(np.int64)
@@ -51,8 +51,14 @@ class TestBase(IPUOpTest):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
 
-    def set_op_sattrs(self):
+    def set_op_attrs(self):
         self.attrs = {'soft_label': False, }
+
+    def np_nll_loss(self):
+        tmp = -np.log(self.feed_fp32['x'])
+        label = self.feed_fp32['label']
+        indice = [range(label.shape[0]), label.flatten()]
+        self.np_ref = tmp[indice]
 
     def _test_base(self, exec_mode):
         scope = paddle.fluid.core.Scope()
@@ -127,6 +133,7 @@ class TestBase(IPUOpTest):
             if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
                 break
             output_dict[mode] = self._test_base(mode).flatten()
+        self.np_nll_loss()
 
         self.check(output_dict)
 
