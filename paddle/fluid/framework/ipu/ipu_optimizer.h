@@ -54,6 +54,7 @@ class OptmizerMetaInfo {
 
   float GetWeightDecay() const;
   float GetLossScaling() const;
+  float GetDefaultMaxWeightNorm() const;
   popart::WeightDecayMode GetWeightDecayMode() const;
 
  private:

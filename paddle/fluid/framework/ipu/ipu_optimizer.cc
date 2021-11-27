@@ -53,6 +53,8 @@ float OptmizerMetaInfo::GetLossScaling() const {
   return 1.0f;
 }
 
+float OptmizerMetaInfo::GetDefaultMaxWeightNorm() const { return 65504.0f; }
+
 popart::WeightDecayMode OptmizerMetaInfo::GetWeightDecayMode() const {
   if (type_ == OptimizerType::Adam) {
     if (attrs_.count("scale") != 0 && attrs_.at("scale") > 0.0f) {
@@ -107,6 +109,7 @@ std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
         popart::OptimizerValue(opt_meta_info.GetAttr("beta2"), true),
         popart::OptimizerValue(opt_meta_info.GetAttr("epsilon"), true),
         popart::OptimizerValue(opt_meta_info.GetLossScaling(), true),
+        popart::OptimizerValue(opt_meta_info.GetDefaultMaxWeightNorm(), true),
         popart::AdamMode::Adam, opt_meta_info.GetWeightDecayMode(),
         popart::DataType::UNDEFINED, popart::DataType::FLOAT,
         popart::DataType::FLOAT);
@@ -119,6 +122,7 @@ std::unique_ptr<popart::Optimizer> GetPopartOptimizer(
         popart::OptimizerValue(opt_meta_info.GetAttr("beta2"), true),
         popart::OptimizerValue(opt_meta_info.GetAttr("epsilon"), true),
         popart::OptimizerValue(opt_meta_info.GetLossScaling(), true),
+        popart::OptimizerValue(opt_meta_info.GetDefaultMaxWeightNorm(), true),
         popart::AdamMode::Lamb, opt_meta_info.GetWeightDecayMode(),
         popart::DataType::UNDEFINED, popart::DataType::FLOAT,
         popart::DataType::FLOAT);
