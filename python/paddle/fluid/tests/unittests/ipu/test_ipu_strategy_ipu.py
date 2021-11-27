@@ -81,6 +81,12 @@ class TestConfigure(unittest.TestCase):
         assert ipu_strategy.loss_scaling == 5.0, \
             "Set loss_scaling Failed"
 
+        assert ipu_strategy.enable_stochastic_rounding == False, \
+            "Default value for enable_stochastic_rounding must be False"
+        ipu_strategy.enable_stochastic_rounding = True
+        assert ipu_strategy.enable_stochastic_rounding == True, \
+            "Set enable_stochastic_rounding Failed"
+
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")

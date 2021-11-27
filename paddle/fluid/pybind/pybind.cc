@@ -3374,6 +3374,18 @@ All parameter, weight, gradient are variables in Paddle.
             "3: Pipeline (Recompute all forward pipeline stages)"
             "4: RecomputeAll (Recompute all ops)
           )DOC")
+      .def_property(
+          "enable_stochastic_rounding",
+          [](const ipu::IpuStrategy &self) {
+            return self.popart_options.enableStochasticRounding;
+          },
+          [](ipu::IpuStrategy &self, bool enable_stochastic_rounding) {
+            self.popart_options.enableStochasticRounding =
+                enable_stochastic_rounding;
+          },
+          R"DOC(Enable Stochastic Rounding, beneficial to model training.
+                Default False.
+          )DOC")
       .def_property("enable_half_partial",
                     [](const ipu::IpuStrategy &self) {
                       return self.popart_options.partialsTypeMatMuls == "half";
