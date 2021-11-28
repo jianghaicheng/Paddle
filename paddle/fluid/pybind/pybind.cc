@@ -3395,6 +3395,17 @@ All parameter, weight, gradient are variables in Paddle.
                     },
                     R"DOC(The type is String. "half" for fp16 partial, only work
                           with fp16. Default "float". half partial fp16.16.
+                    )DOC")
+      .def_property("enable_fully_connected_pass",
+                    [](const ipu::IpuStrategy &self) {
+                      return self.popart_options.enableFullyConnectedPass;
+                    },
+                    [](ipu::IpuStrategy &self, bool flag) {
+                      self.popart_options.enableFullyConnectedPass = flag;
+                    },
+                    R"DOC(The type is Bool. True enable the global 
+                          fullyConnectedPass option for matmuls.
+                          Default True.
                     )DOC");
 
   py::class_<framework::ipu::IpuCustomOpIdentifier>(m, "IpuCustomOpIdentifier")

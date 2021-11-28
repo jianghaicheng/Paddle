@@ -87,6 +87,12 @@ class TestConfigure(unittest.TestCase):
         assert ipu_strategy.enable_stochastic_rounding == True, \
             "Set enable_stochastic_rounding Failed"
 
+        assert ipu_strategy.enable_fully_connected_pass == True, \
+            "Default value for enable_fully_connected_pass must be False"
+        ipu_strategy.enable_fully_connected_pass = False
+        assert ipu_strategy.enable_fully_connected_pass == False, \
+            "Set enable_fully_connected_pass Failed"
+
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
