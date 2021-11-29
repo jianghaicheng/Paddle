@@ -3406,6 +3406,28 @@ All parameter, weight, gradient are variables in Paddle.
                     R"DOC(The type is Bool. True enable the global 
                           fullyConnectedPass option for matmuls.
                           Default True.
+                    )DOC")
+      .def_property(
+          "enable_engine_caching",
+          [](const ipu::IpuStrategy &self) {
+            return self.popart_options.enableEngineCaching;
+          },
+          [](ipu::IpuStrategy &self, bool flag) {
+            self.popart_options.enableEngineCaching = flag;
+          },
+          R"DOC(The type is Bool. True enable Poplar executable caching.
+           Default False.
+                    )DOC")
+      .def_property(
+          "cache_path",
+          [](const ipu::IpuStrategy &self) {
+            return self.popart_options.cachePath;
+          },
+          [](ipu::IpuStrategy &self, const std::string &cache_path) {
+            self.popart_options.cachePath = cache_path;
+          },
+          R"DOC(The type is String. Folder to save the poplar::Executable to.
+           Default `session_cache`.
                     )DOC");
 
   py::class_<framework::ipu::IpuCustomOpIdentifier>(m, "IpuCustomOpIdentifier")

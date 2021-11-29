@@ -93,6 +93,18 @@ class TestConfigure(unittest.TestCase):
         assert ipu_strategy.enable_fully_connected_pass == False, \
             "Set enable_fully_connected_pass Failed"
 
+        assert ipu_strategy.enable_engine_caching == False, \
+            "Default value for enable_engine_caching must be False"
+        ipu_strategy.enable_engine_caching = True
+        assert ipu_strategy.enable_engine_caching == True, \
+            "Set enable_engine_caching Failed"
+
+        assert ipu_strategy.cache_path == "session_cache", \
+            "Default value for cache_path must be False"
+        ipu_strategy.cache_path = "new_session_cache"
+        assert ipu_strategy.cache_path == "new_session_cache", \
+            "Set cache_path Failed"
+
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
