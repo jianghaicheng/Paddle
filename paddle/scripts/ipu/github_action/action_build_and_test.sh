@@ -59,4 +59,4 @@ python -c "import paddle; print(paddle.__file__)"
 
 # run unittests
 cd /paddle_build/python
-pytest paddle/fluid/tests/unittests/ipu/
+pytest --maxfail=3 paddle/fluid/tests/unittests/ipu/
