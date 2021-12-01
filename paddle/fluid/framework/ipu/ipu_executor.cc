@@ -193,6 +193,10 @@ void Executor::SetWeightsIO() {
         continue;
       }
 
+      if (!session_->hasInfo(popart_var_name)) {
+        continue;
+      }
+
       auto var = scope_->GetVar(paddle_var_name);
       auto data_ptr = var->GetMutable<framework::LoDTensor>()->data<void>();
 
