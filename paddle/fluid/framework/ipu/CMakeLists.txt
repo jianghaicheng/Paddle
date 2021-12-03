@@ -34,8 +34,9 @@ set(IPU_BACKEND_SRC
     "ipu_executor.cc"
     "ipu_compiler.cc"
     "ipu_backend.cc"
+    "ipu_utils.cc"
 )
 
-cc_library(ipu_utils SRCS ipu_utils.cc DEPS memory framework_proto popart)
-cc_library(paddle_ipu SHARED SRCS ${PADDLE_IPU_SRC} DEPS popart ipu_utils)
-cc_library(ipu_backend SRCS ${IPU_BACKEND_SRC} DEPS ipu_utils popart graph framework_proto enforce graph_helper timer)
+cc_library(ipu_backend SRCS ${IPU_BACKEND_SRC} DEPS popart graph framework_proto enforce graph_helper timer)
+cc_library(paddle_ipu SHARED SRCS ${PADDLE_IPU_SRC} DEPS popart)
+add_dependencies(paddle_ipu ipu_backend)

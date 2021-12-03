@@ -14,16 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-#include <memory>
 #include <popart/ndarraywrapper.hpp>
 #include <popart/tensordata.hpp>
 #include <popart/tensorinfo.hpp>
+#include <popart/vendored/any.hpp>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/float16.h"
-#include "popart/vendored/any.hpp"
 
 namespace paddle {
 namespace framework {
