@@ -22,7 +22,7 @@ limitations under the License. */
 #include <popart/tensorinfo.hpp>
 
 #include "paddle/fluid/framework/ipu/common.h"
-#include "paddle/fluid/framework/ipu/ipu_optimizer.h"
+#include "paddle/fluid/framework/ipu/ipu_compiler.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
 #include "paddle/fluid/framework/ipu/ipu_utils.h"
 #include "paddle/fluid/framework/operator.h"
@@ -32,31 +32,14 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
-using float16 = paddle::platform::float16;
 class Executor {
  public:
-  Executor();
-  ~Executor();
   void Prepare(const std::string &proto,
-               const std::map<std::string, popart::TensorId> &tensors,
-               const std::vector<popart::TensorId> &outputs,
                std::shared_ptr<popart::DeviceInfo> device);
 
-  void Run(const std::vector<popart::TensorId> &inputs_id,
-           const std::vector<const Tensor *> &inputs,
-           const std::vector<popart::TensorId> &outputs_id,
+  void Run(const std::vector<const Tensor *> &inputs,
            const std::vector<Tensor *> &outputs,
            const framework::ExecutionContext &ctx);
-
-  // Optimizer
-  void SetOptimizerType(const std::string &type);
-  void SetOptimizerAttr(const std::string &attr, float value);
-  void SetOptimizerDType(popart::DataType type);
-  void SetLoss(const std::string &loss);
-  void SetLR(float lr_rate);
-  void SetLRVarName(const std::string &name);
-
-  void SetWeights(const std::vector<popart::TensorId> &info);
 
   void SetWeightsIO();
   void ConvertWeights(bool align_to_popart);
@@ -67,13 +50,13 @@ class Executor {
   void SetScope(const Scope *scope) { scope_ = scope; }
 
   // Strategy
-  void SetIpuStrategy(const IpuStrategy &strategy);
+  void SetIpuStrategy(const IpuStrategy &strategy) {
+    ipu_strategy_ = &strategy;
+  }
 
- private:
-  float GetLRFromScope();
+  SharedObj *shared_obj;
 
  public:
-  OptmizerMetaInfo opt_info;
   std::unique_ptr<popart::Session> session_;
 
  private:
@@ -86,6 +69,7 @@ class Executor {
   // <popart_var, paddle_var> pairs, include weights and optimizer states
   std::vector<std::pair<popart::TensorId, popart::TensorId>>
       weights_and_opt_state_;
+
   int step_ = 0;
 };
 

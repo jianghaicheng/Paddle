@@ -16,6 +16,7 @@
 
 #include <popart/builder.hpp>
 #include <popart/graphtransformer.hpp>
+#include <popart/optimizer.hpp>
 #include "paddle/fluid/framework/ipu/common.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
 #include "paddle/fluid/framework/ipu/ipu_utils.h"
@@ -26,16 +27,56 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
+struct SharedObj {
+  // TODO(alleng) better name, better organization
+
+  // inputs_ & outputs_ save popart tensor id
+  std::vector<popart::TensorId> inputs_;
+  std::vector<popart::TensorId> outputs_;
+
+  // <paddle_var, popart_var>
+  std::map<std::string, popart::TensorId> tensors_;
+
+  std::vector<popart::TensorId> weights_;
+
+  std::string loss_var;
+  std::string lr_var;
+  float lr;
+
+  using OptimizerFn =
+      std::function<std::unique_ptr<popart::Optimizer>(float lr)>;
+  OptimizerFn optimizer_fn;
+  std::string optimizer_type;
+
+  bool with_lr_sched = false;
+
+ public:
+  popart::Optimizer *Optimizer() { return optimizer.get(); }
+
+  popart::Optimizer *NewOptimizer() {
+    optimizer = optimizer_fn(lr);
+    return optimizer.get();
+  }
+
+  popart::Optimizer *UpdateOptimizer(float lr_new) {
+    optimizer = optimizer_fn(lr_new);
+    return optimizer.get();
+  }
+
+ private:
+  std::unique_ptr<popart::Optimizer> optimizer;
+};
+
 class Compiler {
  public:
   Compiler();
-  ~Compiler();
   void RegisterOpFunc();
   void LowerBody(const ir::Graph *graph);
   void InitInputs(ir::Graph *graph, const std::vector<std::string> &feed_list);
   void InitOutputs(const std::vector<std::string> &fetch_list);
   void LowerConstants(const ir::Graph *graph, const Scope *scope);
   void LowerWeights(const ir::Graph *graph, const Scope *scope);
+  void LowerOptimier(const ir::Graph *graph, const Scope *scope);
 
   void InsertTensors(const std::vector<std::string> &output_names,
                      const std::vector<std::string> &tensor_ids);
@@ -51,19 +92,19 @@ class Compiler {
                               const OpDesc *op_desc);
   void SetSerializeAttributes(const std::string &tensor_id,
                               const OpDesc *op_desc);
-  void SetIpuStrategy(const IpuStrategy &strategy);
+
+  void SetIpuStrategy(const IpuStrategy &strategy) {
+    ipu_strategy_ = &strategy;
+  }
 
   void SetCustomOps(const std::vector<IpuCustomOpIdentifier> &custom_ops);
-
-  std::vector<popart::TensorId> GetInputs() { return inputs_; }
-  std::vector<popart::TensorId> GetOutputs() { return outputs_; }
-  std::map<std::string, popart::TensorId> GetTensors() { return tensors_; }
-  std::vector<popart::TensorId> &GetWeights();
 
   std::string GetModelProto();
   void SaveModelProto(const std::string &path);
   void SaveModelProtoNoCheck(const std::string &path);
   void ConvertProtoToFp16();
+
+  std::unique_ptr<SharedObj> shared_obj;
 
  private:
   std::vector<std::string> GetOpInputs(const OpDesc *op);
@@ -76,19 +117,9 @@ class Compiler {
   using OpFunc = std::function<void(OpDesc *op_desc)>;
   std::unordered_map<std::string, OpFunc> name_function_;
 
-  // stateful variable
-  std::map<std::string, popart::TensorId> tensors_;
-
   // feed_list_ & fetch_list save paddle tensor id
   std::vector<std::string> feed_list_;
   std::vector<std::string> fetch_list_;
-
-  // inputs_ & outputs_ save popart tensor id
-  std::vector<popart::TensorId> inputs_;
-  std::vector<popart::TensorId> outputs_;
-
-  // weights info map
-  std::vector<popart::TensorId> weights_;
 
   std::string converted_proto_ = "";
   const IpuStrategy *ipu_strategy_ = nullptr;

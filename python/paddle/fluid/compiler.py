@@ -552,9 +552,16 @@ class IpuCompiler(object):
         self._program.desc.flush()
         self._graph = core.Graph(self._program.desc)
 
+        if self._ipu_strategy.is_training:
+            passes = [
+                'optimizer_extract_pass',
+                'optimizer_state_align_pass',
+            ]
+            for pass_name in passes:
+                a_pass = core.get_pass(pass_name)
+                a_pass.apply(self._graph)
+
         passes = [
-            'optimizer_extract_pass',
-            'optimizer_state_align_pass',
             'forward_graph_extract_pass',
             'infer_shape_pass',
             'avg_shard_pass',

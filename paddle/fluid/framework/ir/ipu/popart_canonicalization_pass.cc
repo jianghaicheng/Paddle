@@ -50,10 +50,12 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
       VLOG(11) << "Raw Paddle Node:";
       VLOG(11) << node->Op()->Proto()->DebugString();
       new_node = handler(graph, node);
-      VLOG(11) << "Post Popart Node:";
-      VLOG(11) << new_node->Op()->Proto()->DebugString();
-      ipu::ClearNode(node);
-      graph->RemoveNode(node);
+      if (new_node) {
+        VLOG(11) << "Post Popart Node:";
+        VLOG(11) << new_node->Op()->Proto()->DebugString();
+        ipu::ClearNode(node);
+        graph->RemoveNode(node);
+      }
     } else {
       missing_ops.push_back(op_type);
     }

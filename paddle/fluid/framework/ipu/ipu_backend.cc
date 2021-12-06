@@ -29,6 +29,7 @@ std::shared_ptr<IpuBackend> IpuBackend::instance_ = nullptr;
 IpuBackend::IpuBackend() {
   compiler_ = std::make_shared<Compiler>();
   executor_ = std::make_unique<Executor>();
+  executor_->shared_obj = compiler_->shared_obj.get();
 }
 
 void IpuBackend::Clear() {
@@ -65,7 +66,9 @@ void IpuBackend::Compile(ir::Graph* graph,
   compiler_->LowerWeights(graph, scope_);
   compiler_->LowerBody(graph);
   compiler_->InitOutputs(fetch_list);
-  executor_->SetWeights(compiler_->GetWeights());
+  if (ipu_strategy_->is_training) {
+    compiler_->LowerOptimier(graph, scope_);
+  }
   is_compiled_ = true;
   VLOG(10) << "leave IpuBackend::Compile";
 }
@@ -74,10 +77,8 @@ void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
                      const std::vector<Tensor*>& outputs,
                      const framework::ExecutionContext& ctx) {
   Prepare();
-  auto inputs_id = compiler_->GetInputs();
-  auto outputs_id = compiler_->GetOutputs();
   timer_->Start();
-  executor_->Run(inputs_id, inputs, outputs_id, outputs, ctx);
+  executor_->Run(inputs, outputs, ctx);
   timer_->Pause();
   VLOG(10) << "[IPU Run]: " << timer_->ElapsedMS() << " (ms)";
 }
@@ -91,12 +92,9 @@ void IpuBackend::Prepare() {
   // convert Model to fp16
   if (ipu_strategy_->enable_fp16) {
     compiler_->ConvertProtoToFp16();
-    executor_->SetOptimizerDType(popart::DataType::FLOAT16);
   }
   auto proto = compiler_->GetModelProto();
-  auto tensors = compiler_->GetTensors();
-  auto outputs = compiler_->GetOutputs();
-  executor_->Prepare(proto, tensors, outputs, device_);
+  executor_->Prepare(proto, device_);
   // Init Timer
   timer_.reset(new platform::Timer());
 }
@@ -108,8 +106,8 @@ void IpuBackend::SetScope(const Scope& scope) {
 
 void IpuBackend::SetIpuStrategy(const IpuStrategy& strategy) {
   ipu_strategy_ = &strategy;
-  executor_->SetIpuStrategy(strategy);
   compiler_->SetIpuStrategy(strategy);
+  executor_->SetIpuStrategy(strategy);
 }
 
 void IpuBackend::SetCustomOps(

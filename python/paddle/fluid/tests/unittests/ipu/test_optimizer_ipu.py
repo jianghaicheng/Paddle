@@ -16,7 +16,6 @@ from __future__ import print_function
 
 import numpy as np
 import unittest
-import sys
 import paddle
 import paddle.fluid.compiler as compiler
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -29,7 +28,7 @@ class TestBase(IPUOpTest):
         self.set_atol()
         self.set_data_feed()
         self.set_feed_attr()
-        self.set_op_attrs()
+        self.set_attrs()
 
     def set_atol(self):
         self.atol = 1e-6
@@ -44,7 +43,7 @@ class TestBase(IPUOpTest):
         self.feed_list = list(self.feed.keys())
         self.feed_dtype = [x.dtype for x in self.feed.values()]
 
-    def set_op_attrs(self):
+    def set_attrs(self):
         self.attrs = {
             "optimizer": 'sgd',
             "weight_decay": 0.0,

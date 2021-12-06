@@ -47,8 +47,11 @@ Node *print_handler(Graph *graph, Node *node) {
                       node->outputs, attrs);
 }
 
+Node *popart_optimizer_handler(Graph *graph, Node *node) { return nullptr; }
+
 REGISTER_HANDLER(custom_op, custom_op_handler);
 REGISTER_HANDLER(print, print_handler);
+REGISTER_HANDLER(popart_optimizer, popart_optimizer_handler);
 
 }  // namespace
 }  // namespace ipu

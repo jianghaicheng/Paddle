@@ -20,6 +20,7 @@ limitations under the License. */
 #include <popart/vendored/any.hpp>
 
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -207,6 +208,17 @@ struct ConstantOpAttrVisitor : public boost::static_visitor<void> {
   void operator()(int64_t v) const { RaiseError(); }
   void operator()(boost::blank) const { RaiseError(); }
 };
+
+std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
+    const std::string& opt_type);
+
+template <typename T>
+T GetSingleVarFromScope(const Scope* scope, const std::string& var_name) {
+  auto var = scope->GetVar(var_name);
+  auto tensor = var->Get<framework::LoDTensor>();
+  // check dtype is  ?
+  return tensor.data<T>()[0];
+}
 
 }  // namespace ipu
 }  // namespace framework

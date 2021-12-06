@@ -14,45 +14,31 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ipu/ipu_executor.h"
 
+using float16 = paddle::platform::float16;
+
 namespace paddle {
 namespace framework {
 namespace ipu {
 
-Executor::Executor() {}
-
-Executor::~Executor() {}
-
 void Executor::Prepare(const std::string &proto,
-                       const std::map<std::string, popart::TensorId> &tensors,
-                       const std::vector<popart::TensorId> &outputs,
                        std::shared_ptr<popart::DeviceInfo> device) {
-  auto art = popart::AnchorReturnType("All");
-  std::map<popart::TensorId, popart::AnchorReturnType> anchor_ids;
-  for (const auto &id : outputs) {
-    anchor_ids.emplace(id, art);
-  }
-
-  auto dataFlow = popart::DataFlow(ipu_strategy_->batches_per_step, anchor_ids);
-
+  VLOG(10) << "enter Executor::Prepare";
   PADDLE_ENFORCE_NOT_NULL(device, platform::errors::Unavailable(
                                       "IPU device isn't attached, please call "
                                       "IpuBackend::AttachDevice(id) first."));
 
-  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training) {
-    VLOG(10) << "Set Loss Scaling for optimizer...";
-    SetOptimizerAttr(sLossScaling, ipu_strategy_->loss_scaling);
+  auto art = popart::AnchorReturnType("All");
+  std::map<popart::TensorId, popart::AnchorReturnType> anchor_ids;
+  for (const auto &id : shared_obj->outputs_) {
+    anchor_ids.emplace(id, art);
+  }
+  auto dataFlow = popart::DataFlow(ipu_strategy_->batches_per_step, anchor_ids);
 
+  if (ipu_strategy_->is_training) {
     VLOG(10) << "Creating TrainingSession from Onnx Model...";
-    auto popart_optimizer = GetPopartOptimizer(opt_info);
-
-    auto it = tensors.find(opt_info.GetLoss());
-    PADDLE_ENFORCE_NE(
-        it, tensors.end(),
-        paddle::platform::errors::InvalidArgument(
-            "loss_id = %s doesn't exist in popart graph.", opt_info.GetLoss()));
-
+    auto optimizer = shared_obj->NewOptimizer();
     session_ = popart::TrainingSession::createFromOnnxModel(
-        proto, dataFlow, it->second, *popart_optimizer, device,
+        proto, dataFlow, shared_obj->loss_var, *optimizer, device,
         popart::InputShapeInfo(), ipu_strategy_->popart_options,
         ipu_strategy_->popart_patterns);
   } else {
@@ -67,7 +53,9 @@ void Executor::Prepare(const std::string &proto,
   session_->prepareDevice();
   VLOG(10) << "Preparing session device...done";
 
-  SetWeightsIO();
+  if (ipu_strategy_->is_training) {
+    SetWeightsIO();
+  }
 
   VLOG(10) << "Copy weights from paddle to popart...";
   WeightsFromPaddle();
@@ -84,16 +72,15 @@ void Executor::Prepare(const std::string &proto,
   step_ = 0;
 }
 
-void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
-                   const std::vector<const Tensor *> &inputs,
-                   const std::vector<popart::TensorId> &outputs_id,
+void Executor::Run(const std::vector<const Tensor *> &inputs,
                    const std::vector<Tensor *> &outputs,
                    const framework::ExecutionContext &ctx) {
+  VLOG(10) << "enter Executor::Run";
   // inputs
   std::map<popart::TensorId, popart::IArray &> popart_inputs;
   std::map<popart::TensorId, PaddleIArray> input_wrappers;
   for (size_t i = 0; i < inputs.size(); i++) {
-    auto tensor_id = inputs_id[i];
+    auto tensor_id = shared_obj->inputs_[i];
     auto tensor = const_cast<Tensor *>(inputs[i]);
     input_wrappers.emplace(tensor_id, PaddleIArray(tensor));
     popart_inputs.emplace(tensor_id, input_wrappers.at(tensor_id));
@@ -102,7 +89,7 @@ void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
   std::map<popart::TensorId, popart::IArray &> popart_anchors;
   std::map<popart::TensorId, PaddleIArray> anchor_wrappers;
   for (size_t i = 0; i < outputs.size(); i++) {
-    auto tensor_id = outputs_id[i];
+    auto tensor_id = shared_obj->outputs_[i];
     auto tensor = const_cast<Tensor *>(outputs[i]);
     // get dims & dtype from session
     auto fetch_info = session_->getInfo(tensor_id);
@@ -127,13 +114,15 @@ void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
     anchor_wrappers.emplace(tensor_id, PaddleIArray(tensor));
     popart_anchors.emplace(tensor_id, anchor_wrappers.at(tensor_id));
   }
+  VLOG(10) << "Prepared inputs/anchors";
 
-  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training) {
-    VLOG(10) << "Update optimizer learning rate...";
-    SetLR(GetLRFromScope());
-    auto popart_optimizer = GetPopartOptimizer(opt_info);
-    auto &session = dynamic_cast<popart::TrainingSession &>(*session_);
-    session.updateOptimizerFromHost(popart_optimizer.get());
+  if (ipu_strategy_->is_training && shared_obj->with_lr_sched) {
+    VLOG(10) << "Update learning_rate";
+    auto new_lr = GetSingleVarFromScope<float>(scope_, shared_obj->lr_var);
+    VLOG(10) << "New Lr: " << new_lr;
+    auto *optimizer = shared_obj->UpdateOptimizer(new_lr);
+    auto *session = dynamic_cast<popart::TrainingSession *>(session_.get());
+    session->updateOptimizerFromHost(optimizer);
   }
 
   popart::StepIO stepio(popart_inputs, popart_anchors);
@@ -142,7 +131,7 @@ void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
   VLOG(10) << "Running...done";
 
   step_++;
-  if (ipu_strategy_ != nullptr && ipu_strategy_->is_training &&
+  if (ipu_strategy_->is_training &&
       step_ % ipu_strategy_->save_per_n_step == 0) {
     session_->weightsToHost();
     WeightsToPaddle();
@@ -152,42 +141,17 @@ void Executor::Run(const std::vector<popart::TensorId> &inputs_id,
   }
 }
 
-void Executor::SetOptimizerType(const std::string &type) {
-  opt_info.SetType(type);
-}
-
-void Executor::SetLR(float lr_rate) { opt_info.SetLR(lr_rate); }
-
-void Executor::SetOptimizerAttr(const std::string &attr, float value) {
-  opt_info.SetAttr(attr, value);
-}
-
-void Executor::SetLoss(const std::string &loss) { opt_info.SetLoss(loss); }
-
-void Executor::SetLRVarName(const std::string &name) {
-  opt_info.SetLRVarName(name);
-}
-
-void Executor::SetOptimizerDType(popart::DataType type) {
-  opt_info.SetDType(type);
-}
-
-void Executor::SetWeights(const std::vector<popart::TensorId> &weights) {
-  weights_ = weights;
-}
-
 void Executor::SetWeightsIO() {
-  auto opt_type = opt_info.GetType();
+  auto opt_type = shared_obj->optimizer_type;
+  VLOG(10) << "SetWeightsIO for " << opt_type;
   auto pre_post_fix = GetOptPrePostfix(opt_type);
-  for (const auto &weight_id : weights_) {
+  for (const auto &weight_id : shared_obj->weights_) {
     for (const auto &pair : pre_post_fix) {
-      if (!IsOptimizerSupported(opt_type)) {
-        continue;
-      }
-
       // pair.first : popart prefix, pair.second : paddle postfix
       auto popart_var_name = pair.first + weight_id;
       auto paddle_var_name = weight_id + pair.second;
+      VLOG(10) << "weights_and_opt_state_.add: " << popart_var_name << " -- "
+               << paddle_var_name;
 
       if (scope_->FindVar(paddle_var_name) == nullptr) {
         continue;
@@ -296,21 +260,6 @@ void Executor::WeightsFromPaddle() {
 void Executor::WeightsToPaddle() {
   session_->readWeights(weights_io_);
   ConvertWeights(false);
-}
-
-void Executor::SetIpuStrategy(const IpuStrategy &strategy) {
-  ipu_strategy_ = &strategy;
-}
-
-float Executor::GetLRFromScope() {
-  auto lr_var = scope_->GetVar(opt_info.GetLRVarName());
-  auto tensor = lr_var->Get<framework::LoDTensor>();
-
-  PADDLE_ENFORCE_EQ(tensor.type(), framework::proto::VarType::FP32,
-                    platform::errors::InvalidArgument(
-                        "LR requiree float, but got (%s).", tensor.type()));
-
-  return tensor.data<float>()[0];
 }
 
 }  // namespace ipu

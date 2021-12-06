@@ -14,12 +14,54 @@
 
 #include "paddle/fluid/framework/ipu/ipu_compiler.h"
 
+#include <popart/adam.hpp>
+#include <popart/adaptive.hpp>
+#include <popart/optimizer.hpp>
+#include <popart/sgd.hpp>
 #include "paddle/fluid/framework/ipu/ipu_utils.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace ipu {
+
+popart::AdamMode AdamModeFromStr(const std::string& str) {
+  if (str == "adam") {
+    return popart::AdamMode::Adam;
+  } else if (str == "adamax") {
+    return popart::AdamMode::AdaMax;
+  } else if (str == "lamb") {
+    return popart::AdamMode::Lamb;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument("Uknown AdamMode: %s", str));
+  }
+}
+
+popart::AdaptiveMode AdaptiveModeFromStr(const std::string& str) {
+  if (str == "adadelta") {
+    return popart::AdaptiveMode::AdaDelta;
+  } else if (str == "adagrad") {
+    return popart::AdaptiveMode::AdaGrad;
+  } else if (str == "rmsprop") {
+    return popart::AdaptiveMode::RMSProp;
+  } else if (str == "centered_rmsprop") {
+    return popart::AdaptiveMode::CenteredRMSProp;
+  } else {
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("Uknown AdaptiveMode: %s", str));
+  }
+}
+
+popart::WeightDecayMode WeightDecayModeFromStr(const std::string& str) {
+  if (str == "decay") {
+    return popart::WeightDecayMode::Decay;
+  } else if (str == "l2_regularization") {
+    return popart::WeightDecayMode::L2Regularization;
+  } else {
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("Uknown WeightDecayMode: %s", str));
+  }
+}
 
 template <typename T>
 T GetAttrAllowNull(std::string attr, OpDesc* op_desc) {
@@ -51,10 +93,9 @@ TO GetCastSigAttrAllowNull(std::string attr, OpDesc* op_desc) {
 
 Compiler::Compiler() {
   builder_ = popart::Builder::create();
+  shared_obj = std::make_unique<SharedObj>();
   RegisterOpFunc();
 }
-
-Compiler::~Compiler() {}
 
 void Compiler::RegisterOpFunc() {
   VLOG(10) << "enter Compiler::RegisterOpFunc";
@@ -122,7 +163,7 @@ void Compiler::LowerBody(const ir::Graph* graph) {
   for (auto* node : nodes) {
     auto* op_desc = node->Op();
     auto op_type = op_desc->Type();
-    VLOG(10) << "node->type: " << op_type;
+    VLOG(10) << "lowering op: " << op_type;
 
     if (op_type == "popart_constant") {
       // pass
@@ -155,6 +196,8 @@ void Compiler::LowerBody(const ir::Graph* graph) {
           inputs, print_gradient, debug_context, title);
       SetIpuIndexStage(output_ids, op_desc);
       InsertTensors(outputs, output_ids);
+    } else if (op_type == "popart_optimizer") {
+      // pass
     } else {
       auto itr = name_function_.find(op_type);
       if (itr != name_function_.end()) {
@@ -183,8 +226,8 @@ void Compiler::InitInputs(ir::Graph* graph,
           popart::TensorId tensor_id =
               builder_->addInputTensor(input_info, feed_name);
           VLOG(10) << "popart input tensor id = " << tensor_id;
-          inputs_.push_back(tensor_id);
-          tensors_.emplace(var_desc->Name(), tensor_id);
+          shared_obj->inputs_.push_back(tensor_id);
+          shared_obj->tensors_.emplace(var_desc->Name(), tensor_id);
         }
       }
     }
@@ -194,14 +237,14 @@ void Compiler::InitInputs(ir::Graph* graph,
 void Compiler::InitOutputs(const std::vector<std::string>& fetch_list) {
   for (const auto& fetch_name : fetch_list) {
     fetch_list_.push_back(fetch_name);
-    auto tensor = tensors_.find(fetch_name);
-    PADDLE_ENFORCE_NE(tensor, tensors_.end(),
+    auto tensor = shared_obj->tensors_.find(fetch_name);
+    PADDLE_ENFORCE_NE(tensor, shared_obj->tensors_.end(),
                       platform::errors::NotFound(
                           "output tensor %s does not exist.", fetch_name));
     VLOG(10) << "fetch_name= " << fetch_name;
     VLOG(10) << "popart output tensor id = " << tensor->second;
     builder_->addOutputTensor(tensor->second);
-    outputs_.push_back(tensor->second);
+    shared_obj->outputs_.push_back(tensor->second);
   }
 }
 
@@ -236,7 +279,7 @@ void Compiler::LowerConstants(const ir::Graph* graph, const Scope* scope) {
           new popart::ConstVoidData(tensor->data<void>(), tensor_info));
       popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
       SetIpuIndexStage(result, op_desc);
-      tensors_.emplace(tensor_name, result);
+      shared_obj->tensors_.emplace(tensor_name, result);
     }
   }
   VLOG(10) << "leave Compiler::LowerConstants";
@@ -252,7 +295,7 @@ void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope) {
     if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
       if (node->Var()->Persistable() && node->inputs.empty()) {
         auto var_name = node->Var()->Name();
-        if (tensors_.count(var_name) != 0) {
+        if (shared_obj->tensors_.count(var_name) != 0) {
           continue;
         }
         VLOG(10) << "lowering weight: " << var_name;
@@ -269,13 +312,112 @@ void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope) {
           popart::ConstVoidData const_data{tensor.data<void>(), tensor_info};
           popart::TensorId result =
               builder_->addInitializedInputTensor(const_data, var_name);
-          tensors_.emplace(var_name, result);
-          weights_.push_back(result);
+          shared_obj->tensors_.emplace(var_name, result);
+          shared_obj->weights_.push_back(result);
         }
       }
     }
   }
   VLOG(10) << "leave Compiler::LowerWeights";
+}
+
+void Compiler::LowerOptimier(const ir::Graph* graph, const Scope* scope) {
+  for (auto* node : graph->Nodes()) {
+    if (!node->IsOp()) {
+      continue;
+    }
+
+    auto* op_desc = node->Op();
+    auto op_type = op_desc->Type();
+    if (op_type == "popart_optimizer") {
+      auto raw_type =
+          BOOST_GET_CONST(std::string, op_desc->GetAttr("raw_type"));
+      shared_obj->optimizer_type = raw_type;
+      auto loss_var =
+          BOOST_GET_CONST(std::string, op_desc->GetAttr("loss_var"));
+      shared_obj->loss_var = shared_obj->tensors_[loss_var];
+      shared_obj->with_lr_sched =
+          BOOST_GET_CONST(bool, op_desc->GetAttr("with_lr_sched"));
+      if (op_desc->HasAttr("lr_var")) {
+        auto lr_var = BOOST_GET_CONST(std::string, op_desc->GetAttr("lr_var"));
+        shared_obj->lr_var = lr_var;
+        shared_obj->lr = GetSingleVarFromScope<float>(scope, lr_var);
+      } else {
+        // adadelta has no lr
+        shared_obj->lr = 0.01f;
+        shared_obj->with_lr_sched = false;
+      }
+      VLOG(10) << "Set initial lr: " << shared_obj->lr;
+      auto loss_scaling = ipu_strategy_->loss_scaling;
+      auto type = BOOST_GET_CONST(std::string, op_desc->GetAttr("type"));
+      if (type == "sgd") {
+        auto weight_decay =
+            BOOST_GET_CONST(float, op_desc->GetAttr("weight_decay"));
+        auto momentum = BOOST_GET_CONST(float, op_desc->GetAttr("momentum"));
+        shared_obj->optimizer_fn = [=](float lr) {
+          return std::make_unique<popart::SGD>(
+              popart::OptimizerValue(lr, false),
+              popart::OptimizerValue(weight_decay, true),
+              popart::OptimizerValue(momentum, true),
+              popart::SGD::getUnsetDampening(),
+              popart::SGD::getUnsetVelocityScaling(),
+              popart::OptimizerValue(loss_scaling, true));
+        };
+      } else if (type == "adam") {
+        auto weight_decay =
+            BOOST_GET_CONST(float, op_desc->GetAttr("weight_decay"));
+        auto beta1 = BOOST_GET_CONST(float, op_desc->GetAttr("beta1"));
+        auto beta2 = BOOST_GET_CONST(float, op_desc->GetAttr("beta2"));
+        auto eps = BOOST_GET_CONST(float, op_desc->GetAttr("eps"));
+        // auto mwn = 65504.0f;
+        auto adam_mode_ =
+            BOOST_GET_CONST(std::string, op_desc->GetAttr("adam_mode"));
+        auto adam_mode = AdamModeFromStr(adam_mode_);
+        auto weight_decay_mode_ =
+            BOOST_GET_CONST(std::string, op_desc->GetAttr("weight_decay_mode"));
+        auto weight_decay_mode = WeightDecayModeFromStr(weight_decay_mode_);
+        shared_obj->optimizer_fn = [=](float lr) {
+          return std::make_unique<popart::Adam>(
+              popart::OptimizerValue(lr, false),
+              popart::OptimizerValue(weight_decay, true),
+              popart::OptimizerValue(beta1, true),
+              popart::OptimizerValue(beta2, true),
+              popart::OptimizerValue(eps, true),
+              // popart::OptimizerValue(mwn, true),
+              popart::OptimizerValue(loss_scaling, true), adam_mode,
+              weight_decay_mode, popart::DataType::UNDEFINED,
+              popart::DataType::FLOAT, popart::DataType::FLOAT);
+        };
+      } else if (type == "adaptive") {
+        auto alpha = BOOST_GET_CONST(float, op_desc->GetAttr("alpha"));
+        auto momentum = BOOST_GET_CONST(float, op_desc->GetAttr("momentum"));
+        auto eps = BOOST_GET_CONST(float, op_desc->GetAttr("eps"));
+        auto weight_decay =
+            BOOST_GET_CONST(float, op_desc->GetAttr("weight_decay"));
+        auto adaptive_mode_ =
+            BOOST_GET_CONST(std::string, op_desc->GetAttr("adaptive_mode"));
+        auto adaptive_mode = AdaptiveModeFromStr(adaptive_mode_);
+        auto weight_decay_mode_ =
+            BOOST_GET_CONST(std::string, op_desc->GetAttr("weight_decay_mode"));
+        auto weight_decay_mode = WeightDecayModeFromStr(weight_decay_mode_);
+        shared_obj->optimizer_fn = [=](float lr) {
+          return std::make_unique<popart::Adaptive>(
+              popart::OptimizerValue(lr, false),
+              popart::OptimizerValue(weight_decay, true),
+              popart::OptimizerValue(alpha, true),
+              popart::OptimizerValue(momentum, true),
+              popart::OptimizerValue(eps, true),
+              popart::OptimizerValue(loss_scaling, true), adaptive_mode,
+              weight_decay_mode, popart::DataType::UNDEFINED,
+              popart::DataType::FLOAT, popart::DataType::FLOAT,
+              popart::DataType::FLOAT);
+        };
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "optimizer %s is not implemented", type));
+      }
+    }
+  }
 }
 
 void Compiler::InsertTensors(const std::vector<std::string>& output_names,
@@ -284,7 +426,7 @@ void Compiler::InsertTensors(const std::vector<std::string>& output_names,
                     platform::errors::Fatal("InsertTensors size mismatch"));
   for (int i = 0; i < tensor_ids.size(); i++) {
     std::string tensor_id = tensor_ids[i];
-    tensors_.emplace(output_names[i], tensor_ids[i]);
+    shared_obj->tensors_.emplace(output_names[i], tensor_ids[i]);
   }
 }
 
@@ -292,7 +434,7 @@ void Compiler::InsertTensors(const std::vector<std::string>& output_names,
                              const std::string& tensor_id) {
   PADDLE_ENFORCE_EQ(output_names.size(), 1,
                     platform::errors::Fatal("InsertTensors size mismatch"));
-  tensors_.emplace(output_names[0], tensor_id);
+  shared_obj->tensors_.emplace(output_names[0], tensor_id);
 }
 
 void Compiler::SetIpuIndexStage(const std::vector<std::string>& tensor_ids,
@@ -383,18 +525,12 @@ void Compiler::SetSerializeAttributes(const std::string& tensor_id,
   SetSerializeAttributes(tensor_ids, op_desc);
 }
 
-void Compiler::SetIpuStrategy(const IpuStrategy& strategy) {
-  ipu_strategy_ = &strategy;
-}
-
 void Compiler::SetCustomOps(
     const std::vector<IpuCustomOpIdentifier>& custom_ops) {
   for (auto x : custom_ops) {
     custom_ops_.emplace(x.paddle_op, x);
   }
 }
-
-std::vector<popart::TensorId>& Compiler::GetWeights() { return weights_; }
 
 // convertFloatsToHalfs
 void Compiler::ConvertProtoToFp16() {
@@ -425,8 +561,8 @@ std::vector<std::string> Compiler::GetOpInputs(const OpDesc* op) {
   auto ins = op->Input("__inputs__");
   std::vector<std::string> inputs;
   for (const auto& in : ins) {
-    if (tensors_.find(in) != tensors_.end()) {
-      inputs.push_back(tensors_[in]);
+    if (shared_obj->tensors_.find(in) != shared_obj->tensors_.end()) {
+      inputs.push_back(shared_obj->tensors_[in]);
     } else {
       inputs.push_back(in);
     }
