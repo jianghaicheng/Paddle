@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -102,6 +102,8 @@ bool ParseLine(const std::string &line,
   // input_mask
   paddle::PaddleTensor input_mask;
   ParseTensor<float>(fields[i], &input_mask);
+  // fp32 to fp16
+  ConvertFP32toFP16(input_mask);
   input_mask.name = input_name + std::to_string(i);
   tensors->push_back(input_mask);
 
@@ -135,31 +137,9 @@ void SetConfig(AnalysisConfig *cfg, int batch_size = 1) {
   cfg->SetModel(FLAGS_infer_model);
   // ipu_device_num, ipu_micro_batch_size, ipu_enable_pipelining
   cfg->EnableIpu(1, batch_size, false);
-}
-
-void profile() {
-  AnalysisConfig config;
-  SetConfig(&config);
-
-  std::vector<std::vector<PaddleTensor>> outputs;
-  std::vector<std::vector<PaddleTensor>> inputs;
-  LoadInputData(&inputs);
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),
-                 inputs, &outputs, FLAGS_num_threads);
-}
-
-// performance profile
-TEST(Analyzer_Ernie_ipu, performance_profile) { profile(); }
-
-// Compare Deterministic result
-TEST(Analyzer_Ernie_ipu, compare_determine) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  LoadInputData(&input_slots_all);
-  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                       input_slots_all);
+  // ipu_enable_fp16, ipu_replica_num, ipu_available_memory_proportion,
+  // ipu_enable_half_partial
+  cfg->SetIpuConfig(true, 1, 1.0, true);
 }
 
 // Compare results
@@ -186,11 +166,16 @@ TEST(Analyzer_Ernie_ipu, compare_results) {
   for (size_t i = 0; i < input_slots_all.size(); i++) {
     outputs.clear();
     predictor->Run(input_slots_all[i], &outputs);
-    auto outputs_size = outputs.front().data.length() / (sizeof(float));
+
+    auto output = outputs.front();
+    ConvertFP16toFP32(output);
+    auto outputs_size = 1;
+    for (auto dim : output.shape) {
+      outputs_size *= dim;
+    }
+    float *fp32_data = reinterpret_cast<float *>(output.data.data());
     for (size_t j = 0; j < outputs_size; ++j) {
-      EXPECT_NEAR(ref[i * outputs_size + j],
-                  static_cast<float *>(outputs[0].data.data())[j],
-                  FLAGS_accuracy);
+      EXPECT_NEAR(ref[i * outputs_size + j], fp32_data[j], 5e-3);
     }
   }
 }

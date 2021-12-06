@@ -26,9 +26,8 @@ namespace inference {
 TEST(Analyzer_Resnet50_ipu, performance_profile) {
   std::string model_dir = FLAGS_infer_model + "/" + "model";
   AnalysisConfig config;
-  // num_ipu, enable_pipelining, batches_per_step, batch_size,
-  // need_avg_shard
-  config.EnableIpu(1, false);
+  // ipu_device_num, ipu_micro_batch_size, ipu_enable_pipelining
+  config.EnableIpu(1, 1, false);
   config.SetModel(model_dir + "/model", model_dir + "/params");
 
   std::vector<PaddleTensor> inputs;
@@ -55,9 +54,8 @@ TEST(Analyzer_Resnet50_ipu, performance_profile) {
 TEST(Analyzer_Resnet50_ipu, compare_results_1_batch) {
   std::string model_dir = FLAGS_infer_model + "/" + "model";
   AnalysisConfig config;
-  // num_ipu, enable_pipelining, batches_per_step, batch_size,
-  // need_avg_shard
-  config.EnableIpu(1, false);
+  // ipu_device_num, ipu_micro_batch_size, ipu_enable_pipelining
+  config.EnableIpu(1, 1, false);
   config.SetModel(model_dir + "/model", model_dir + "/params");
 
   std::vector<PaddleTensor> inputs;
@@ -105,9 +103,8 @@ TEST(Analyzer_Resnet50_ipu, compare_results_1_batch) {
 TEST(Analyzer_Resnet50_ipu, compare_results_2_batch) {
   std::string model_dir = FLAGS_infer_model + "/" + "model";
   AnalysisConfig config;
-  // num_ipu, enable_pipelining, batches_per_step, batch_size,
-  // need_avg_shard
-  config.EnableIpu(2, false, 1, 2, 1);
+  // ipu_device_num, ipu_micro_batch_size, ipu_enable_pipelining
+  config.EnableIpu(1, 2, false);
   config.SetModel(model_dir + "/model", model_dir + "/params");
 
   std::vector<PaddleTensor> inputs;

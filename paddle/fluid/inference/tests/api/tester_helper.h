@@ -77,6 +77,7 @@ namespace paddle {
 namespace inference {
 
 using paddle::framework::proto::VarType;
+using float16 = paddle::platform::float16;
 
 template <typename T>
 constexpr paddle::PaddleDType GetPaddleDType();
@@ -1055,6 +1056,43 @@ static bool CompareTensor(const framework::LoDTensor &a,
   }
 
   return true;
+}
+
+void ConvertFP32toFP16(paddle::PaddleTensor &tensor) {
+  int num = 1;
+  for (auto dim : tensor.shape) {
+    num *= dim;
+  }
+  PADDLE_ENFORCE_EQ(
+      tensor.dtype, PaddleDType::FLOAT32,
+      platform::errors::InvalidArgument(
+          "The tensor dtype is not float32, only support float32 as input"));
+  float *fp32_data = reinterpret_cast<float *>(tensor.data.data());
+  float16 *fp16_data = (float16 *)std::malloc(num * sizeof(float16));
+  for (int i = 0; i < num; i++) {
+    fp16_data[i] = float16(fp32_data[i]);
+  }
+  tensor.data =
+      PaddleBuf(static_cast<void *>(fp16_data), num * sizeof(float16));
+  tensor.dtype = PaddleDType::FLOAT16;
+}
+
+void ConvertFP16toFP32(paddle::PaddleTensor &tensor) {
+  int num = 1;
+  for (auto dim : tensor.shape) {
+    num *= dim;
+  }
+  PADDLE_ENFORCE_EQ(
+      tensor.dtype, PaddleDType::FLOAT16,
+      platform::errors::InvalidArgument(
+          "The tensor dtype is not float16, only support float16 as input"));
+  float16 *fp16_data = reinterpret_cast<float16 *>(tensor.data.data());
+  float *fp32_data = (float *)std::malloc(num * sizeof(float));
+  for (int i = 0; i < num; i++) {
+    fp32_data[i] = float(fp16_data[i]);
+  }
+  tensor.data = PaddleBuf(static_cast<void *>(fp32_data), num * sizeof(float));
+  tensor.dtype = PaddleDType::FLOAT32;
 }
 
 }  // namespace inference
