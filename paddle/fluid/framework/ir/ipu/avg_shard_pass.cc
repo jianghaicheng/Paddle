@@ -32,6 +32,9 @@ void AvgShardPass::ApplyImpl(ir::Graph* graph) const {
     VLOG(10) << "start AvgShardPass";
     auto nodes = ir::TopologySortOperations(*graph);
     auto num_ipus = ipu_backend->GetIpuStrategy()->num_ipus;
+    auto replica_factor =
+        ipu_backend->GetIpuStrategy()->popart_options.replicatedGraphCount;
+    num_ipus = num_ipus / replica_factor;
 
     int shard_position = nodes.size() / num_ipus;
     int index_and_stage = -1;

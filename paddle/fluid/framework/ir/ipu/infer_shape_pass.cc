@@ -33,7 +33,7 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
   // Make batch_size fixed
   bool need_infer_shape = false;
   std::shared_ptr<ipu::IpuBackend> ipu_backend = ipu::IpuBackend::GetInstance();
-  auto batch_size = ipu_backend->GetIpuStrategy()->micro_batch_size;
+  auto micro_batch_size = ipu_backend->GetIpuStrategy()->micro_batch_size;
   auto feed_list = Get<std::vector<std::string>>("feed_list");
   for (auto node : graph->Nodes()) {
     if (!node->IsVar()) {
@@ -44,7 +44,7 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
     if (is_feed) {
       auto input_shape = node->Var()->GetShape();
       if (input_shape[0] <= -1) {
-        input_shape[0] = batch_size;
+        input_shape[0] = micro_batch_size;
         node->Var()->SetShape(input_shape);
         need_infer_shape = true;
       }
