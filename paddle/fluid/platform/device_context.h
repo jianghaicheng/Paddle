@@ -61,7 +61,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/stream/npu_stream.h"
 #endif
 #ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/framework/ipu/device.h"
+#include "paddle/fluid/framework/ipu/ipu_device.h"
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
 

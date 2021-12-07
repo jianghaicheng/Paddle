@@ -18,8 +18,8 @@ limitations under the License. */
 #include <popart/names.hpp>
 #include <popart/tensorinfo.hpp>
 
-#include "paddle/fluid/framework/ipu/device.h"
 #include "paddle/fluid/framework/ipu/ipu_compiler.h"
+#include "paddle/fluid/framework/ipu/ipu_device.h"
 #include "paddle/fluid/framework/ipu/ipu_executor.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
 #include "paddle/fluid/framework/ipu/ipu_utils.h"

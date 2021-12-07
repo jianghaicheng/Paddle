@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/ipu/optimizer_state_align_pass.h"
-#include "paddle/fluid/framework/ipu/common.h"
+#include "paddle/fluid/framework/ipu/ipu_names.h"
 #include "paddle/fluid/framework/ipu/ipu_backend.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 

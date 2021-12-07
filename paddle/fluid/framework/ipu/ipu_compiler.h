@@ -17,7 +17,7 @@
 #include <popart/builder.hpp>
 #include <popart/graphtransformer.hpp>
 #include <popart/optimizer.hpp>
-#include "paddle/fluid/framework/ipu/common.h"
+#include "paddle/fluid/framework/ipu/ipu_names.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
 #include "paddle/fluid/framework/ipu/ipu_utils.h"
 #include "paddle/fluid/framework/ir/graph.h"

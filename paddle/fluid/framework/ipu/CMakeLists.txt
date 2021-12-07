@@ -28,7 +28,7 @@ set(PADDLE_IPU_LIB "${CMAKE_CURRENT_BINARY_DIR}/libpaddle_ipu.so" CACHE STRING "
 set(PADDLE_IPU_LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}" CACHE STRING "")
 
 set(IPU_BACKEND_SRC
-    "device.cc"
+    "ipu_device.cc"
     "ipu_strategy.cc"
     "ipu_executor.cc"
     "ipu_compiler.cc"

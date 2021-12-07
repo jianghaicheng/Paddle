@@ -21,7 +21,7 @@ limitations under the License. */
 #include <popart/session.hpp>
 #include <popart/tensorinfo.hpp>
 
-#include "paddle/fluid/framework/ipu/common.h"
+#include "paddle/fluid/framework/ipu/ipu_names.h"
 #include "paddle/fluid/framework/ipu/ipu_compiler.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
 #include "paddle/fluid/framework/ipu/ipu_utils.h"
