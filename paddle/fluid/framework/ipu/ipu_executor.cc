@@ -29,7 +29,7 @@ void Executor::Prepare(const std::string &proto,
 
   auto art = popart::AnchorReturnType("All");
   std::map<popart::TensorId, popart::AnchorReturnType> anchor_ids;
-  for (const auto &id : shared_obj->outputs_) {
+  for (const auto &id : shared_obj->outputs) {
     anchor_ids.emplace(id, art);
   }
   auto dataFlow = popart::DataFlow(ipu_strategy_->batches_per_step, anchor_ids);
@@ -80,7 +80,7 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   std::map<popart::TensorId, popart::IArray &> popart_inputs;
   std::map<popart::TensorId, PaddleIArray> input_wrappers;
   for (size_t i = 0; i < inputs.size(); i++) {
-    auto tensor_id = shared_obj->inputs_[i];
+    auto tensor_id = shared_obj->inputs[i];
     auto tensor = const_cast<Tensor *>(inputs[i]);
     input_wrappers.emplace(tensor_id, PaddleIArray(tensor));
     popart_inputs.emplace(tensor_id, input_wrappers.at(tensor_id));
@@ -89,7 +89,7 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   std::map<popart::TensorId, popart::IArray &> popart_anchors;
   std::map<popart::TensorId, PaddleIArray> anchor_wrappers;
   for (size_t i = 0; i < outputs.size(); i++) {
-    auto tensor_id = shared_obj->outputs_[i];
+    auto tensor_id = shared_obj->outputs[i];
     auto tensor = const_cast<Tensor *>(outputs[i]);
     // get dims & dtype from session
     auto fetch_info = session_->getInfo(tensor_id);
@@ -145,7 +145,7 @@ void Executor::SetWeightsIO() {
   auto opt_type = shared_obj->optimizer_type;
   VLOG(10) << "SetWeightsIO for " << opt_type;
   auto pre_post_fix = GetOptPrePostfix(opt_type);
-  for (const auto &weight_id : shared_obj->weights_) {
+  for (const auto &weight_id : shared_obj->weights) {
     for (const auto &pair : pre_post_fix) {
       // pair.first : popart prefix, pair.second : paddle postfix
       auto popart_var_name = pair.first + weight_id;

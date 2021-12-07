@@ -226,8 +226,8 @@ void Compiler::InitInputs(ir::Graph* graph,
           popart::TensorId tensor_id =
               builder_->addInputTensor(input_info, feed_name);
           VLOG(10) << "popart input tensor id = " << tensor_id;
-          shared_obj->inputs_.push_back(tensor_id);
-          shared_obj->tensors_.emplace(var_desc->Name(), tensor_id);
+          shared_obj->inputs.push_back(tensor_id);
+          shared_obj->tensors.emplace(var_desc->Name(), tensor_id);
         }
       }
     }
@@ -237,14 +237,14 @@ void Compiler::InitInputs(ir::Graph* graph,
 void Compiler::InitOutputs(const std::vector<std::string>& fetch_list) {
   for (const auto& fetch_name : fetch_list) {
     fetch_list_.push_back(fetch_name);
-    auto tensor = shared_obj->tensors_.find(fetch_name);
-    PADDLE_ENFORCE_NE(tensor, shared_obj->tensors_.end(),
+    auto tensor = shared_obj->tensors.find(fetch_name);
+    PADDLE_ENFORCE_NE(tensor, shared_obj->tensors.end(),
                       platform::errors::NotFound(
                           "output tensor %s does not exist.", fetch_name));
     VLOG(10) << "fetch_name= " << fetch_name;
     VLOG(10) << "popart output tensor id = " << tensor->second;
     builder_->addOutputTensor(tensor->second);
-    shared_obj->outputs_.push_back(tensor->second);
+    shared_obj->outputs.push_back(tensor->second);
   }
 }
 
@@ -279,7 +279,7 @@ void Compiler::LowerConstants(const ir::Graph* graph, const Scope* scope) {
           new popart::ConstVoidData(tensor->data<void>(), tensor_info));
       popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
       SetIpuIndexStage(result, op_desc);
-      shared_obj->tensors_.emplace(tensor_name, result);
+      shared_obj->tensors.emplace(tensor_name, result);
     }
   }
   VLOG(10) << "leave Compiler::LowerConstants";
@@ -295,7 +295,7 @@ void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope) {
     if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
       if (node->Var()->Persistable() && node->inputs.empty()) {
         auto var_name = node->Var()->Name();
-        if (shared_obj->tensors_.count(var_name) != 0) {
+        if (shared_obj->tensors.count(var_name) != 0) {
           continue;
         }
         VLOG(10) << "lowering weight: " << var_name;
@@ -312,8 +312,8 @@ void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope) {
           popart::ConstVoidData const_data{tensor.data<void>(), tensor_info};
           popart::TensorId result =
               builder_->addInitializedInputTensor(const_data, var_name);
-          shared_obj->tensors_.emplace(var_name, result);
-          shared_obj->weights_.push_back(result);
+          shared_obj->tensors.emplace(var_name, result);
+          shared_obj->weights.push_back(result);
         }
       }
     }
@@ -335,7 +335,7 @@ void Compiler::LowerOptimier(const ir::Graph* graph, const Scope* scope) {
       shared_obj->optimizer_type = raw_type;
       auto loss_var =
           BOOST_GET_CONST(std::string, op_desc->GetAttr("loss_var"));
-      shared_obj->loss_var = shared_obj->tensors_[loss_var];
+      shared_obj->loss_var = shared_obj->tensors[loss_var];
       shared_obj->with_lr_sched =
           BOOST_GET_CONST(bool, op_desc->GetAttr("with_lr_sched"));
       if (op_desc->HasAttr("lr_var")) {
@@ -426,7 +426,7 @@ void Compiler::InsertTensors(const std::vector<std::string>& output_names,
                     platform::errors::Fatal("InsertTensors size mismatch"));
   for (int i = 0; i < tensor_ids.size(); i++) {
     std::string tensor_id = tensor_ids[i];
-    shared_obj->tensors_.emplace(output_names[i], tensor_ids[i]);
+    shared_obj->tensors.emplace(output_names[i], tensor_ids[i]);
   }
 }
 
@@ -434,7 +434,7 @@ void Compiler::InsertTensors(const std::vector<std::string>& output_names,
                              const std::string& tensor_id) {
   PADDLE_ENFORCE_EQ(output_names.size(), 1,
                     platform::errors::Fatal("InsertTensors size mismatch"));
-  shared_obj->tensors_.emplace(output_names[0], tensor_id);
+  shared_obj->tensors.emplace(output_names[0], tensor_id);
 }
 
 void Compiler::SetIpuIndexStage(const std::vector<std::string>& tensor_ids,
@@ -561,8 +561,8 @@ std::vector<std::string> Compiler::GetOpInputs(const OpDesc* op) {
   auto ins = op->Input("__inputs__");
   std::vector<std::string> inputs;
   for (const auto& in : ins) {
-    if (shared_obj->tensors_.find(in) != shared_obj->tensors_.end()) {
-      inputs.push_back(shared_obj->tensors_[in]);
+    if (shared_obj->tensors.find(in) != shared_obj->tensors.end()) {
+      inputs.push_back(shared_obj->tensors[in]);
     } else {
       inputs.push_back(in);
     }

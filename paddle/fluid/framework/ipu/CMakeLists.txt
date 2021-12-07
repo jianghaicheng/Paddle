@@ -30,7 +30,6 @@ set(PADDLE_IPU_LIB_DIR "${CMAKE_CURRENT_BINARY_DIR}" CACHE STRING "")
 set(IPU_BACKEND_SRC
     "device.cc"
     "ipu_strategy.cc"
-    "ipu_optimizer.cc"
     "ipu_executor.cc"
     "ipu_compiler.cc"
     "ipu_backend.cc"

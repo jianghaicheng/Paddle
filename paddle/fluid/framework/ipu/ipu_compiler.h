@@ -28,27 +28,28 @@ namespace framework {
 namespace ipu {
 
 struct SharedObj {
-  // TODO(alleng) better name, better organization
-
-  // inputs_ & outputs_ save popart tensor id
-  std::vector<popart::TensorId> inputs_;
-  std::vector<popart::TensorId> outputs_;
-
-  // <paddle_var, popart_var>
-  std::map<std::string, popart::TensorId> tensors_;
-
-  std::vector<popart::TensorId> weights_;
-
-  std::string loss_var;
+  // popart input tensor_ids
+  std::vector<popart::TensorId> inputs;
+  // popart output tensor_ids
+  std::vector<popart::TensorId> outputs;
+  // <paddle_var_name, popart_tensor_ids>
+  std::map<std::string, popart::TensorId> tensors;
+  // popart_weight_ids
+  std::vector<popart::TensorId> weights;
+  // popart loss tensor_id
+  popart::TensorId loss_var;
+  // paddle lr var_name
   std::string lr_var;
+  // lr value
   float lr;
+  // flag for lr is constant or scheduling
+  bool with_lr_sched = false;
+  // paddle optimizer type, eg: momentum, lamb
+  std::string optimizer_type;
 
   using OptimizerFn =
       std::function<std::unique_ptr<popart::Optimizer>(float lr)>;
   OptimizerFn optimizer_fn;
-  std::string optimizer_type;
-
-  bool with_lr_sched = false;
 
  public:
   popart::Optimizer *Optimizer() { return optimizer.get(); }
