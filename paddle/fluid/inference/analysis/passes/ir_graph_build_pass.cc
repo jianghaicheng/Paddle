@@ -77,6 +77,8 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
                                          &argument->ipu_micro_batch_size());
       argument->main_graph().SetNotOwned("enable_pipelining",
                                          &argument->ipu_enable_pipelining());
+      argument->main_graph().SetNotOwned("batches_per_step",
+                                         &argument->ipu_batches_per_step());
       argument->main_graph().SetNotOwned("enable_fp16",
                                          &argument->ipu_enable_fp16());
       argument->main_graph().SetNotOwned("replica_num",

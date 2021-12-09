@@ -255,6 +255,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(ipu_device_num, IpuDeviceNum, int);
   DECL_ARGUMENT_FIELD(ipu_micro_batch_size, IpuMicroBatchSize, int);
   DECL_ARGUMENT_FIELD(ipu_enable_pipelining, IpuEnablePipelining, bool);
+  DECL_ARGUMENT_FIELD(ipu_batches_per_step, IpuBatchesPerStep, int);
   DECL_ARGUMENT_FIELD(ipu_enable_fp16, IpuEnableFp16, bool);
   DECL_ARGUMENT_FIELD(ipu_replica_num, IpuReplicaNum, int);
   DECL_ARGUMENT_FIELD(ipu_available_memory_proportion,

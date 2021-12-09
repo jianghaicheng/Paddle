@@ -72,6 +72,17 @@ DEFINE_int32(warmup_iters, 1, "Number of batches to process during warmup.");
 
 DEFINE_bool(enable_profile, false, "Turn on profiler for fluid");
 DEFINE_int32(cpu_num_threads, 1, "Number of threads for each paddle instance.");
+// ipu related
+DEFINE_int32(ipu_micro_batch_size, 1, "micro batch size");
+DEFINE_int32(ipu_device_num, 1, "device num");
+DEFINE_bool(ipu_enable_pipelining, false, "enable pipelining");
+DEFINE_int32(ipu_batches_per_step, 1,
+             "the number of batches per run in pipelining");
+DEFINE_bool(ipu_enable_fp16, false, "enable fp16");
+DEFINE_int32(ipu_replica_num, 1, "replica num");
+DEFINE_double(ipu_available_memory_proportion, 1.0,
+              "available memory proportion");
+DEFINE_bool(ipu_enable_half_partial, false, "enable half partial");
 
 namespace paddle {
 namespace inference {

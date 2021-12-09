@@ -573,6 +573,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetIpuDeviceNum(config_.ipu_device_num());
   argument_.SetIpuMicroBatchSize(config_.ipu_micro_batch_size_);
   argument_.SetIpuEnablePipelining(config_.ipu_enable_pipelining_);
+  argument_.SetIpuBatchesPerStep(config_.ipu_batches_per_step_);
   argument_.SetIpuEnableFp16(config_.ipu_enable_fp16_);
   argument_.SetIpuReplicaNum(config_.ipu_replica_num_);
   argument_.SetIpuAvailableMemoryProportion(

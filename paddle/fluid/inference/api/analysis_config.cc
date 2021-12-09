@@ -114,13 +114,15 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
 }
 
 void AnalysisConfig::EnableIpu(int ipu_device_num, int ipu_micro_batch_size,
-                               bool ipu_enable_pipelining) {
+                               bool ipu_enable_pipelining,
+                               int ipu_batches_per_step) {
   enable_ir_optim_ = true;
 
   use_ipu_ = true;
   ipu_device_num_ = ipu_device_num;
   ipu_micro_batch_size_ = ipu_micro_batch_size;
   ipu_enable_pipelining_ = ipu_enable_pipelining;
+  ipu_batches_per_step_ = ipu_batches_per_step;
 
   Update();
 }
@@ -129,7 +131,7 @@ void AnalysisConfig::SetIpuConfig(bool ipu_enable_fp16, int ipu_replica_num,
                                   float ipu_available_memory_proportion,
                                   bool ipu_enable_half_partial) {
   ipu_enable_fp16_ = ipu_enable_fp16;
-  ipu_replica_num_ = ipu_replica_num_;
+  ipu_replica_num_ = ipu_replica_num;
   ipu_available_memory_proportion_ = ipu_available_memory_proportion;
   ipu_enable_half_partial_ = ipu_enable_half_partial;
 
@@ -224,6 +226,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(ipu_device_num_);
   CP_MEMBER(ipu_micro_batch_size_);
   CP_MEMBER(ipu_enable_pipelining_);
+  CP_MEMBER(ipu_batches_per_step_);
   CP_MEMBER(ipu_enable_fp16_);
   CP_MEMBER(ipu_replica_num_);
   CP_MEMBER(ipu_available_memory_proportion_);
@@ -628,6 +631,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ipu_device_num_;
   ss << ipu_micro_batch_size_;
   ss << ipu_enable_pipelining_;
+  ss << ipu_batches_per_step_;
   ss << ipu_enable_fp16_;
   ss << ipu_replica_num_;
   ss << ipu_available_memory_proportion_;

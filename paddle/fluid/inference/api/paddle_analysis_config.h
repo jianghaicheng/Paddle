@@ -191,9 +191,11 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param ipu_micro_batch_size the batch size in the graph, only work with
   /// mutable input shapes.
   /// \param ipu_enable_pipelining enable pipelining.
+  /// \param ipu_batches_per_step the number of batches per run in pipelining.
   ///
   void EnableIpu(int ipu_device_num = 1, int ipu_micro_batch_size = 1,
-                 bool ipu_enable_pipelining = false);
+                 bool ipu_enable_pipelining = false,
+                 int ipu_batches_per_step = 1);
   ///
   /// \brief Set IPU config.
   ///
@@ -728,6 +730,7 @@ struct PD_INFER_DECL AnalysisConfig {
   int ipu_device_num_{1};
   int ipu_micro_batch_size_{1};
   bool ipu_enable_pipelining_{false};
+  int ipu_batches_per_step_{1};
 
   bool ipu_enable_fp16_{false};
   int ipu_replica_num_{1};

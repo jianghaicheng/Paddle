@@ -69,7 +69,12 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   auto enable_pipelining = graph->Get<bool>("enable_pipelining");
   ipu_strategy_instance_->popart_options.enablePipelining = enable_pipelining;
   if (enable_pipelining) {
-    ipu_strategy_instance_->batches_per_step = num_ipus;
+    auto batches_per_step = graph->Get<int>("batches_per_step");
+    PADDLE_ENFORCE_GE(
+        batches_per_step, num_ipus,
+        platform::errors::InvalidArgument("Batched per step should be equal or "
+                                          "greater than the number of IPUs"));
+    ipu_strategy_instance_->batches_per_step = batches_per_step;
   }
 
   // Set FP16
