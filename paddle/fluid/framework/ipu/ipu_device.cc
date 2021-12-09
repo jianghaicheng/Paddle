@@ -13,25 +13,41 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ipu/ipu_device.h"
+#include "paddle/fluid/framework/ipu/ipu_utils.h"
 
 namespace paddle {
 namespace framework {
 namespace ipu {
 
-Device::Device(const popart::DeviceInfo& device_info)
-    : id_(device_info.getId()), is_attached_(device_info.isAttached()) {
-  popart::DeviceType popart_device_type = device_info.getType();
-  switch (popart_device_type) {
-    case popart::DeviceType::IpuModel:
-      device_type_ = DeviceType::IpuModel;
-      break;
-    case popart::DeviceType::Ipu:
-      device_type_ = DeviceType::Ipu;
-      break;
-    default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "popart::DeviceType:Unsupported type %d", popart_device_type));
+int GetNumDevices() {
+  bool ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
+  if (ipu_model) {
+    return 1;
   }
+  int num_devices =
+      popart::DeviceManager::createDeviceManager().enumerateDevices().size();
+  PADDLE_ENFORCE_GT(num_devices, 0, platform::errors::Unavailable(
+                                        "Do not found any IPU devices, please "
+                                        "make sure Poplar sdk is enabled"));
+  return num_devices;
+}
+
+std::vector<int> GetDeviceIds() {
+  bool ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
+  if (ipu_model) {
+    return {0};
+  }
+  std::vector<int> device_ids;
+  auto devices =
+      popart::DeviceManager::createDeviceManager().enumerateDevices();
+  PADDLE_ENFORCE_GT(
+      devices.size(), 0,
+      platform::errors::Unavailable("Do not found any IPU devices, please make "
+                                    "sure Poplar sdk is enabled."));
+  for (auto device : devices) {
+    device_ids.push_back(device->getId());
+  }
+  return device_ids;
 }
 
 }  // namespace ipu

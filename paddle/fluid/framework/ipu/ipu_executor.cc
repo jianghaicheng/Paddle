@@ -20,31 +20,30 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
-void Executor::Prepare(const std::string &proto,
-                       std::shared_ptr<popart::DeviceInfo> device) {
+void Executor::Prepare(const std::string &proto) {
   VLOG(10) << "enter Executor::Prepare";
-  PADDLE_ENFORCE_NOT_NULL(device, platform::errors::Unavailable(
-                                      "IPU device isn't attached, please call "
-                                      "IpuBackend::AttachDevice(id) first."));
+
+  AcquireDevice();
+  one_session_ = std::make_unique<OneSession>();
 
   auto art = popart::AnchorReturnType("All");
   std::map<popart::TensorId, popart::AnchorReturnType> anchor_ids;
-  for (const auto &id : shared_obj->outputs) {
+  for (const auto &id : one_builder_->outputs) {
     anchor_ids.emplace(id, art);
   }
   auto dataFlow = popart::DataFlow(ipu_strategy_->batches_per_step, anchor_ids);
 
   if (ipu_strategy_->is_training) {
     VLOG(10) << "Creating TrainingSession from Onnx Model...";
-    auto optimizer = shared_obj->NewOptimizer();
+    auto optimizer = one_builder_->NewOptimizer();
     session_ = popart::TrainingSession::createFromOnnxModel(
-        proto, dataFlow, shared_obj->loss_var, *optimizer, device,
+        proto, dataFlow, one_builder_->loss_var, *optimizer, device_,
         popart::InputShapeInfo(), ipu_strategy_->popart_options,
         ipu_strategy_->popart_patterns);
   } else {
     VLOG(10) << "Creating InferenceSession from Onnx Model...";
     session_ = popart::InferenceSession::createFromOnnxModel(
-        proto, dataFlow, device, popart::InputShapeInfo(),
+        proto, dataFlow, device_, popart::InputShapeInfo(),
         ipu_strategy_->popart_options, ipu_strategy_->popart_patterns);
   }
   VLOG(10) << "Creating session from Onnx Model...done";
@@ -80,7 +79,7 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   std::map<popart::TensorId, popart::IArray &> popart_inputs;
   std::map<popart::TensorId, PaddleIArray> input_wrappers;
   for (size_t i = 0; i < inputs.size(); i++) {
-    auto tensor_id = shared_obj->inputs[i];
+    auto tensor_id = one_builder_->inputs[i];
     auto tensor = const_cast<Tensor *>(inputs[i]);
     input_wrappers.emplace(tensor_id, PaddleIArray(tensor));
     popart_inputs.emplace(tensor_id, input_wrappers.at(tensor_id));
@@ -89,7 +88,7 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   std::map<popart::TensorId, popart::IArray &> popart_anchors;
   std::map<popart::TensorId, PaddleIArray> anchor_wrappers;
   for (size_t i = 0; i < outputs.size(); i++) {
-    auto tensor_id = shared_obj->outputs[i];
+    auto tensor_id = one_builder_->outputs[i];
     auto tensor = const_cast<Tensor *>(outputs[i]);
     // get dims & dtype from session
     auto fetch_info = session_->getInfo(tensor_id);
@@ -116,11 +115,11 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   }
   VLOG(10) << "Prepared inputs/anchors";
 
-  if (ipu_strategy_->is_training && shared_obj->with_lr_sched) {
+  if (ipu_strategy_->is_training && one_builder_->with_lr_sched) {
     VLOG(10) << "Update learning_rate";
-    auto new_lr = GetSingleVarFromScope<float>(scope_, shared_obj->lr_var);
+    auto new_lr = GetSingleVarFromScope<float>(scope_, one_builder_->lr_var);
     VLOG(10) << "New Lr: " << new_lr;
-    auto *optimizer = shared_obj->UpdateOptimizer(new_lr);
+    auto *optimizer = one_builder_->UpdateOptimizer(new_lr);
     auto *session = dynamic_cast<popart::TrainingSession *>(session_.get());
     session->updateOptimizerFromHost(optimizer);
   }
@@ -141,17 +140,46 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   }
 }
 
+void Executor::AcquireDevice() {
+  VLOG(10) << "enter Executor::AcquireDevice";
+  if (device_) {
+    Detach();
+    device_.reset();
+  }
+
+  bool use_ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
+  if (use_ipu_model) {
+    std::map<std::string, std::string> deviceOpts{{"numIPUs", "1 "}};
+    device_ = popart::DeviceManager::createDeviceManager().createIpuModelDevice(
+        deviceOpts);
+  } else {
+    device_ =
+        popart::DeviceManager::createDeviceManager().acquireAvailableDevice(
+            RequestIpus(ipu_strategy_->num_ipus));
+    PADDLE_ENFORCE_NOT_NULL(device_, platform::errors::Unavailable(
+                                         "Can't attach IPU, ipu_num = %d.",
+                                         RequestIpus(ipu_strategy_->num_ipus)));
+  }
+  VLOG(10) << "leave Executor::AcquireDevice";
+}
+
+void Executor::Detach() {
+  if (device_ && device_->isAttached()) {
+    VLOG(10) << "trying to detach IPU";
+    device_->detach();
+    VLOG(10) << " detached IPU";
+  }
+}
+
 void Executor::SetWeightsIO() {
-  auto opt_type = shared_obj->optimizer_type;
+  auto opt_type = one_builder_->optimizer_type;
   VLOG(10) << "SetWeightsIO for " << opt_type;
   auto pre_post_fix = GetOptPrePostfix(opt_type);
-  for (const auto &weight_id : shared_obj->weights) {
+  for (const auto &weight_id : one_builder_->weights) {
     for (const auto &pair : pre_post_fix) {
       // pair.first : popart prefix, pair.second : paddle postfix
       auto popart_var_name = pair.first + weight_id;
       auto paddle_var_name = weight_id + pair.second;
-      VLOG(10) << "weights_and_opt_state_.add: " << popart_var_name << " -- "
-               << paddle_var_name;
 
       if (scope_->FindVar(paddle_var_name) == nullptr) {
         continue;
@@ -165,8 +193,8 @@ void Executor::SetWeightsIO() {
       auto data_ptr = var->GetMutable<framework::LoDTensor>()->data<void>();
 
       auto tensor_info = session_->getInfo(popart_var_name);
-      weights_io_.insert(popart_var_name, {data_ptr, tensor_info});
-      weights_and_opt_state_.emplace_back(
+      one_session_->weights_io.insert(popart_var_name, {data_ptr, tensor_info});
+      one_session_->weights_and_opt_state.emplace_back(
           std::make_pair(popart_var_name, paddle_var_name));
     }
   }
@@ -174,7 +202,7 @@ void Executor::SetWeightsIO() {
 
 // align_to_popart: align dtype to popart if true, else to paddle
 void Executor::ConvertWeights(bool align_to_popart) {
-  for (auto weight_pair : weights_and_opt_state_) {
+  for (auto weight_pair : one_session_->weights_and_opt_state) {
     auto paddle_var = scope_->GetVar(weight_pair.second);
     auto paddle_var_dtype = VarType2PopartType(
         paddle_var->GetMutable<framework::LoDTensor>()->type());
@@ -244,7 +272,7 @@ void Executor::ConvertWeights(bool align_to_popart) {
 // Paddle -> Popart: copy from paddle to popart
 void Executor::WeightsFromPaddle() {
   ConvertWeights(true);
-  session_->writeWeights(weights_io_);
+  session_->writeWeights(one_session_->weights_io);
 }
 
 // |-----------------------------------------------------|
@@ -258,7 +286,7 @@ void Executor::WeightsFromPaddle() {
 // Paddle -> halfToFloat: cast then save to paddle
 // Popart -> Paddle: copy from paddle to popart
 void Executor::WeightsToPaddle() {
-  session_->readWeights(weights_io_);
+  session_->readWeights(one_session_->weights_io);
   ConvertWeights(false);
 }
 

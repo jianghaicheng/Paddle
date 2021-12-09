@@ -525,15 +525,14 @@ class IpuCompiler(object):
             self._custom_ops = []
             self._custom_op_names = ()
 
-        self._backend = core.IpuBackend()
+        self._backend = core.IpuBackend.get_instance()
+
+    def compile(self, feed_list, fetch_list, feed_var_name='feed', scope=None):
         self._backend.set_scope(self._scope)
         self._backend.set_ipu_strategy(self._ipu_strategy)
         if (self._custom_ops):
             self._backend.set_custom_ops(self._custom_ops)
-        global ipu_compiler_ref
-        ipu_compiler_ref = self
 
-    def compile(self, feed_list, fetch_list, feed_var_name='feed', scope=None):
         # feed and fetch doesn't have corresponding popart op, so we rm both here
         global_block = self._program.global_block()
         need_to_remove_op_index = []
@@ -622,11 +621,8 @@ class IpuCompiler(object):
 
         return program
 
-    def clean(self):
-        self._backend.clear()
-
-    def __del__(self):
-        self.clean()
+    def detach(self):
+        self._backend.detach()
 
     def save_onnx_model(self, file_name):
         self._backend.save_molde_proto(file_name)

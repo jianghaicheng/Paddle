@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/ipu/optimizer_state_align_pass.h"
-#include "paddle/fluid/framework/ipu/ipu_names.h"
 #include "paddle/fluid/framework/ipu/ipu_backend.h"
+#include "paddle/fluid/framework/ipu/ipu_names.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -26,7 +26,7 @@ void IpuOptimizerStateAlignPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
-  auto ipu_backend = paddle::framework::ipu::IpuBackend::GetInstance();
+  auto ipu_backend = ipu::IpuBackend::GetInstance();
   const auto* scope_ = ipu_backend->GetScope();
 
   for (auto* node : graph->Nodes()) {

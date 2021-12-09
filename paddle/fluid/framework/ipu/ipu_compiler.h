@@ -27,7 +27,7 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
-struct SharedObj {
+struct OneBuilder {
   // popart input tensor_ids
   std::vector<popart::TensorId> inputs;
   // popart output tensor_ids
@@ -71,7 +71,10 @@ struct SharedObj {
 class Compiler {
  public:
   Compiler();
+  ~Compiler() = default;
+
   void RegisterOpFunc();
+  void Prepare();
   void LowerBody(const ir::Graph *graph);
   void InitInputs(ir::Graph *graph, const std::vector<std::string> &feed_list);
   void InitOutputs(const std::vector<std::string> &fetch_list);
@@ -100,12 +103,13 @@ class Compiler {
 
   void SetCustomOps(const std::vector<IpuCustomOpIdentifier> &custom_ops);
 
+  OneBuilder *GetBuilder() { return one_builder_.get(); }
+
   std::string GetModelProto();
+  std::string GetFP16ModelProto();
+
   void SaveModelProto(const std::string &path);
   void SaveModelProtoNoCheck(const std::string &path);
-  void ConvertProtoToFp16();
-
-  std::unique_ptr<SharedObj> shared_obj;
 
  private:
   std::vector<std::string> GetOpInputs(const OpDesc *op);
@@ -114,6 +118,7 @@ class Compiler {
 
  private:
   std::unique_ptr<popart::Builder> builder_;
+  std::unique_ptr<OneBuilder> one_builder_;
 
   using OpFunc = std::function<void(OpDesc *op_desc)>;
   std::unordered_map<std::string, OpFunc> name_function_;
@@ -122,7 +127,6 @@ class Compiler {
   std::vector<std::string> feed_list_;
   std::vector<std::string> fetch_list_;
 
-  std::string converted_proto_ = "";
   const IpuStrategy *ipu_strategy_ = nullptr;
   std::map<std::string, IpuCustomOpIdentifier> custom_ops_;
 };

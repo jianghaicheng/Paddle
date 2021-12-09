@@ -28,7 +28,7 @@ void TransferCastOpPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
-  std::shared_ptr<ipu::IpuBackend> ipu_backend = ipu::IpuBackend::GetInstance();
+  auto ipu_backend = ipu::IpuBackend::GetInstance();
   auto enable_fp16 = ipu_backend->GetIpuStrategy()->enable_fp16;
   if (enable_fp16) {
     for (auto* node : graph->Nodes()) {

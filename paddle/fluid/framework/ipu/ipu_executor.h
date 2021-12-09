@@ -21,8 +21,8 @@ limitations under the License. */
 #include <popart/session.hpp>
 #include <popart/tensorinfo.hpp>
 
-#include "paddle/fluid/framework/ipu/ipu_names.h"
 #include "paddle/fluid/framework/ipu/ipu_compiler.h"
+#include "paddle/fluid/framework/ipu/ipu_names.h"
 #include "paddle/fluid/framework/ipu/ipu_strategy.h"
 #include "paddle/fluid/framework/ipu/ipu_utils.h"
 #include "paddle/fluid/framework/operator.h"
@@ -32,14 +32,29 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
+struct OneSession {
+  // map<tensor_id, paddle_var_ptr>
+  popart::WeightsIO weights_io;
+  // <popart_var, paddle_var> pairs, include weights and optimizer states
+  std::vector<std::pair<popart::TensorId, popart::TensorId>>
+      weights_and_opt_state;
+};
+
 class Executor {
  public:
-  void Prepare(const std::string &proto,
-               std::shared_ptr<popart::DeviceInfo> device);
+  Executor() = default;
+  ~Executor() = default;
 
+  // build popart session
+  void Prepare(const std::string &proto);
+
+  // run popart session
   void Run(const std::vector<const Tensor *> &inputs,
            const std::vector<Tensor *> &outputs,
            const framework::ExecutionContext &ctx);
+
+  // detach IPU
+  void Detach();
 
   void SetWeightsIO();
   void ConvertWeights(bool align_to_popart);
@@ -54,21 +69,24 @@ class Executor {
     ipu_strategy_ = &strategy;
   }
 
-  SharedObj *shared_obj;
-
- public:
-  std::unique_ptr<popart::Session> session_;
+  // OneBuilder
+  void SetBuilder(OneBuilder *one_builder) { one_builder_ = one_builder; }
 
  private:
+  void AcquireDevice();
+
+ private:
+  // not own
   const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
-  // weights_io_: map<tensor_id, paddle_var_ptr>
-  popart::WeightsIO weights_io_;
-  // Just include weights, exclude optimizer states
-  std::vector<popart::TensorId> weights_;
-  // <popart_var, paddle_var> pairs, include weights and optimizer states
-  std::vector<std::pair<popart::TensorId, popart::TensorId>>
-      weights_and_opt_state_;
+  OneBuilder *one_builder_ = nullptr;
+
+  // deviceinfo for popart session
+  std::shared_ptr<popart::DeviceInfo> device_;
+  // popart session, where graph running
+  std::unique_ptr<popart::Session> session_;
+  // one OneSession means a graph
+  std::shared_ptr<OneSession> one_session_;
 
   int step_ = 0;
 };

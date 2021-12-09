@@ -29,8 +29,7 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter InferenceProcessPass::ApplyImpl";
 
   // Get a new instance of ipu_backend
-  std::shared_ptr<ipu::IpuBackend> ipu_backend =
-      ipu::IpuBackend::GetNewInstance();
+  auto ipu_backend = ipu::IpuBackend::GetInstance();
 
   // Set scope
   auto& scope = graph->Get<Scope>(kParamScopeAttr);

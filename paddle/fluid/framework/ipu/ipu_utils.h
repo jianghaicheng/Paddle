@@ -102,6 +102,14 @@ std::unique_ptr<popart::NDArrayWrapper<T>> LoDTensor2IArray(
   }
 }
 
+template <typename T>
+T GetSingleVarFromScope(const Scope* scope, const std::string& var_name) {
+  auto var = scope->GetVar(var_name);
+  auto tensor = var->Get<framework::LoDTensor>();
+  // check dtype is  ?
+  return tensor.data<T>()[0];
+}
+
 struct CustomOpAttrVisitor : public boost::static_visitor<void> {
   explicit CustomOpAttrVisitor(std::map<std::string, popart::any>* attr,
                                const std::string& attr_name)
@@ -212,13 +220,7 @@ struct ConstantOpAttrVisitor : public boost::static_visitor<void> {
 std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
     const std::string& opt_type);
 
-template <typename T>
-T GetSingleVarFromScope(const Scope* scope, const std::string& var_name) {
-  auto var = scope->GetVar(var_name);
-  auto tensor = var->Get<framework::LoDTensor>();
-  // check dtype is  ?
-  return tensor.data<T>()[0];
-}
+int RequestIpus(const int num_ipus);
 
 }  // namespace ipu
 }  // namespace framework

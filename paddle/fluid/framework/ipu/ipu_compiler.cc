@@ -91,10 +91,11 @@ TO GetCastSigAttrAllowNull(std::string attr, OpDesc* op_desc) {
   }
 }
 
-Compiler::Compiler() {
+Compiler::Compiler() { RegisterOpFunc(); }
+
+void Compiler::Prepare() {
   builder_ = popart::Builder::create();
-  shared_obj = std::make_unique<SharedObj>();
-  RegisterOpFunc();
+  one_builder_ = std::make_unique<OneBuilder>();
 }
 
 void Compiler::RegisterOpFunc() {
@@ -226,8 +227,8 @@ void Compiler::InitInputs(ir::Graph* graph,
           popart::TensorId tensor_id =
               builder_->addInputTensor(input_info, feed_name);
           VLOG(10) << "popart input tensor id = " << tensor_id;
-          shared_obj->inputs.push_back(tensor_id);
-          shared_obj->tensors.emplace(var_desc->Name(), tensor_id);
+          one_builder_->inputs.push_back(tensor_id);
+          one_builder_->tensors.emplace(var_desc->Name(), tensor_id);
         }
       }
     }
@@ -237,14 +238,14 @@ void Compiler::InitInputs(ir::Graph* graph,
 void Compiler::InitOutputs(const std::vector<std::string>& fetch_list) {
   for (const auto& fetch_name : fetch_list) {
     fetch_list_.push_back(fetch_name);
-    auto tensor = shared_obj->tensors.find(fetch_name);
-    PADDLE_ENFORCE_NE(tensor, shared_obj->tensors.end(),
+    auto tensor = one_builder_->tensors.find(fetch_name);
+    PADDLE_ENFORCE_NE(tensor, one_builder_->tensors.end(),
                       platform::errors::NotFound(
                           "output tensor %s does not exist.", fetch_name));
     VLOG(10) << "fetch_name= " << fetch_name;
     VLOG(10) << "popart output tensor id = " << tensor->second;
     builder_->addOutputTensor(tensor->second);
-    shared_obj->outputs.push_back(tensor->second);
+    one_builder_->outputs.push_back(tensor->second);
   }
 }
 
@@ -279,7 +280,7 @@ void Compiler::LowerConstants(const ir::Graph* graph, const Scope* scope) {
           new popart::ConstVoidData(tensor->data<void>(), tensor_info));
       popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
       SetIpuIndexStage(result, op_desc);
-      shared_obj->tensors.emplace(tensor_name, result);
+      one_builder_->tensors.emplace(tensor_name, result);
     }
   }
   VLOG(10) << "leave Compiler::LowerConstants";
@@ -295,7 +296,7 @@ void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope) {
     if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
       if (node->Var()->Persistable() && node->inputs.empty()) {
         auto var_name = node->Var()->Name();
-        if (shared_obj->tensors.count(var_name) != 0) {
+        if (one_builder_->tensors.count(var_name) != 0) {
           continue;
         }
         VLOG(10) << "lowering weight: " << var_name;
@@ -312,8 +313,8 @@ void Compiler::LowerWeights(const ir::Graph* graph, const Scope* scope) {
           popart::ConstVoidData const_data{tensor.data<void>(), tensor_info};
           popart::TensorId result =
               builder_->addInitializedInputTensor(const_data, var_name);
-          shared_obj->tensors.emplace(var_name, result);
-          shared_obj->weights.push_back(result);
+          one_builder_->tensors.emplace(var_name, result);
+          one_builder_->weights.push_back(result);
         }
       }
     }
@@ -332,29 +333,29 @@ void Compiler::LowerOptimier(const ir::Graph* graph, const Scope* scope) {
     if (op_type == "popart_optimizer") {
       auto raw_type =
           BOOST_GET_CONST(std::string, op_desc->GetAttr("raw_type"));
-      shared_obj->optimizer_type = raw_type;
+      one_builder_->optimizer_type = raw_type;
       auto loss_var =
           BOOST_GET_CONST(std::string, op_desc->GetAttr("loss_var"));
-      shared_obj->loss_var = shared_obj->tensors[loss_var];
-      shared_obj->with_lr_sched =
+      one_builder_->loss_var = one_builder_->tensors[loss_var];
+      one_builder_->with_lr_sched =
           BOOST_GET_CONST(bool, op_desc->GetAttr("with_lr_sched"));
       if (op_desc->HasAttr("lr_var")) {
         auto lr_var = BOOST_GET_CONST(std::string, op_desc->GetAttr("lr_var"));
-        shared_obj->lr_var = lr_var;
-        shared_obj->lr = GetSingleVarFromScope<float>(scope, lr_var);
+        one_builder_->lr_var = lr_var;
+        one_builder_->lr = GetSingleVarFromScope<float>(scope, lr_var);
       } else {
         // adadelta has no lr
-        shared_obj->lr = 0.01f;
-        shared_obj->with_lr_sched = false;
+        one_builder_->lr = 0.01f;
+        one_builder_->with_lr_sched = false;
       }
-      VLOG(10) << "Set initial lr: " << shared_obj->lr;
+      VLOG(10) << "Set initial lr: " << one_builder_->lr;
       auto loss_scaling = ipu_strategy_->loss_scaling;
       auto type = BOOST_GET_CONST(std::string, op_desc->GetAttr("type"));
       if (type == "sgd") {
         auto weight_decay =
             BOOST_GET_CONST(float, op_desc->GetAttr("weight_decay"));
         auto momentum = BOOST_GET_CONST(float, op_desc->GetAttr("momentum"));
-        shared_obj->optimizer_fn = [=](float lr) {
+        one_builder_->optimizer_fn = [=](float lr) {
           return std::make_unique<popart::SGD>(
               popart::OptimizerValue(lr, false),
               popart::OptimizerValue(weight_decay, true),
@@ -376,7 +377,7 @@ void Compiler::LowerOptimier(const ir::Graph* graph, const Scope* scope) {
         auto weight_decay_mode_ =
             BOOST_GET_CONST(std::string, op_desc->GetAttr("weight_decay_mode"));
         auto weight_decay_mode = WeightDecayModeFromStr(weight_decay_mode_);
-        shared_obj->optimizer_fn = [=](float lr) {
+        one_builder_->optimizer_fn = [=](float lr) {
           return std::make_unique<popart::Adam>(
               popart::OptimizerValue(lr, false),
               popart::OptimizerValue(weight_decay, true),
@@ -400,7 +401,7 @@ void Compiler::LowerOptimier(const ir::Graph* graph, const Scope* scope) {
         auto weight_decay_mode_ =
             BOOST_GET_CONST(std::string, op_desc->GetAttr("weight_decay_mode"));
         auto weight_decay_mode = WeightDecayModeFromStr(weight_decay_mode_);
-        shared_obj->optimizer_fn = [=](float lr) {
+        one_builder_->optimizer_fn = [=](float lr) {
           return std::make_unique<popart::Adaptive>(
               popart::OptimizerValue(lr, false),
               popart::OptimizerValue(weight_decay, true),
@@ -426,7 +427,7 @@ void Compiler::InsertTensors(const std::vector<std::string>& output_names,
                     platform::errors::Fatal("InsertTensors size mismatch"));
   for (int i = 0; i < tensor_ids.size(); i++) {
     std::string tensor_id = tensor_ids[i];
-    shared_obj->tensors.emplace(output_names[i], tensor_ids[i]);
+    one_builder_->tensors.emplace(output_names[i], tensor_ids[i]);
   }
 }
 
@@ -434,7 +435,7 @@ void Compiler::InsertTensors(const std::vector<std::string>& output_names,
                              const std::string& tensor_id) {
   PADDLE_ENFORCE_EQ(output_names.size(), 1,
                     platform::errors::Fatal("InsertTensors size mismatch"));
-  shared_obj->tensors.emplace(output_names[0], tensor_id);
+  one_builder_->tensors.emplace(output_names[0], tensor_id);
 }
 
 void Compiler::SetIpuIndexStage(const std::vector<std::string>& tensor_ids,
@@ -532,18 +533,18 @@ void Compiler::SetCustomOps(
   }
 }
 
-// convertFloatsToHalfs
-void Compiler::ConvertProtoToFp16() {
+std::string Compiler::GetFP16ModelProto() {
   popart::GraphTransformer graph_transformer(builder_->getModelProto());
   graph_transformer.convertFloatsToHalfs();
-  converted_proto_ = graph_transformer.getModelProto();
+  return graph_transformer.getModelProto();
 }
 
 std::string Compiler::GetModelProto() {
-  if (converted_proto_.length()) {
-    return converted_proto_;
+  if (ipu_strategy_->enable_fp16) {
+    return GetFP16ModelProto();
+  } else {
+    return builder_->getModelProto();
   }
-  return builder_->getModelProto();
 }
 
 void Compiler::SaveModelProto(const std::string& path) {
@@ -561,8 +562,8 @@ std::vector<std::string> Compiler::GetOpInputs(const OpDesc* op) {
   auto ins = op->Input("__inputs__");
   std::vector<std::string> inputs;
   for (const auto& in : ins) {
-    if (shared_obj->tensors.find(in) != shared_obj->tensors.end()) {
-      inputs.push_back(shared_obj->tensors[in]);
+    if (one_builder_->tensors.find(in) != one_builder_->tensors.end()) {
+      inputs.push_back(one_builder_->tensors[in]);
     } else {
       inputs.push_back(in);
     }

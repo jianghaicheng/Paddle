@@ -42,8 +42,6 @@ class IpuRuntimeOp : public framework::OperatorBase {
                       platform::errors::InvalidArgument("must be IPUPlace"));
     auto ipu_backend = framework::ipu::IpuBackend::GetInstance();
     auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-    auto* ipu_ctx = reinterpret_cast<platform::IPUDeviceContext*>(dev_ctx);
-    ipu_backend->AttachDevice(ipu_ctx->DeviceId());
     framework::RuntimeContext runtime_ctx(inputs_, outputs_, scope);
     framework::ExecutionContext ctx(*this, scope, *dev_ctx, runtime_ctx);
     auto inputs = ctx.MultiInput<framework::Tensor>("FeedList");

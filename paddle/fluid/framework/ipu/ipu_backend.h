@@ -33,24 +33,18 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
+// IpuBackend is the center of paddle-ipu, its function include:
+//   1. Compile paddle model to popart model
+//   2. Run popart model, inference or training
+//   3. Request and release device
+//   4. Other helper function
 class IpuBackend {
-  // IpuBackend is the center of paddle-ipu, its function include:
-  //   1. Compile paddle model to popart model
-  //   2. Run popart model, inference or training
-  //   3. Request and release device
-  //   4. Other helper function
+ public:
+  static IpuBackend *GetInstance();
 
  public:
   IpuBackend();
-  ~IpuBackend();
-
-  void Clear();
-
-  // return if exsits, else create and return
-  static std::shared_ptr<IpuBackend> GetInstance();
-
-  // always return a new instance_
-  static std::shared_ptr<IpuBackend> GetNewInstance();
+  ~IpuBackend() = default;
 
   // what compile does include(call compiler_):
   //   1. map paddle-op -> poart op
@@ -66,7 +60,8 @@ class IpuBackend {
            const std::vector<Tensor *> &outputs,
            const framework::ExecutionContext &ctx);
 
-  Executor &GetExecutor() { return *executor_; }
+  // detach IPU manually
+  void Detach();
 
   void SetScope(const Scope &scope);
   const Scope *GetScope() { return scope_; }
@@ -74,35 +69,27 @@ class IpuBackend {
   const IpuStrategy *GetIpuStrategy() { return ipu_strategy_; }
   void SetCustomOps(const std::vector<IpuCustomOpIdentifier> &custom_ops);
 
-  // Device
-  size_t GetNumDevices();
-  std::vector<int> GetDeviceIds();
-  Device GetDevice(int id);
-  void AttachDevice(int id);
-  bool DeviceIsAttached();
-
+  // save compiled model to onnx
   void SaveMoldeProto(const std::string &path);
 
  private:
-  int UpperIpuNum();
   void Prepare();
 
  private:
-  std::shared_ptr<Compiler> compiler_;
+  std::unique_ptr<Compiler> compiler_;
   std::unique_ptr<Executor> executor_;
-  std::shared_ptr<popart::DeviceInfo> device_;
   bool is_compiled_ = false;
   bool is_prepared_ = false;
-  bool is_attached_ = false;
 
   // not own
   const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
 
  private:
-  static std::shared_ptr<IpuBackend> instance_;
   // time record for IpuBackend::Run
   std::unique_ptr<platform::Timer> timer_;
+
+  DISABLE_COPY_AND_ASSIGN(IpuBackend);
 };
 
 }  // namespace ipu

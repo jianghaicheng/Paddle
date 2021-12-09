@@ -150,11 +150,9 @@ class IPUDeviceContext : public DeviceContext {
   Place GetPlace() const override;
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
-  int DeviceId() const { return device_.getId(); }
 
  private:
   IPUPlace place_;
-  framework::ipu::Device device_;
 };
 template <>
 struct DefaultDeviceContextType<platform::IPUPlace> {

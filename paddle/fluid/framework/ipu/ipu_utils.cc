@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ipu/ipu_utils.h"
+#include <cmath>
 
 namespace paddle {
 namespace framework {
@@ -167,6 +168,11 @@ std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
   }
 
   return pre_post_fix;
+}
+
+int RequestIpus(const int num_ipus) {
+  // num_ipus must be pow(2, n);
+  return pow(2, ceil(log2(num_ipus)));
 }
 
 }  // namespace ipu

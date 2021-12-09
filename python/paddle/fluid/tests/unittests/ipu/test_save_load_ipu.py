@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.fluid.compiler as compiler
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+import tempfile
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -46,6 +47,7 @@ class TestBase(IPUOpTest):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'sgd'
         self.attrs['enable_fp16'] = False
+        self.attrs['model_path'] = tempfile.mkdtemp()
 
     def _test_base(self, save_otherwise_load):
         scope = paddle.fluid.core.Scope()
@@ -87,7 +89,7 @@ class TestBase(IPUOpTest):
                 exe.run(startup_prog)
 
                 if not save_otherwise_load:
-                    paddle.static.load(main_prog, "model/model")
+                    paddle.static.load(main_prog, self.attrs['model_path'])
 
                 ipu_strategy = compiler.get_ipu_strategy()
                 ipu_strategy.is_training = self.attrs['is_training']
@@ -110,7 +112,7 @@ class TestBase(IPUOpTest):
                     # will optimize
                     if save_otherwise_load and \
                         i == self.attrs['save_at_step'] - 1:
-                        paddle.static.save(main_prog, "model/model")
+                        paddle.static.save(main_prog, self.attrs['model_path'])
 
                     if save_otherwise_load and i >= self.attrs['save_at_step']:
                         result.append(tmp)
@@ -126,7 +128,7 @@ class TestBase(IPUOpTest):
         self.assertTrue(
             np.allclose(
                 res0.flatten(), res1.flatten(), atol=self.atol))
-        shutil.rmtree("model", True)
+        shutil.rmtree(self.attrs['model_path'], True)
 
 
 class TestAdam(TestBase):
@@ -137,6 +139,7 @@ class TestAdam(TestBase):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'adam'
         self.attrs['enable_fp16'] = False
+        self.attrs['model_path'] = tempfile.mkdtemp()
 
 
 class TestLamb(TestBase):
@@ -147,6 +150,7 @@ class TestLamb(TestBase):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'lamb'
         self.attrs['enable_fp16'] = False
+        self.attrs['model_path'] = tempfile.mkdtemp()
 
 
 class TestSGDFP16(TestBase):
@@ -157,6 +161,7 @@ class TestSGDFP16(TestBase):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'sgd'
         self.attrs['enable_fp16'] = True
+        self.attrs['model_path'] = tempfile.mkdtemp()
 
 
 class TestAdamFP16(TestBase):
@@ -167,6 +172,7 @@ class TestAdamFP16(TestBase):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'adam'
         self.attrs['enable_fp16'] = True
+        self.attrs['model_path'] = tempfile.mkdtemp()
 
 
 class TestLambFP16(TestBase):
@@ -177,6 +183,7 @@ class TestLambFP16(TestBase):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'lamb'
         self.attrs['enable_fp16'] = True
+        self.attrs['model_path'] = tempfile.mkdtemp()
 
 
 if __name__ == "__main__":
