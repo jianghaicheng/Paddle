@@ -52,9 +52,7 @@ void Executor::Prepare(const std::string &proto) {
   session_->prepareDevice();
   VLOG(10) << "Preparing session device...done";
 
-  if (ipu_strategy_->is_training) {
-    SetWeightsIO();
-  }
+  SetWeightsIO();
 
   VLOG(10) << "Copy weights from paddle to popart...";
   WeightsFromPaddle();
