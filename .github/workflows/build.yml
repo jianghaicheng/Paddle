@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - develop-ipu
+      - paddle_bert_release
 
   # pull_request_target:
   #   branches:

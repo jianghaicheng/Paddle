@@ -70,6 +70,7 @@ pip -V
 pip install pytest-xdist
 pytest -VV
 pytest \
+    -o cache_dir=paddle_build/pytest_cache \
     -n=3 \
     --maxfail=3 \
     paddle/fluid/tests/unittests/ipu/
