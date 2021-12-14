@@ -155,6 +155,13 @@ IF(WITH_GPU)
                 DSTS ${dst_dir})
 ENDIF()
 
+IF(WITH_IPU)
+        set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/install/ipu")
+        copy(inference_lib_dist
+                SRCS ${CMAKE_BINARY_DIR}/paddle/fluid/framework/ipu/libpaddle_ipu.so
+                DSTS ${dst_dir})
+ENDIF()
+
 # CMakeCache Info
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt

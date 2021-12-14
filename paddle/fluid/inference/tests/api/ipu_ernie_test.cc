@@ -148,9 +148,6 @@ void profile() {
                  inputs, &outputs, FLAGS_num_threads);
 }
 
-// performance profile
-TEST(Analyzer_Ernie_ipu, performance_profile) { profile(); }
-
 // Compare Deterministic result
 TEST(Analyzer_Ernie_ipu, compare_determine) {
   AnalysisConfig cfg;
