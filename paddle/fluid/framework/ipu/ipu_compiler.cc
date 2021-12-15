@@ -370,7 +370,8 @@ void Compiler::LowerOptimier(const ir::Graph* graph, const Scope* scope) {
         auto beta1 = BOOST_GET_CONST(float, op_desc->GetAttr("beta1"));
         auto beta2 = BOOST_GET_CONST(float, op_desc->GetAttr("beta2"));
         auto eps = BOOST_GET_CONST(float, op_desc->GetAttr("eps"));
-        // auto mwn = 65504.0f;
+        auto mwn = ipu_strategy_->max_weight_norm;
+        VLOG(10) << "set max_weight_norm: " << mwn;
         auto adam_mode_ =
             BOOST_GET_CONST(std::string, op_desc->GetAttr("adam_mode"));
         auto adam_mode = AdamModeFromStr(adam_mode_);
@@ -384,10 +385,10 @@ void Compiler::LowerOptimier(const ir::Graph* graph, const Scope* scope) {
               popart::OptimizerValue(beta1, true),
               popart::OptimizerValue(beta2, true),
               popart::OptimizerValue(eps, true),
-              // popart::OptimizerValue(mwn, true),
-              popart::OptimizerValue(loss_scaling, true), adam_mode,
-              weight_decay_mode, popart::DataType::UNDEFINED,
-              popart::DataType::FLOAT, popart::DataType::FLOAT);
+              popart::OptimizerValue(loss_scaling, true),
+              popart::OptimizerValue(mwn, true), adam_mode, weight_decay_mode,
+              popart::DataType::UNDEFINED, popart::DataType::FLOAT,
+              popart::DataType::FLOAT);
         };
       } else if (type == "adaptive") {
         auto alpha = BOOST_GET_CONST(float, op_desc->GetAttr("alpha"));

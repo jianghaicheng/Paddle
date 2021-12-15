@@ -3279,6 +3279,10 @@ All parameter, weight, gradient are variables in Paddle.
           R"DOC(The type is FLOAT. Set the loss scaling for mixed-precision
                 training. Default 1.0f.
           )DOC")
+      .def_readwrite("max_weight_norm", &ipu::IpuStrategy::max_weight_norm,
+                     R"DOC(The type is FLOAT. Set the defaultMaxWeightNorm for 
+          Adam optimizer. Default 65504.0f.
+          )DOC")
       .def_property("engine_options",
                     [](const ipu::IpuStrategy &self) {
                       return self.popart_options.engineOptions;

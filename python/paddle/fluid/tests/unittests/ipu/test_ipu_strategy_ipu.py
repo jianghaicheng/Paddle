@@ -81,6 +81,10 @@ class TestConfigure(unittest.TestCase):
         assert ipu_strategy.loss_scaling == 5.0, \
             "Set loss_scaling Failed"
 
+        ipu_strategy.max_weight_norm = 65504.0
+        assert ipu_strategy.max_weight_norm == 65504.0, \
+            "Set max_weight_norm Failed"
+
         assert ipu_strategy.enable_stochastic_rounding == False, \
             "Default value for enable_stochastic_rounding must be False"
         ipu_strategy.enable_stochastic_rounding = True

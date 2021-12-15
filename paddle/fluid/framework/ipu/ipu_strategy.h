@@ -83,6 +83,9 @@ struct IpuStrategy {
   // optimizer_extract_pass, so we have to set it here
   float loss_scaling = 1.0f;
 
+  // defaultMaxWeightNorm for adam optimizer
+  float max_weight_norm = 65504.0f;
+
   // popart session option
   popart::SessionOptions popart_options;
   popart::Patterns popart_patterns;
