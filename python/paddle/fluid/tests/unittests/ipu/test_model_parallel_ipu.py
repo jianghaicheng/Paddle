@@ -22,8 +22,7 @@ import paddle.fluid.compiler as compiler
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
+@unittest.skipIf(True, "disable for lack of IPU")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
