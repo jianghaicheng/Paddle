@@ -47,7 +47,7 @@ class TestBase(IPUOpTest):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'sgd'
         self.attrs['enable_fp16'] = False
-        self.attrs['model_path'] = tempfile.mkdtemp()
+        self.attrs['model_path'] = tempfile.TemporaryDirectory().name
 
     def _test_base(self, save_otherwise_load):
         scope = paddle.fluid.core.Scope()
@@ -139,7 +139,7 @@ class TestAdam(TestBase):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'adam'
         self.attrs['enable_fp16'] = False
-        self.attrs['model_path'] = tempfile.mkdtemp()
+        self.attrs['model_path'] = tempfile.TemporaryDirectory().name
 
 
 class TestLamb(TestBase):
@@ -150,7 +150,7 @@ class TestLamb(TestBase):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'lamb'
         self.attrs['enable_fp16'] = False
-        self.attrs['model_path'] = tempfile.mkdtemp()
+        self.attrs['model_path'] = tempfile.TemporaryDirectory().name
 
 
 class TestSGDFP16(TestBase):
@@ -161,7 +161,7 @@ class TestSGDFP16(TestBase):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'sgd'
         self.attrs['enable_fp16'] = True
-        self.attrs['model_path'] = tempfile.mkdtemp()
+        self.attrs['model_path'] = tempfile.TemporaryDirectory().name
 
 
 class TestAdamFP16(TestBase):
@@ -172,7 +172,7 @@ class TestAdamFP16(TestBase):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'adam'
         self.attrs['enable_fp16'] = True
-        self.attrs['model_path'] = tempfile.mkdtemp()
+        self.attrs['model_path'] = tempfile.TemporaryDirectory().name
 
 
 class TestLambFP16(TestBase):
@@ -183,7 +183,7 @@ class TestLambFP16(TestBase):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'lamb'
         self.attrs['enable_fp16'] = True
-        self.attrs['model_path'] = tempfile.mkdtemp()
+        self.attrs['model_path'] = tempfile.TemporaryDirectory().name
 
 
 if __name__ == "__main__":
