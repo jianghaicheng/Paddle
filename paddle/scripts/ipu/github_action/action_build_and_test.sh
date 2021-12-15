@@ -63,6 +63,9 @@ gc-monitor
 export PYTHONPATH=/paddle_build/python:$PYTHONPATH
 python -c "import paddle; print(paddle.__file__)"
 
+# copy whl to /tmp on host
+cp -f /paddle_build/python/dist/*.whl $CACHED_WHL
+
 # run unittests
 cd /paddle_build/python
 # install `pytest-xdist`
@@ -74,6 +77,3 @@ pytest \
     -n=3 \
     --maxfail=3 \
     paddle/fluid/tests/unittests/ipu/
-
-# copy whl to /tmp on host
-cp -f /paddle_build/python/dist/*.whl $CACHED_WHL
