@@ -142,7 +142,10 @@ Node *sum_handler(Graph *graph, Node *node) {
 
 Node *softmax_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  int axis = -1;
+  if (op->HasAttr("axis")) {
+    axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  }
   return CreateSoftmaxOpset11(graph, node, node->inputs, node->outputs, axis);
 }
 
