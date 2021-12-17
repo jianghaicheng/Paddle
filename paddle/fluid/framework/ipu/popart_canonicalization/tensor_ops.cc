@@ -130,6 +130,14 @@ Node *reshape_handler(Graph *graph, Node *node) {
   return new_node_reshape;
 }
 
+Node *flatten2_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  return CreateBaseOp(
+      graph, node, "popart_flatten", {GetInputVarNode("X", node)},
+      {GetOutputVarNode("Out", node)}, {{"axis", int64_t(axis)}});
+}
+
 Node *gather_handler(Graph *graph, Node *node) {
   auto new_node_gather =
       CreateBaseOp(graph, node, "popart_gather",
@@ -455,6 +463,7 @@ REGISTER_HANDLER(gaussian_random, gaussian_random_handler);
 REGISTER_HANDLER(uniform_random, uniform_random_handler);
 REGISTER_HANDLER(transpose2, transpose_handler);
 REGISTER_HANDLER(reshape2, reshape_handler);
+REGISTER_HANDLER(flatten2, flatten2_handler);
 REGISTER_HANDLER(gather, gather_handler);
 REGISTER_HANDLER(squeeze2, squeeze_handler);
 REGISTER_HANDLER(cast, cast_handler);
