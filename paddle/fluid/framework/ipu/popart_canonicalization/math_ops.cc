@@ -243,7 +243,7 @@ Node *cross_entropy2_handler(Graph *graph, Node *node) {
     new_cast = new_cast->outputs[0];
   }
   auto label_shape_ = GetInputVarNode("Label", node)->Var()->GetShape();
-  if (label_shape_.size() == 1) {
+  if (label_shape_[label_shape_.size() - 1] != 1) {
     auto log = CreateBaseOp(graph, node, "popart_log",
                             {GetInputVarNode("X", node)}, {}, {});
     return CreateBaseOp(

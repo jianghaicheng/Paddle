@@ -458,6 +458,42 @@ Node *fill_any_like_handler(Graph *graph, Node *node) {
                      });
 }
 
+Node *one_hot_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto depth = BOOST_GET_CONST(int, op->GetAttr("depth"));
+  auto allow_out_of_range =
+      BOOST_GET_CONST(bool, op->GetAttr("allow_out_of_range"));
+  if (allow_out_of_range) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Do not support allow_out_of_range=True"));
+  } else {
+    auto depth_tensor = CreateConst(graph, node, {}, {},
+                                    {{"value", std::vector<int64_t>{depth}},
+                                     {"dims", std::vector<int64_t>{1}},
+                                     {"dtype", ONNXDataType::INT64}});
+    auto value_tensor =
+        CreateConst(graph, node, {}, {}, {{"value", std::vector<float>{0, 1}},
+                                          {"dims", std::vector<int64_t>{2}},
+                                          {"dtype", ONNXDataType::FLOAT}});
+    return CreateBaseOp(graph, node, "popart_onehot",
+                        {GetInputVarNode("X", node), depth_tensor->outputs[0],
+                         value_tensor->outputs[0]},
+                        {GetOutputVarNode("Out", node)},
+                        {{"axis", int64_t{-1}}});
+  }
+}
+
+Node *split_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  auto sections = BOOST_GET_CONST(std::vector<int>, op->GetAttr("sections"));
+  return CreateBaseOp(
+      graph, node, "popart_split", {GetInputVarNode("X", node)}, node->outputs,
+      {{"num_outputs", int64_t(sections.size())},
+       {"axis", int64_t(axis)},
+       {"split", std::vector<int64_t>{sections.begin(), sections.end()}}});
+}
+
 REGISTER_HANDLER(fill_constant, fill_constant_handler);
 REGISTER_HANDLER(gaussian_random, gaussian_random_handler);
 REGISTER_HANDLER(uniform_random, uniform_random_handler);
@@ -477,6 +513,8 @@ REGISTER_HANDLER(expand, expand_handler);
 REGISTER_HANDLER(assign, assign_handler);
 REGISTER_HANDLER(fill_any_like, fill_any_like_handler);
 REGISTER_HANDLER(lookup_table_v2, lookup_table_v2_handler);
+REGISTER_HANDLER(split, split_handler);
+REGISTER_HANDLER(one_hot, one_hot_handler);
 
 }  // namespace
 }  // namespace ipu
