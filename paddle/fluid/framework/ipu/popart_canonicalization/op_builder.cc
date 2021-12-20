@@ -35,7 +35,7 @@ const std::string CreateOpIdentifyId(Node *node) {
   //   if has custom op_namescope:
   //      {op_namescope}/op_type/_gen_*
   //   else:
-  //     {op_type}|{out_var0}|{out_var1}|...|_gen_*
+  //     {op_type}/{out_var0}/{out_var1}/.../_gen_*
   // this name will be used as op name when exporting onnx model from popart
   auto op_type = node->Name();
   std::string op_namescope;
@@ -51,10 +51,10 @@ const std::string CreateOpIdentifyId(Node *node) {
   } else {
     std::string op_out = "";
     for (auto *out_node : node->outputs) {
-      op_out += "|";
+      op_out += "/";
       op_out += out_node->Name();
     }
-    return {op_type + op_out + "|" + GenerateOpName()};
+    return {op_type + op_out + "/" + GenerateOpName()};
   }
 }
 
