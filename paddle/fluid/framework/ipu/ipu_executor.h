@@ -72,6 +72,9 @@ class Executor {
   // OneBuilder
   void SetBuilder(OneBuilder *one_builder) { one_builder_ = one_builder; }
 
+  // Save model to onnx
+  void SaveModelToHost(const std::string &path);
+
  private:
   void AcquireDevice();
 

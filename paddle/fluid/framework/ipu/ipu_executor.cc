@@ -288,6 +288,16 @@ void Executor::WeightsToPaddle() {
   ConvertWeights(false);
 }
 
+void Executor::SaveModelToHost(const std::string &path) {
+  if (session_) {
+    session_->weightsToHost();
+    WeightsToPaddle();
+    session_->modelToHost(path);
+  } else {
+    LOG(WARNING) << "Model is empty";
+  }
+}
+
 }  // namespace ipu
 }  // namespace framework
 }  // namespace paddle

@@ -92,7 +92,9 @@ void IpuBackend::SetCustomOps(
 }
 
 void IpuBackend::SaveMoldeProto(const std::string& path) {
-  if (is_compiled_) {
+  if (ipu_strategy_->is_training && is_prepared_) {
+    executor_->SaveModelToHost(path);
+  } else if (is_compiled_) {
     compiler_->SaveModelProtoNoCheck(path);
   } else {
     LOG(WARNING) << "Model is empty";
