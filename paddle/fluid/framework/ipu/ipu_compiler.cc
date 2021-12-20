@@ -93,6 +93,11 @@ TO GetCastSigAttrAllowNull(std::string attr, OpDesc* op_desc) {
 
 Compiler::Compiler() { RegisterOpFunc(); }
 
+Compiler::~Compiler() {
+  builder_.reset();
+  one_builder_.reset();
+}
+
 void Compiler::Prepare() {
   builder_ = popart::Builder::create();
   one_builder_ = std::make_unique<OneBuilder>();

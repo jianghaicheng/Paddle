@@ -71,7 +71,7 @@ struct OneBuilder {
 class Compiler {
  public:
   Compiler();
-  ~Compiler() = default;
+  ~Compiler();
 
   void RegisterOpFunc();
   void Prepare();

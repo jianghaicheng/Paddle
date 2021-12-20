@@ -624,6 +624,9 @@ class IpuCompiler(object):
     def detach(self):
         self._backend.detach()
 
+    def reset(self):
+        self._backend.reset()
+
     def save_onnx_model(self, file_name):
         self._backend.save_molde_proto(file_name)
 

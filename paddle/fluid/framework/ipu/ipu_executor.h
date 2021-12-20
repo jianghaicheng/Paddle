@@ -43,7 +43,7 @@ struct OneSession {
 class Executor {
  public:
   Executor() = default;
-  ~Executor() = default;
+  ~Executor();
 
   // build popart session
   void Prepare(const std::string &proto);
@@ -89,7 +89,7 @@ class Executor {
   // popart session, where graph running
   std::unique_ptr<popart::Session> session_;
   // one OneSession means a graph
-  std::shared_ptr<OneSession> one_session_;
+  std::unique_ptr<OneSession> one_session_;
 
   int step_ = 0;
 };

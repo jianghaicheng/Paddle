@@ -3208,6 +3208,7 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::reference)
       .def("detach", &ipu::IpuBackend::Detach)
+      .def("reset", &ipu::IpuBackend::Reset)
       .def("set_scope", &ipu::IpuBackend::SetScope)
       .def("set_ipu_strategy", &ipu::IpuBackend::SetIpuStrategy)
       .def("set_custom_ops", &ipu::IpuBackend::SetCustomOps)

@@ -20,6 +20,12 @@ namespace paddle {
 namespace framework {
 namespace ipu {
 
+Executor::~Executor() {
+  Detach();
+  session_.reset();
+  one_session_.reset();
+}
+
 void Executor::Prepare(const std::string &proto) {
   VLOG(10) << "enter Executor::Prepare";
 

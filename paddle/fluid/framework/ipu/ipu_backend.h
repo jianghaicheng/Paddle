@@ -44,7 +44,7 @@ class IpuBackend {
 
  public:
   IpuBackend();
-  ~IpuBackend() = default;
+  ~IpuBackend();
 
   // what compile does include(call compiler_):
   //   1. map paddle-op -> poart op
@@ -62,6 +62,10 @@ class IpuBackend {
 
   // detach IPU manually
   void Detach();
+
+  // reset manually
+  // call it before destruct works
+  void Reset();
 
   void SetScope(const Scope &scope);
   const Scope *GetScope() { return scope_; }

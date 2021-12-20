@@ -34,6 +34,11 @@ IpuBackend::IpuBackend() {
   executor_ = std::make_unique<Executor>();
 }
 
+IpuBackend::~IpuBackend() {
+  compiler_.reset();
+  executor_.reset();
+}
+
 void IpuBackend::Compile(ir::Graph* graph,
                          const std::vector<std::string>& feed_list,
                          const std::vector<std::string>& fetch_list) {
@@ -74,6 +79,12 @@ void IpuBackend::Prepare() {
 }
 
 void IpuBackend::Detach() { executor_->Detach(); }
+
+void IpuBackend::Reset() {
+  executor_->Detach();
+  compiler_.reset();
+  executor_.reset();
+}
 
 void IpuBackend::SetScope(const Scope& scope) {
   scope_ = &scope;
