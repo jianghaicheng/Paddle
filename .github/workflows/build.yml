@@ -30,6 +30,8 @@ jobs:
             -e CCACHE_DIR=/paddle_ccahe \
             -e CCACHE_MAXSIZE=20G \
             -v paddle_ipuof:/ipuof \
+            -e GITHUB_SHA=${GITHUB_SHA} \
+            -v paddle_wheels:/paddle_wheels \
             -e IPUOF_CONFIG_PATH=/ipuof/ipu.conf \
             --workdir /checkout \
             --rm \

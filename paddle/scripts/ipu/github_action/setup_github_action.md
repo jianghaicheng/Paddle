@@ -17,12 +17,20 @@ docker volume create --driver local \
   paddle_ipuof
 # where has {DIR_TO_IPU_OF}/ipu.conf
 
+docker volume create --driver local \
+  --opt type=none \
+  --opt device={DIR_TO_PADDLE_WHEELS} \
+  --opt o=bind \
+  paddle_wheels
+# {DIR_TO_PADDLE_WHEELS} is where the python package `paddle_*.whl` saved
+
 # check configure
 gc-docker -- \
 -v paddle_ccahe:/paddle_ccahe \
 -e CCACHE_DIR=/paddle_ccahe \
 -e CCACHE_MAXSIZE=20G \
 -v paddle_ipuof:/ipuof \
+-v paddle_wheels:/paddle_wheels \
 -e IPUOF_CONFIG_PATH=/ipuof/ipu.conf \
 --rm \
 paddle_ipu_ci:2.3.0 \

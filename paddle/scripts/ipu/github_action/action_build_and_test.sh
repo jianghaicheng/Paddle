@@ -18,13 +18,6 @@ echo "workdir: $PWD"
 
 mkdir /paddle_build
 
-# rm cached whl
-CACHED_WHL="/host_tmp/paddlepaddle-0.0.0-cp37-cp37m-linux_x86_64.whl"
-rm -f $CACHED_WHL
-echo "below should be empty!"
-ls -lh $CACHED_WHL 2>/dev/null
-echo "upper should be empty!"
-
 # todo use ninja
 cmake \
     -DCMAKE_INSTALL_PREFIX:STRING=install \
@@ -63,8 +56,10 @@ gc-monitor
 export PYTHONPATH=/paddle_build/python:$PYTHONPATH
 python -c "import paddle; print(paddle.__file__)"
 
-# copy whl to /tmp on host
-cp -f /paddle_build/python/dist/*.whl $CACHED_WHL
+# create tar to `paddle_wheels`
+tar czf /paddle_wheels/paddle_ipu_${GITHUB_SHA}.tar.gz /paddle_build/python/dist/*.whl
+echo "create paddle wheel file: /paddle_wheels/paddle_ipu_${GITHUB_SHA}.tar.gz"
+ls -lh /paddle_wheels/paddle_ipu_${GITHUB_SHA}.tar.gz
 
 # run unittests
 cd /paddle_build/python
