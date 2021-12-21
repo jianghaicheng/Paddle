@@ -173,6 +173,13 @@ void Compiler::LowerBody(const ir::Graph* graph) {
 
     if (op_type == "popart_constant") {
       // pass
+    } else if (op_type == "popart_optimizer") {
+      // pass
+    } else if (op_type == "popart_checkpointoutput") {
+      auto inputs = GetOpInputs(op_desc);
+      auto outputs = GetOpOutputs(op_desc);
+      auto output_ids = builder_->checkpointOutput(inputs);
+      InsertTensors(outputs, output_ids);
     } else if (op_type == "popart_custom_op") {
       auto inputs = GetOpInputs(op_desc);
       auto outputs = GetOpOutputs(op_desc);
@@ -202,8 +209,6 @@ void Compiler::LowerBody(const ir::Graph* graph) {
           inputs, print_gradient, debug_context, title);
       SetIpuIndexStage(output_ids, op_desc);
       InsertTensors(outputs, output_ids);
-    } else if (op_type == "popart_optimizer") {
-      // pass
     } else {
       auto itr = name_function_.find(op_type);
       if (itr != name_function_.end()) {

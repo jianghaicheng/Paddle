@@ -49,9 +49,15 @@ Node *print_handler(Graph *graph, Node *node) {
 
 Node *popart_optimizer_handler(Graph *graph, Node *node) { return nullptr; }
 
+Node *checkpointoutput_handler(Graph *graph, Node *node) {
+  return CreateBaseOp(graph, node, "popart_checkpointoutput", node->inputs,
+                      node->outputs);
+}
+
 REGISTER_HANDLER(custom_op, custom_op_handler);
 REGISTER_HANDLER(print, print_handler);
 REGISTER_HANDLER(popart_optimizer, popart_optimizer_handler);
+REGISTER_HANDLER(checkpointoutput, checkpointoutput_handler);
 
 }  // namespace
 }  // namespace ipu
