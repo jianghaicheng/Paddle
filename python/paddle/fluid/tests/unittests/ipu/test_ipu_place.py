@@ -44,8 +44,7 @@ class TestIpuPlace(unittest.TestCase):
         for i in range(num_devices):
             paddle.set_device('ipu')
             device = paddle.get_device()
-            self.assertTrue(device == "ipus:{{0-{}}}".format(num_devices - 1))
-
+            self.assertTrue(device == "ipus:{{0-{}}}".format(num_devices-1))
 
 if __name__ == '__main__':
     unittest.main()

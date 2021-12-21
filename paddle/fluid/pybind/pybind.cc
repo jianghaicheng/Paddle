@@ -137,6 +137,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/ipu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/device/ipu/ipu_info.h"
+#endif
+
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
 #endif
@@ -842,7 +847,7 @@ PYBIND11_MODULE(core_noavx, m) {
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
            R"DOC(
         Set the data of LoDTensor on place with given numpy array.
-        
+
         Args:
           lod (numpy.ndarray): The data to set.
           place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace|NPUPlace): The place where the
@@ -923,41 +928,41 @@ PYBIND11_MODULE(core_noavx, m) {
 
   // TODO(cql): add reference: en_user_guide_lod_tensor
   py::class_<LoDTensor, framework::Tensor>(m, "LoDTensor", R"DOC(
-    LoDTensor is a Tensor with optional LoD (Level of Details) information, 
-    it can be used for variable-length sequences, 
+    LoDTensor is a Tensor with optional LoD (Level of Details) information,
+    it can be used for variable-length sequences,
     see :ref:`user_guide_lod_tensor` for details.
 
     LoDTensor can be converted to numpy array using :code:`numpy.array(lod_tensor)`.
 
-    You can skip the following explanation if you don't need to know details 
+    You can skip the following explanation if you don't need to know details
     of LoDTensor.
 
-    The following two examples show how to use LODtensor to represent 
+    The following two examples show how to use LODtensor to represent
     variable-length sequences.
-    
+
     Example 1:
-    
-    Suppose x is a LoDTensor representing a variable-length sequence. 
-    It contains two logical subsequences, the length of first logical sequence 
-    is 2 (e.g., number of samples is 2), the length of second logical sequence 
-    is 3, and the total length is 5. The data of the first logical sequence is 
-    [1, 2], [3, 4], and the data of the second logical sequence is [5, 6], 
-    [7, 8], [9, 10]. The data dimension of each sample is 2. So, the final 
-    shape of the LoDTensor is [5, 2], of which 5 is the total length and 2 is 
+
+    Suppose x is a LoDTensor representing a variable-length sequence.
+    It contains two logical subsequences, the length of first logical sequence
+    is 2 (e.g., number of samples is 2), the length of second logical sequence
+    is 3, and the total length is 5. The data of the first logical sequence is
+    [1, 2], [3, 4], and the data of the second logical sequence is [5, 6],
+    [7, 8], [9, 10]. The data dimension of each sample is 2. So, the final
+    shape of the LoDTensor is [5, 2], of which 5 is the total length and 2 is
     the dimension of each sample.
-    
-    Logically, we can represent the variable-length sequence in two ways: one 
-    is in the form of recursive sequence lengths, that is, 
-    x.recursive_sequence_lengths=[[2, 3]]; the other is in the form of offsets, 
-    that is, x.lod=[[0, 2, 2+3]]. These two representations are equivalent, and 
-    you can set and retrieve recursive_sequence_lengths or LoD through the 
+
+    Logically, we can represent the variable-length sequence in two ways: one
+    is in the form of recursive sequence lengths, that is,
+    x.recursive_sequence_lengths=[[2, 3]]; the other is in the form of offsets,
+    that is, x.lod=[[0, 2, 2+3]]. These two representations are equivalent, and
+    you can set and retrieve recursive_sequence_lengths or LoD through the
     corresponding interfaces of LoDTensor introduced later.
 
-    Actually, in order to access sequence faster, Paddle uses offset to store 
-    different lengths of sequences. 
-    Therefore, the operations on recursive_sequence_lengths will be converted 
+    Actually, in order to access sequence faster, Paddle uses offset to store
+    different lengths of sequences.
+    Therefore, the operations on recursive_sequence_lengths will be converted
     to the operations on LoD eventually.
-    
+
     .. code-block:: python
 
       y.data = [[1, 2], [3, 4],
@@ -972,18 +977,18 @@ PYBIND11_MODULE(core_noavx, m) {
 
     Example 2:
 
-    LoD may have more than one level (for example, a paragraph may have more 
-    than one sentence and a sentence may have more than one word). Suppose y 
-    is a LoDTensor and its lod_level is 2. 
-    From level = 0, there are two logical sequences, the length of which is 
-    2 and 1, respectively, indicating that the first logical sequence contains 
-    two sub-sequences and the second logical sequence contains one sub-sequence. 
-    From level = 1, the lengths of two sub-sequences contained by the first 
-    logical sequence is 2 and 2, and the length of sub-sequence contained by 
+    LoD may have more than one level (for example, a paragraph may have more
+    than one sentence and a sentence may have more than one word). Suppose y
+    is a LoDTensor and its lod_level is 2.
+    From level = 0, there are two logical sequences, the length of which is
+    2 and 1, respectively, indicating that the first logical sequence contains
+    two sub-sequences and the second logical sequence contains one sub-sequence.
+    From level = 1, the lengths of two sub-sequences contained by the first
+    logical sequence is 2 and 2, and the length of sub-sequence contained by
     the second logical sequence is 3.
-      
-    Therefore, the LoDTensor is represented in the form of recursive sequence 
-    lengths as y.recursive_sequence_lengths=[[2,1], [2,2,3]]; and equally, in 
+
+    Therefore, the LoDTensor is represented in the form of recursive sequence
+    lengths as y.recursive_sequence_lengths=[[2,1], [2,2,3]]; and equally, in
     the form of offset, it is represented as y.lod=[[0,2,3], [0,2,4,7]].
 
     .. code-block:: python
@@ -1093,7 +1098,7 @@ PYBIND11_MODULE(core_noavx, m) {
 
            Args:
                 recursive_sequence_lengths (list[list[int]]): The recursive sequence lengths.
-           
+
            Returns:
                 None.
 
@@ -1123,7 +1128,7 @@ PYBIND11_MODULE(core_noavx, m) {
 
            Returns:
                list[list[int]]: The lod of the LoDTensor.
-           
+
            Examples:
                .. code-block:: python
 
@@ -1146,7 +1151,7 @@ PYBIND11_MODULE(core_noavx, m) {
              return new_lod;
            },
            R"DOC(
-           Return the recursive sequence lengths corresponding to of the LodD 
+           Return the recursive sequence lengths corresponding to of the LodD
            of the LoDTensor.
 
            Returns:
@@ -1436,7 +1441,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("find_var", &Scope::FindVar, py::arg("name"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
-           its parent scope. Return None if not found. 
+           its parent scope. Return None if not found.
 
            Args:
                name (str): the variable name.
@@ -1448,7 +1453,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("erase", &Scope::EraseVars, py::arg("names"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
-           its parent scope. Return None if not found. 
+           its parent scope. Return None if not found.
 
            Args:
                name (str): the variable names to be erase.
@@ -1577,12 +1582,12 @@ All parameter, weight, gradient are variables in Paddle.
         R"DOC(
              Prune the backward part of a program, mostly called in
              program.clone(for_test=True).
-              
+
              Args:
                    program (ProgramDesc): The original program.
 
              Returns:
-                   tuple(ProgramDesc, map<int, int>): The first part is 
+                   tuple(ProgramDesc, map<int, int>): The first part is
                    the pruned program desc, and the second part is a map
                    which contains the id pair of pruned block and corresponding
                    origin block.
@@ -2427,7 +2432,7 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::arg("tensor"), R"DOC(
              Append a LoDensor to LoDTensorArray.
-              
+
              Args:
                    tensor (LoDTensor): The LoDTensor to be appended.
 
@@ -2841,9 +2846,9 @@ All parameter, weight, gradient are variables in Paddle.
                 Default 100.
 
                 .. note::
-                    1. If you fetch data when calling the 'run', the ParallelExecutor 
-                    will clean up the temp variables at the end of the current iteration. 
-                    2. In some NLP model, it may cause the GPU memory is insufficient, 
+                    1. If you fetch data when calling the 'run', the ParallelExecutor
+                    will clean up the temp variables at the end of the current iteration.
+                    2. In some NLP model, it may cause the GPU memory is insufficient,
                     in this case, you should reduce `num_iteration_per_drop_scope`.
 
                 Examples:
@@ -3358,7 +3363,7 @@ All parameter, weight, gradient are variables in Paddle.
                 synchronous batch normalization which synchronizes the mean
                 and variance through multi-devices in training phase.
                 Current implementation doesn't support FP16 training and CPU.
-                And only synchronous on one machine, not all machines. 
+                And only synchronous on one machine, not all machines.
                 Default is False.
 
                 Examples:
@@ -3396,9 +3401,9 @@ All parameter, weight, gradient are variables in Paddle.
           R"DOC((bool, optional): memory opitimize aims to save total memory
                 consumption, set to True to enable it.
 
-                Default None. None means framework would choose to use or not use 
-                this strategy automatically. Currently, None means that it is 
-                enabled when GC is disabled, and disabled when GC is enabled. 
+                Default None. None means framework would choose to use or not use
+                this strategy automatically. Currently, None means that it is
+                enabled when GC is disabled, and disabled when GC is enabled.
                 True means enabling and False means disabling. Default is None.
 
                 Examples:
@@ -3411,7 +3416,7 @@ All parameter, weight, gradient are variables in Paddle.
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.memory_optimize = True
-                
+
                 )DOC")
       .def_property(
           "is_distribution",
@@ -3538,114 +3543,290 @@ All parameter, weight, gradient are variables in Paddle.
 
 #ifdef PADDLE_WITH_IPU
   py::class_<platform::ipu::IpuBackend,
-             std::shared_ptr<platform::ipu::IpuBackend>>(m, "IpuBackend")
-      .def(py::init(&platform::ipu::IpuBackend::GetNewInstance))
-      .def("clear", &platform::ipu::IpuBackend::Clear)
+             std::unique_ptr<platform::ipu::IpuBackend, py::nodelete>>(
+      m, "IpuBackend")
+      // manage IpuBackend in C++
+      .def("get_instance",
+           []() {
+             return std::unique_ptr<platform::ipu::IpuBackend, py::nodelete>(
+                 platform::ipu::IpuBackend::GetInstance());
+           },
+           py::return_value_policy::reference)
+      .def("detach", &platform::ipu::IpuBackend::Detach)
+      .def("reset", &platform::ipu::IpuBackend::Reset)
       .def("set_scope", &platform::ipu::IpuBackend::SetScope)
-      .def("set_ipu_strategy", &platform::ipu::IpuBackend::SetIpuStrategy);
+      .def("set_ipu_strategy", &platform::ipu::IpuBackend::SetIpuStrategy)
+      .def("set_custom_ops", &platform::ipu::IpuBackend::SetCustomOps)
+      .def("save_molde_proto", &platform::ipu::IpuBackend::SaveMoldeProto);
 
   py::class_<platform::ipu::IpuStrategy>(m, "IpuStrategy")
       .def(py::init())
+      .def("enable_pattern", &platform::ipu::IpuStrategy::enablePattern)
+      .def("disable_pattern", &platform::ipu::IpuStrategy::disablePattern)
+      .def("is_pattern_enabled", &platform::ipu::IpuStrategy::isPatternEnabled)
+      .def_readwrite("num_ipus", &platform::ipu::IpuStrategy::num_ipus,
+                     R"DOC(The type is INT, set the number of ipu. Default 1.
+                          .. note::
+                              The num_ipus should be power of 2, like 1,2,4...
+                    )DOC")
+      .def_readwrite("batches_per_step",
+                     &platform::ipu::IpuStrategy::batches_per_step,
+                     R"DOC(The Type is INT, set batches_per_step. Default 1.
+
+                    .. note::
+                        1. with pipelining enable, batches_per_step should bigger
+                          than pipelining depth
+                        2. mini_batch_size = batches_per_step * micro_batch_size
+
+                     )DOC")
+      .def_readwrite("is_training", &platform::ipu::IpuStrategy::is_training,
+                     R"DOC(The type is BOOL, True for training, False inference.
+                Default True.
+          )DOC")
+      .def_readwrite(
+          "need_avg_shard", &platform::ipu::IpuStrategy::need_avg_shard,
+          R"DOC(The type is BOOL, True enable avg shard, otherwise disable.
+                Default False. It's mainy for debugging.
+          )DOC")
+      .def_readwrite(
+          "micro_batch_size", &platform::ipu::IpuStrategy::micro_batch_size,
+          R"DOC(The type is INT, used to make batch size fixed. Default 1.)DOC")
+      .def_readwrite(
+          "enable_fp16", &platform::ipu::IpuStrategy::enable_fp16,
+          R"DOC(The type is INT, True enable float16 mode, otherwise disable.
+                Default False.
+          .. note::
+              1. Set True will convert the whole model to fp16 and run with pure
+                 fp16.
+          )DOC")
+      .def_readwrite(
+          "save_init_onnx", &platform::ipu::IpuStrategy::save_init_onnx,
+          R"DOC(The type is BOOL, True enable save init onnx. Default False.
+          .. note::
+              The init_onnx is the not-trained model, it's mainly for debugging.
+          )DOC")
+      .def_readwrite("save_onnx_checkpoint",
+                     &platform::ipu::IpuStrategy::save_onnx_checkpoint,
+                     R"DOC(The type is BOOL, True enable save onnx checkpoint.
+                Default False.
+          )DOC")
+      .def_readwrite(
+          "save_per_n_step", &platform::ipu::IpuStrategy::save_per_n_step,
+          R"DOC(The type is INT, Copy weights to host per n steps. Default 1.
+          )DOC")
+      .def_readwrite(
+          "available_mem_proportion",
+          &platform::ipu::IpuStrategy::available_memory_proportion,
+          R"DOC(The type is FLOAT. Set the available memory proportion for
+                matmul/conv, bigger value means more memory occupy,
+                range [0.0f, 1.0f]. 0.0 no effect, default 0.0f.
+          )DOC")
+      .def_readwrite(
+          "loss_scaling", &platform::ipu::IpuStrategy::loss_scaling,
+          R"DOC(The type is FLOAT. Set the loss scaling for mixed-precision
+                training. Default 1.0f.
+          )DOC")
+      .def_readwrite("max_weight_norm",
+                     &platform::ipu::IpuStrategy::max_weight_norm,
+                     R"DOC(The type is FLOAT. Set the defaultMaxWeightNorm for
+          Adam optimizer. Default 65504.0f.
+          )DOC")
+      .def_property("engine_options",
+                    [](const platform::ipu::IpuStrategy &self) {
+                      return self.popart_options.engineOptions;
+                    },
+                    [](platform::ipu::IpuStrategy &self, py::dict dict) {
+                      {
+                        for (auto item : dict) {
+                          auto k = item.first.cast<std::string>();
+                          auto v = item.second.cast<std::string>();
+                          self.popart_options.engineOptions[k] = v;
+                        }
+                      }
+                    })
       .def_property(
-          "num_ipus",
-          [](const platform::ipu::IpuStrategy &self) { return self.num_ipus; },
-          [](platform::ipu::IpuStrategy &self, int num_ipus) {
-            self.num_ipus = num_ipus;
+          "enableGradientAccumulation",
+          [](const platform::ipu::IpuStrategy &self) {
+            return self.popart_options.enableGradientAccumulation;
           },
-          R"DOC(
-            Int type, set the number ipu we need. Default 1.
+          [](platform::ipu::IpuStrategy &self,
+             bool enableGradientAccumulation) {
+            self.popart_options.enableGradientAccumulation =
+                enableGradientAccumulation;
+          },
+          R"DOC(The type is BOOL. True for enable gradient accumulation.
+                Default False.
           )DOC")
       .def_property(
           "accumulationFactor",
           [](const platform::ipu::IpuStrategy &self) {
-            return self.popart_options_.accumulationFactor;
+            return self.popart_options.accumulationFactor;
           },
           [](platform::ipu::IpuStrategy &self, int accumulationFactor) {
-            self.popart_options_.accumulationFactor = accumulationFactor;
+            self.popart_options.accumulationFactor = accumulationFactor;
           },
           R"DOC(
             Specify the number of micro-batches to accumulate before
             applying the varUpdate. Default 1.
           )DOC")
-      .def_property("batches_per_step",
-                    [](const platform::ipu::IpuStrategy &self) {
-                      return self.batches_per_step;
-                    },
-                    [](platform::ipu::IpuStrategy &self, int batches_per_step) {
-                      self.batches_per_step = batches_per_step;
-                    },
-                    R"DOC(
-            Int type, set batches_per_step. Default 1.
-          )DOC")
-      .def_property("is_training",
-                    [](const platform::ipu::IpuStrategy &self) {
-                      return self.is_training;
-                    },
-                    [](platform::ipu::IpuStrategy &self, bool is_training) {
-                      self.is_training = is_training;
-                    },
-                    R"DOC(
-            Bool type, True for training, False inference. Default True.
-          )DOC")
+      .def_property(
+          "enableReplicatedGraphs",
+          [](const platform::ipu::IpuStrategy &self) {
+            return self.popart_options.enableReplicatedGraphs;
+          },
+          [](platform::ipu::IpuStrategy &self, bool enableReplicatedGraphs) {
+            self.popart_options.enableReplicatedGraphs = enableReplicatedGraphs;
+          },
+          R"DOC(The type is BOOL. True for enable model replica,
+                          Default False.
+                    )DOC")
+      .def_property(
+          "replicatedGraphCount",
+          [](const platform::ipu::IpuStrategy &self) {
+            return self.popart_options.replicatedGraphCount;
+          },
+          [](platform::ipu::IpuStrategy &self, int replicatedGraphCount) {
+            self.popart_options.replicatedGraphCount = replicatedGraphCount;
+          },
+          R"DOC(The type is INT. Number of model replica. Default 1.
+                    )DOC")
       .def_property(
           "enable_pipelining",
           [](const platform::ipu::IpuStrategy &self) {
-            return self.popart_options_.enablePipelining;
+            return self.popart_options.enablePipelining;
           },
           [](platform::ipu::IpuStrategy &self, bool enable_pipelining) {
-            self.popart_options_.enablePipelining = enable_pipelining;
+            self.popart_options.enablePipelining = enable_pipelining;
           },
-          R"DOC(
-            Bool type, True enable pipeline, otherwise disable. Default False.
-          )DOC")
+          R"DOC(The type is BOOL, True for enable pipelining.
+                          Default False.
+                    )DOC")
       .def_property(
           "enable_manual_shard",
           [](const platform::ipu::IpuStrategy &self) {
-            return self.popart_options_.virtualGraphMode ==
+            return self.popart_options.virtualGraphMode ==
                    platform::ipu::VirtualGraphMode::Manual;
           },
           [](platform::ipu::IpuStrategy &self, bool enable_ipu_shard) {
             if (enable_ipu_shard) {
-              self.popart_options_.virtualGraphMode =
+              self.popart_options.virtualGraphMode =
                   platform::ipu::VirtualGraphMode::Manual;
             } else {
-              self.popart_options_.virtualGraphMode =
+              self.popart_options.virtualGraphMode =
                   platform::ipu::VirtualGraphMode::Off;
             }
           },
+          R"DOC(The type is BOOL, True enable manual sharding.
+                          Default False.
+                    )DOC")
+      .def_property(
+          "auto_recomputation",
+          [](const platform::ipu::IpuStrategy &self) {
+            return self.popart_options.autoRecomputation;
+          },
+          [](platform::ipu::IpuStrategy &self, int auto_recomputation) {
+            self.popart_options.autoRecomputation =
+                static_cast<platform::ipu::RecomputationType>(
+                    auto_recomputation);
+          },
           R"DOC(
-            Bool type, True enable model sharding, otherwise disable. Default "
-            "False.
+            Int type:"
+            "0: None"
+            "1: Standard (Algorithm to pick checkpoints to try and minimise max liveness)"
+            "2: NormOnly (Only Norm Ops)"
+            "3: Pipeline (Recompute all forward pipeline stages)"
+            "4: RecomputeAll (Recompute all ops)
           )DOC")
-      .def_property("need_avg_shard",
-                    [](const platform::ipu::IpuStrategy &self) {
-                      return self.need_avg_shard;
-                    },
-                    [](platform::ipu::IpuStrategy &self, bool need_avg_shard) {
-                      self.need_avg_shard = need_avg_shard;
-                    },
-                    R"DOC(
-            Bool type, True enable avg shard, otherwise disable. Default False.
+      .def_property(
+          "enable_stochastic_rounding",
+          [](const platform::ipu::IpuStrategy &self) {
+            return self.popart_options.enableStochasticRounding;
+          },
+          [](platform::ipu::IpuStrategy &self,
+             bool enable_stochastic_rounding) {
+            self.popart_options.enableStochasticRounding =
+                enable_stochastic_rounding;
+          },
+          R"DOC(Enable Stochastic Rounding, beneficial to model training.
+                Default False.
           )DOC")
-      .def_property("batch_size",
+      .def_property(
+          "enable_half_partial",
+          [](const platform::ipu::IpuStrategy &self) {
+            return self.popart_options.partialsTypeMatMuls == "half";
+          },
+          [](platform::ipu::IpuStrategy &self, bool enable_half_partial) {
+            self.popart_options.partialsTypeMatMuls = "half";
+          },
+          R"DOC(The type is String. "half" for fp16 partial, only work
+                          with fp16. Default "float". half partial fp16.16.
+                    )DOC")
+      .def_property("enable_fully_connected_pass",
                     [](const platform::ipu::IpuStrategy &self) {
-                      return self.batch_size;
+                      return self.popart_options.enableFullyConnectedPass;
                     },
-                    [](platform::ipu::IpuStrategy &self, int batch_size) {
-                      self.batch_size = batch_size;
+                    [](platform::ipu::IpuStrategy &self, bool flag) {
+                      self.popart_options.enableFullyConnectedPass = flag;
                     },
-                    R"DOC(
-            Int type, used to make batch size fixed. Default 1.
-          )DOC")
-      .def_property("enable_fp16",
-                    [](const platform::ipu::IpuStrategy &self) {
-                      return self.enable_fp16;
+                    R"DOC(The type is Bool. True enable the global
+                          fullyConnectedPass option for matmuls.
+                          Default True.
+                    )DOC")
+      .def_property(
+          "enable_engine_caching",
+          [](const platform::ipu::IpuStrategy &self) {
+            return self.popart_options.enableEngineCaching;
+          },
+          [](platform::ipu::IpuStrategy &self, bool flag) {
+            self.popart_options.enableEngineCaching = flag;
+          },
+          R"DOC(The type is Bool. True enable Poplar executable caching.
+           Default False.
+                    )DOC")
+      .def_property(
+          "cache_path",
+          [](const platform::ipu::IpuStrategy &self) {
+            return self.popart_options.cachePath;
+          },
+          [](platform::ipu::IpuStrategy &self, const std::string &cache_path) {
+            self.popart_options.cachePath = cache_path;
+          },
+          R"DOC(The type is String. Folder to save the poplar::Executable to.
+           Default `session_cache`.
+                    )DOC");
+
+  py::class_<platform::ipu::IpuCustomOpIdentifier>(m, "IpuCustomOpIdentifier")
+      .def(py::init<const std::string &, const std::string &,
+                    const std::string &, unsigned int>())
+      .def("repr", &platform::ipu::IpuCustomOpIdentifier::repr)
+      .def_property(
+          "paddle_op",
+          [](const platform::ipu::IpuCustomOpIdentifier &self) {
+            return self.paddle_op;
+          },
+          [](platform::ipu::IpuCustomOpIdentifier &self,
+             const std::string &paddle_op) { self.paddle_op = paddle_op; })
+      .def_property("popart_op",
+                    [](const platform::ipu::IpuCustomOpIdentifier &self) {
+                      return self.popart_op.type;
                     },
-                    [](platform::ipu::IpuStrategy &self, bool enable_fp16) {
-                      self.enable_fp16 = enable_fp16;
+                    [](platform::ipu::IpuCustomOpIdentifier &self,
+                       const std::string &type) { self.popart_op.type = type; })
+      .def_property(
+          "domain",
+          [](const platform::ipu::IpuCustomOpIdentifier &self) {
+            return self.popart_op.domain;
+          },
+          [](platform::ipu::IpuCustomOpIdentifier &self,
+             const std::string &domain) { self.popart_op.domain = domain; })
+      .def_property("version",
+                    [](const platform::ipu::IpuCustomOpIdentifier &self) {
+                      return self.popart_op.version;
                     },
-                    R"DOC(
-            Bool type, True enable float16 mode, otherwise disable. Default False.)DOC");
+                    [](platform::ipu::IpuCustomOpIdentifier &self,
+                       const unsigned int &version) {
+                      self.popart_op.version = version;
+                    });
 #endif
 
   BindFleetWrapper(&m);

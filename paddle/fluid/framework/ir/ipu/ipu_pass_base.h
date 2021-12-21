@@ -23,13 +23,7 @@ namespace framework {
 namespace ir {
 
 class IPUPassBase : public Pass {
- public:
-  void Init(const std::string& repr, Graph* graph) const;
-  virtual ~IPUPassBase() {}
-
- protected:
-  mutable Graph* graph_;
-  mutable std::string repr_;
+  // pass
 };
 
 }  // namespace ir

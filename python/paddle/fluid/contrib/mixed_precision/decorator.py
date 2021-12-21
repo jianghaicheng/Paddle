@@ -21,6 +21,7 @@ from ... import program_guard
 from ... import unique_name
 from . import fp16_utils
 from .fp16_utils import rewrite_program
+from .fp16_utils import rewrite_program_v2
 from .fp16_utils import cast_model_to_fp16
 from .fp16_utils import cast_parameters_to_fp16
 from .fp16_utils import update_role_var_grad
@@ -188,8 +189,11 @@ class OptimizerWithMixedPrecision(object):
                 self._to_fp16_var_names = cast_model_to_fp16(
                     self._train_program, self._amp_lists, self._use_fp16_guard)
             else:
-                rewrite_program(self._train_program, self._amp_lists)
-
+                if core.is_compiled_with_ipu():
+                    rewrite_program_v2(startup_program, self._train_program,
+                                       self._amp_lists)
+                else:
+                    rewrite_program(self._train_program, self._amp_lists)
             if loss.dtype != core.VarDesc.VarType.FP32:
                 loss = loss.astype('float32')
             # When not using dynamic loss scaling and the init loss scaling value is equal to 1.0,

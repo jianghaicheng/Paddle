@@ -16,14 +16,9 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
-import paddle.optimizer
-import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
-                                                          np_dtype_to_fluid_str)
-
-paddle.enable_static()
+import paddle.fluid.contrib.mixed_precision.fp16_utils as fp16_utils
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMode
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -32,16 +27,25 @@ class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
-        self.set_attrs()
+        self.set_data_feed()
+        self.set_feed_attr()
+        self.set_op_attrs()
+
+    @property
+    def fp16_enabled(self):
+        return True
+
+    def set_data_feed(self):
+        data = np.array([[[1], [3]], [[2], [4]], [[4], [127]]])
+        self.feed_cpu = {"x": data.astype(np.int64)}
+        self.feed_ipu = {"x": data.astype(np.int32)}
 
     def set_feed_attr(self):
-        self.feed_shape = [x.shape for x in self.feed.values()]
-        self.feed_list = list(self.feed.keys())
-        self.feed_dtype = [
-            np_dtype_to_fluid_str(x.dtype) for x in self.feed.values()
-        ]
+        self.feed_shape = [x.shape for x in self.feed_cpu.values()]
+        self.feed_list = list(self.feed_cpu.keys())
+        self.feed_dtype = [x.dtype for x in self.feed_cpu.values()]
 
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {
             "size": [128, 16],
             "is_sparse": False,
@@ -50,84 +54,92 @@ class TestBase(IPUOpTest):
             "dtype": 'float32'
         }
 
-    def _test_base(self, run_ipu=True):
-        scope = fluid.core.Scope()
+    def _test_base(self, exec_mode):
+        scope = paddle.fluid.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        SEED = self.SEED
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
+        main_prog.random_seed = self.SEED
+        startup_prog.random_seed = self.SEED
 
-        if run_ipu:
-            self.feed = {
-                "x": np.array(
-                    [[[1], [3]], [[2], [4]], [[4], [127]]]).astype(np.int32)
-            }
-        else:
-            self.feed = {
-                "x": np.array(
-                    [[[1], [3]], [[2], [4]], [[4], [127]]]).astype(np.int64)
-            }
-
-        self.set_feed_attr()
-
-        with fluid.scope_guard(scope):
+        with paddle.fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
-                    dtype=self.feed_dtype[0])
-                out = paddle.fluid.layers.embedding(x, **self.attrs)
+                    dtype='int64')
 
-                if self.is_training:
-                    loss = paddle.mean(out)
-                    adam = paddle.optimizer.Adam(learning_rate=1e-2)
-                    adam.minimize(loss)
-                    fetch_list = [loss.name]
-                else:
-                    fetch_list = [out.name]
+                with paddle.static.amp.fp16_guard():
+                    out = paddle.fluid.layers.embedding(x, **self.attrs)
 
-            if run_ipu:
-                place = paddle.IPUPlace()
-            else:
+                    if self.is_training:
+                        loss = paddle.mean(out)
+                        adam = paddle.optimizer.Adam(learning_rate=1e-2)
+                        adam.minimize(loss)
+                        fetch_list = [loss.name]
+                    else:
+                        fetch_list = [out.name]
+
+            if exec_mode == ExecutionMode.CPU_FP32:
                 place = paddle.CPUPlace()
+            else:
+                place = paddle.IPUPlace()
+
+            if exec_mode == ExecutionMode.IPU_PADDLE_FP16:
+                fp16_utils.rewrite_program_v2(
+                    startup_prog=startup_prog,
+                    main_prog=main_prog,
+                    amp_lists=self.amp_list)
+
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
 
-            if run_ipu:
+            if exec_mode != ExecutionMode.CPU_FP32:
                 feed_list = self.feed_list
                 ipu_strategy = compiler.get_ipu_strategy()
                 ipu_strategy.is_training = self.is_training
-                program = compiler.IPUCompiledProgram(
+                if exec_mode == ExecutionMode.IPU_POPART_FP16:
+                    ipu_strategy.enable_fp16 = True
+                program = compiler.IpuCompiler(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
             else:
                 program = main_prog
 
+            feed = self.feed_cpu
+            if exec_mode > ExecutionMode.CPU_FP32:
+                feed = self.feed_ipu
+
             if self.is_training:
                 result = []
                 for _ in range(self.epoch):
                     loss_res = exe.run(program,
-                                       feed=self.feed,
+                                       feed=feed,
                                        fetch_list=fetch_list)
                     result.append(loss_res[0])
                 return np.array(result)
             else:
-                result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
+                result = exe.run(program, feed=feed, fetch_list=fetch_list)
                 return result[0]
 
-    def test_base(self):
-        res0 = self._test_base(False)
-        res1 = self._test_base(True)
+    def test(self):
+        output_dict = {}
+        for mode in ExecutionMode:
+            if mode > ExecutionMode.IPU_FP32 and (not self.fp16_enabled or
+                                                  self.is_training):
+                break
 
-        self.assertTrue(
-            np.allclose(
-                res0.flatten(), res1.flatten(), atol=self.atol))
+            output_dict[mode] = self._test_base(mode).flatten()
 
-        self.assertTrue(res0.shape == res1.shape)
+        self.check(output_dict)
 
 
 class TestTrainCase1(TestBase):
+    def set_atol(self):
+        self.atol = 1e-7
+        self.rtol = 1e-6
+        self.atol_fp16 = 1e-3
+        self.rtol_fp16 = 1e-3
+
     def set_training(self):
         self.is_training = True
         self.epoch = 10

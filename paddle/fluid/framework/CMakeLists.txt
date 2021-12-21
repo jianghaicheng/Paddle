@@ -37,7 +37,7 @@ proto_library(op_def_proto SRCS op_def.proto DEPS framework_proto)
 cc_library(op_def_api SRCS op_def_api.cc DEPS op_def_proto boost)
 
 FILE(GLOB OP_DEF_FILES ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/compat/*.pbtxt)
-FILE(WRITE ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt 
+FILE(WRITE ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt
      "namespace { \n"
      "const std::unordered_map<std::string, std::string> op_def_map =  { \n")
 foreach(OP_DEF_FILE ${OP_DEF_FILES})
@@ -234,9 +234,9 @@ if(WITH_PYTHON)
   py_proto_compile(pass_desc_py_proto SRCS pass_desc.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
-  add_custom_target(fleet_proto_init ALL  
+  add_custom_target(fleet_proto_init ALL
     COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-    COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py 
+    COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py
   )
   add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
   add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto fleet_proto_init pass_desc_py_proto)
@@ -285,7 +285,7 @@ if(WITH_DISTRIBUTE)
     data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
     ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc
     pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
-    device_context scope framework_proto trainer_desc_proto glog fs shell 
+    device_context scope framework_proto trainer_desc_proto glog fs shell
     fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer
     lod_rank_table feed_fetch_method collective_helper ${GLOB_DISTRIBUTE_DEPS}
     graph_to_program_pass variable_helper data_feed_proto timer monitor

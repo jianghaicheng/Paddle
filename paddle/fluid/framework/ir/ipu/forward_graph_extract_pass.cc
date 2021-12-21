@@ -22,7 +22,6 @@ namespace ir {
 
 void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter ForwardGraphExtractPass::ApplyImpl";
-
   std::unordered_map<OpRole, std::unordered_set<ir::Node*>> all_ops{
       {OpRole::kForward, {}},  {OpRole::kBackward, {}},
       {OpRole::kOptimize, {}}, {OpRole::kRPC, {}},
@@ -121,7 +120,6 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
 
   VLOG(10) << "Post Graph: ";
   VLOG(10) << DebugString(graph);
-
   VLOG(10) << "leave ForwardGraphExtractPass::ApplyImpl";
 }
 

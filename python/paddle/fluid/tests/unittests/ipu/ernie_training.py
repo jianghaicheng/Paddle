@@ -31,7 +31,7 @@ paddle.enable_static()
 SEED = 2021
 INT_DTYPE = None
 
-# ernie related block 
+# ernie related block
 ernie_config = {
     "emb_size": 128,
     "emb_mapping_in": False,
@@ -768,17 +768,18 @@ if __name__ == "__main__":
     input_shape = [micro_bs, seq_len, 1]
     input_fields = {
         'names': [
-            'src_ids', 'sent_ids', 'pos_ids', 'input_mask', 'mask_label',
-            'mask_pos'
+            'src_ids',    'sent_ids',   'pos_ids',
+            'input_mask', 'mask_label', 'mask_pos'
         ],
         'shapes': [
-            input_shape, input_shape, input_shape, input_shape, [micro_bs, 1],
-            [micro_bs, 1]
-        ],
-        'dtypes':
-        [INT_DTYPE, INT_DTYPE, INT_DTYPE, 'float32', INT_DTYPE, INT_DTYPE],
-        'range': [[0, seq_len], [0, 4], [0, seq_len], None, [0, seq_len],
-                  [0, seq_len]],
+            input_shape, input_shape,   input_shape,
+            input_shape, [micro_bs, 1], [micro_bs, 1]],
+        'dtypes': [
+            INT_DTYPE, INT_DTYPE, INT_DTYPE,
+            'float32', INT_DTYPE, INT_DTYPE],
+        'range': [
+            [0, seq_len], [0, 4],       [0, seq_len],
+            None,         [0, seq_len], [0, seq_len]],
         'lod_levels': [0, 0, 0, 0, 0, 0],
     }
 
@@ -799,7 +800,7 @@ if __name__ == "__main__":
     total_samples = args.ipu_run_steps * batches_per_step
 
     total_steps = args.ipu_run_steps
-    if not args.run_on_ipu:  # run on cpu
+    if not args.run_on_ipu:                   # run on cpu
         total_steps = total_samples // micro_bs
 
     # synthetic data
@@ -817,7 +818,8 @@ if __name__ == "__main__":
             shape[0] = total_samples
             min_val, max_val = input_fields['range'][i]
             data = np.random.randint(
-                min_val, max_val, shape, dtype=input_fields['dtypes'][i])
+                min_val, max_val, shape,
+                dtype=input_fields['dtypes'][i])
         np_inputs.append(data)
 
     # paddle input placeholder
@@ -866,7 +868,7 @@ if __name__ == "__main__":
             else:
                 ipu_strategy.batches_per_step = args.num_ipus
         ipu_strategy.is_training = args.is_training
-        ipu_compiler = compiler.IPUCompiledProgram(
+        ipu_compiler = compiler.IpuCompiler(
             main_prog, ipu_strategy=ipu_strategy)
         program = ipu_compiler.compile(feed_list, fetch_list)
     else:
@@ -878,14 +880,14 @@ if __name__ == "__main__":
         start = i * (batches_per_step if args.run_on_ipu else 1)
         end = start + (batches_per_step if args.run_on_ipu else 1)
         feed_dict = {
-            src_ids.name: np_inputs[0][start:end],
-            sent_ids.name: np_inputs[1][start:end],
-            pos_ids.name: np_inputs[2][start:end],
-            input_mask.name: np_inputs[3][start:end]
+            src_ids.name : np_inputs[0][start : end],
+            sent_ids.name: np_inputs[1][start : end],
+            pos_ids.name:  np_inputs[2][start : end],
+            input_mask.name: np_inputs[3][start : end]
         }
         if args.is_training:
-            feed_dict[mask_label.name] = np_inputs[4][start:end]
-            feed_dict[mask_pos.name] = np_inputs[5][start:end]
+            feed_dict[mask_label.name] = np_inputs[4][start : end]
+            feed_dict[mask_pos.name] = np_inputs[5][start : end]
 
         res = executor.run(program, feed=feed_dict, fetch_list=[fetch_node])
         results.append(res)

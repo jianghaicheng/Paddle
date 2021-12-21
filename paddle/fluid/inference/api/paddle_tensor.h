@@ -37,6 +37,7 @@ class TensorUtils;
 /// \brief Paddle data type.
 enum DataType {
   FLOAT32,
+  FLOAT16,
   INT64,
   INT32,
   UINT8,
@@ -45,7 +46,7 @@ enum DataType {
   // TODO(Superjomn) support more data types if needed.
 };
 
-enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kNPU };
+enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kNPU, kIPU};
 
 /// \brief Represents an n-dimensional array of values.
 /// The Tensor is used to store the input or output of the network.

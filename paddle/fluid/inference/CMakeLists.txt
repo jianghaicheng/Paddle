@@ -47,6 +47,8 @@ set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor
 #TODO(wilber, T8T9): Do we still need to support windows gpu static library?
 if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} ${pten_modules} ${STATIC_INFERENCE_API})
+elseif(WITH_IPU)
+  cc_library(paddle_inference DEPS ${fluid_modules} ${pten_modules} ${STATIC_INFERENCE_API} paddle_ipu)
 else()
   create_static_lib(paddle_inference ${fluid_modules} ${pten_modules} ${STATIC_INFERENCE_API})
   if(WITH_IPU)
@@ -83,12 +85,16 @@ set(SHARED_INFERENCE_SRCS
 # shared inference library deps
 set(SHARED_INFERENCE_DEPS ${fluid_modules} ${pten_modules} analysis_predictor)
 
-if (WITH_CRYPTO) 
+if (WITH_CRYPTO)
     set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
 endif (WITH_CRYPTO)
 
 if (WITH_PSCORE)
     set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service)
+endif ()
+
+if (WITH_IPU)
+    set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_ipu)
 endif ()
 
 # Create shared inference library

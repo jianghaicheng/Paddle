@@ -480,3 +480,208 @@ class CompiledProgram(object):
                 place_list = cpu_places()
         assert place_list, "No places for execution."
         return place_list
+
+
+class IpuCompiler(object):
+    """
+    The IpuCompiler is used to transform a program to a ipu-target program.
+
+    Args:
+      program(framework.Program): This argument is the Program being executed.
+      scope: This argument is the scope which contains model parameters.
+      ipu_strategy: This argument is used to build the program with the
+          specified options, such as operators' replacement, dtype, etc.
+      custom_ops: List of `IpuCustomOpIdentifier`, Custom ops will be used.
+
+    Returns:
+      framework.Program
+    """
+
+    def __init__(self, program, scope=None, ipu_strategy=None, custom_ops=None):
+        if not isinstance(program, framework.Program):
+            raise TypeError(
+                "The type of program is wrong, expected Program, but got %s" %
+                type(program))
+        # import here to avoiding confused
+        import paddle
+
+        self._program = program
+        self._compiled = False
+
+        if scope is not None:
+            self._scope = scope
+        else:
+            self._scope = paddle.static.global_scope()
+
+        if ipu_strategy is not None:
+            self._ipu_strategy = ipu_strategy
+        else:
+            self._ipu_strategy = get_ipu_strategy()
+
+        if custom_ops is not None:
+            self._custom_ops = custom_ops
+            self._custom_op_names = set([x.paddle_op for x in custom_ops])
+        else:
+            self._custom_ops = []
+            self._custom_op_names = ()
+
+        self._backend = core.IpuBackend.get_instance()
+
+    def compile(self, feed_list, fetch_list, feed_var_name='feed', scope=None):
+        self._backend.set_scope(self._scope)
+        self._backend.set_ipu_strategy(self._ipu_strategy)
+        if (self._custom_ops):
+            self._backend.set_custom_ops(self._custom_ops)
+
+        # feed and fetch doesn't have corresponding popart op, so we rm both here
+        global_block = self._program.global_block()
+        need_to_remove_op_index = []
+        for i, op in enumerate(global_block.ops):
+            op.desc.set_is_target(False)
+            if op.type == 'feed' or op.type == 'fetch':
+                need_to_remove_op_index.append(i)
+
+        for index in need_to_remove_op_index[::-1]:
+            global_block._remove_op(index)
+
+        for var in ['feed', 'fetch']:
+            if global_block.has_var(var):
+                global_block._remove_var(var)
+
+        self._program.desc.flush()
+        self._graph = core.Graph(self._program.desc)
+
+        if self._ipu_strategy.is_training:
+            passes = [
+                'optimizer_extract_pass',
+                'optimizer_state_align_pass',
+            ]
+            for pass_name in passes:
+                a_pass = core.get_pass(pass_name)
+                a_pass.apply(self._graph)
+
+        passes = [
+            'forward_graph_extract_pass',
+            'infer_shape_pass',
+            'avg_shard_pass',
+            'delete_scale_op_pass',
+        ]
+        for pass_name in passes:
+            a_pass = core.get_pass(pass_name)
+            if pass_name == 'infer_shape_pass':
+                a_pass.set('feed_list', feed_list)
+            a_pass.apply(self._graph)
+
+        a_pass = core.get_pass('popart_canonicalization_pass')
+        if (self._custom_op_names):
+            a_pass.set('custom_ops', self._custom_op_names)
+        a_pass.apply(self._graph)
+
+        a_pass = core.get_pass("transfer_cast_op_pass")
+        a_pass.apply(self._graph)
+
+        passes = [
+            'ipu_inplace_pass',
+            'ipu_graph_builder_pass',
+            'ipu_runtime_replacer_pass',
+        ]
+        for pass_name in passes:
+            a_pass = core.get_pass(pass_name)
+            a_pass.set('feed_list', feed_list)
+            a_pass.set('fetch_list', fetch_list)
+            a_pass.apply(self._graph)
+
+        convert_pass = core.get_pass('graph_to_program_pass')
+        desc = core.ProgramDesc()
+        convert_pass.set_not_owned('program', desc)
+        convert_pass.apply(self._graph)
+        program = framework.Program._construct_from_desc(desc)
+
+        if hasattr(self._program, 'lr_sheduler'):
+            # how to share var between two different block ?
+            lr_var_name = self._program.lr_sheduler._var_name
+
+            program.lr_sheduler = self._program.lr_sheduler
+            # Program.clone will clone lr_sheduler, so i set lr_var as
+            # lr_sheduler attribute
+            global_block = self._program.global_block()
+            program.lr_sheduler.lr_var = global_block.vars[lr_var_name]
+
+        # with popart, we need to support batches_per_step, what means
+        # the shape of feed_var and feed_tensor(maybe numpy array) will
+        # mismatch, so we set need_check_feed to False. Thus we can avoid
+        # modify logic of run.
+        program_global_block = program.global_block()
+        for feed_name in feed_list:
+            feed_var = program_global_block.var(feed_name)
+            feed_var.desc.set_need_check_feed(False)
+
+        if not hasattr(program, 'org_program'):
+            program.org_program = self._program
+
+        return program
+
+    def detach(self):
+        self._backend.detach()
+
+    def reset(self):
+        self._backend.reset()
+
+    def save_onnx_model(self, file_name):
+        self._backend.save_molde_proto(file_name)
+
+
+def get_ipu_strategy():
+    """
+    Create and return IpuStrategy instance. We get IpuStrategy from
+    python side, and then set by IpuBackend.set_ipu_strategy.
+    """
+    if not core.is_compiled_with_ipu():
+        raise ValueError(
+            "Can't get ipu_strategy, since PaddlePaddle is not compiled" \
+            " with IPU"
+        )
+
+    ipu_strategy = IpuStrategy()
+
+    return ipu_strategy
+
+
+class IpuStrategy(core.IpuStrategy):
+    if not core.is_compiled_with_ipu():
+        raise ValueError(
+            "Can't get IpuStrategy, since PaddlePaddle is not " \
+            "compiled with IPU"
+        )
+
+    def __init__(self):
+        super().__init__()
+
+    def load_dict(self, conf):
+        assert isinstance(conf, dict), "Config should dict."
+        for k, v in conf.items():
+            if hasattr(self, k):
+                self.__setattr__(k, v)
+
+
+class IpuCustomOpIdentifier(core.IpuCustomOpIdentifier):
+    if not core.is_compiled_with_ipu():
+        raise ValueError(
+            "Can't get IpuCustomOpIdentifier, since PaddlePaddle is not " \
+            "compiled with IPU"
+        )
+
+    def __init__(self,
+                 paddle_op: str,
+                 popart_op: str=None,
+                 domain: str='custom.ops',
+                 version: int=1):
+        if popart_op is None:
+            popart_op = paddle_op
+        super().__init__(paddle_op, popart_op, domain, version)
+
+    def __repr__(self):
+        return self.repr()
+
+    def __str__(self):
+        return self.repr()
