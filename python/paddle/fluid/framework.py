@@ -52,7 +52,8 @@ __all__ = [
     'cuda_places',
     'cpu_places',
     'xpu_places',
-    'ipu_places',
+    # TODO(alleng) fix it
+    # 'ipu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
     'is_compiled_with_cinn',
