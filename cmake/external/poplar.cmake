@@ -16,21 +16,22 @@ if(WITH_IPU)
   set(POPART_DIR CACHE PATH "Path to a Popart install")
   set(POPLAR_SDK_DIR CACHE PATH "Path to an extracted SDK archive or to a Poplar & Popart install directory (Will populate POPLAR_DIR and POPART_DIR)")
 
-  if(DEFINED ENV{POPLAR_SDK_DIR})
-    set(POPLAR_SDK_DIR $ENV{POPLAR_SDK_DIR})
-    execute_process(COMMAND find ${POPLAR_SDK_DIR}/ -maxdepth 1 -type d -name "popart*"
-      OUTPUT_VARIABLE POPART_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
-    execute_process(COMMAND find ${POPLAR_SDK_DIR}/ -maxdepth 1 -type d -name "poplar-*" -o -name "poplar"
-      OUTPUT_VARIABLE POPLAR_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
-    if(NOT IS_DIRECTORY "${POPLAR_DIR}")
-      message(FATAL_ERROR "Couldn't find a \"poplar\" or \"poplar-*\" folder in '${POPLAR_SDK_DIR}'")
-    endif()
-    if(NOT IS_DIRECTORY "${POPART_DIR}")
-      message(FATAL_ERROR "Couldn't find a \"popart*\" folder in '${POPLAR_SDK_DIR}'")
-    endif()
-  else()
-    message(FATAL_ERROR "You must provide a path to a Poplar install using export POPLAR_SDK_DIR=/path/to/poplar_sdk")
-  endif()
+  # TODO(alleng) fix it
+  # if(DEFINED ENV{POPLAR_SDK_DIR})
+  #   set(POPLAR_SDK_DIR $ENV{POPLAR_SDK_DIR})
+  #   execute_process(COMMAND find ${POPLAR_SDK_DIR}/ -maxdepth 1 -type d -name "popart*"
+  #     OUTPUT_VARIABLE POPART_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
+  #   execute_process(COMMAND find ${POPLAR_SDK_DIR}/ -maxdepth 1 -type d -name "poplar-*" -o -name "poplar"
+  #     OUTPUT_VARIABLE POPLAR_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
+  #   if(NOT IS_DIRECTORY "${POPLAR_DIR}")
+  #     message(FATAL_ERROR "Couldn't find a \"poplar\" or \"poplar-*\" folder in '${POPLAR_SDK_DIR}'")
+  #   endif()
+  #   if(NOT IS_DIRECTORY "${POPART_DIR}")
+  #     message(FATAL_ERROR "Couldn't find a \"popart*\" folder in '${POPLAR_SDK_DIR}'")
+  #   endif()
+  # else()
+  #   message(FATAL_ERROR "You must provide a path to a Poplar install using export POPLAR_SDK_DIR=/path/to/poplar_sdk")
+  # endif()
 
   message("POPLAR_DIR is ${POPLAR_DIR}")
   message("POPART_DIR is ${POPART_DIR}")

@@ -280,22 +280,6 @@ class PD_INFER_DECL IpuPassStrategy final : public PassStrategy {
   }
 };
 
-/// \class IpuPassStrategy
-/// \brief The IPU passes controller, it is used in AnalysisPredictor with IPU
-/// mode.
-class PD_INFER_DECL IpuPassStrategy final : public PassStrategy {
- public:
-  /// \brief Default constructor of IpuPassStrategy.
-  IpuPassStrategy();
-
-  /// \brief Construct by copying another IpuPassStrategy object.
-  /// \param[in] other The IpuPassStrategy object we want to copy.
-  explicit IpuPassStrategy(const IpuPassStrategy &other)
-      : PassStrategy(other.AllPasses()) {
-    use_ipu_ = true;
-  }
-};
-
 /// \brief List of tensorRT subgraph passes.
 PD_INFER_DECL extern const std::vector<std::string> kTRTSubgraphPasses;
 
