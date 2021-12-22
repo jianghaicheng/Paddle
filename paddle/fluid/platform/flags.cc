@@ -642,19 +642,6 @@ PADDLE_DEFINE_EXPORTED_bool(
 #endif
 
 /**
- * Debug related FLAG
- * Name: check_kernel_launch
- * Since Version: 2.1.0
- * Value Range: bool, default=false
- * Example:
- * Note: Check kernel launch status after every kernel compute.
- */
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-DEFINE_bool(check_kernel_launch, false,
-            "Check kernel launch status after every kernel compute");
-#endif
-
-/**
  * CUDNN related FLAG
  * Name: conv2d_disable_cudnn
  * Since Version:

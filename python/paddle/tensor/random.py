@@ -24,8 +24,6 @@ from paddle import _C_ops
 
 __all__ = []
 
-__all__ = []
-
 
 def bernoulli(x, name=None):
     """

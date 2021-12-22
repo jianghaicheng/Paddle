@@ -75,8 +75,6 @@ from paddle import _C_ops
 
 __all__ = []
 
-__all__ = []
-
 _supported_int_dtype_ = [
     VarDesc.VarType.UINT8,
     VarDesc.VarType.INT8,
@@ -246,24 +244,6 @@ def add(x, y, name=None):
         return _C_ops.elementwise_add(x, y)
 
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
-
-
-@inplace_apis_in_dygraph_only
-def add_(x, y, name=None):
-    """
-    Inplace version of ``add`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_add`.
-    """
-    op_type = 'elementwise_add_'
-    axis = -1
-
-    out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
-        raise ValueError("The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(out_shape, x.shape))
-
-    out = _elementwise_op_in_dygraph(
-        x, y, axis=axis, op_name=op_type)
-    return out
 
 
 @inplace_apis_in_dygraph_only

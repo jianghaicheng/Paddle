@@ -26,8 +26,6 @@ from paddle import _C_ops
 
 __all__ = []
 
-__all__ = []
-
 
 def mean(x, axis=None, keepdim=False, name=None):
     """

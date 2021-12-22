@@ -74,8 +74,6 @@ def celu(x, alpha=1.0, name=None):
         attrs={'alpha': alpha})
     return out
 
-__all__ = []
-
 
 def elu(x, alpha=1.0, name=None):
     r"""

@@ -28,8 +28,6 @@ import paddle
 
 __all__ = []
 
-__all__ = []
-
 
 class Momentum(Optimizer):
     r"""

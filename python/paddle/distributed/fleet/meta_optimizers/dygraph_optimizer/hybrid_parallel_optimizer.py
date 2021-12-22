@@ -41,8 +41,6 @@ def _obtain_optimizer_parameters_list(optimizer):
 
     return parameters_list
 
-__all__ = []
-
 
 class HybridParallelClipGrad:
     def __init__(self, clip, hcg):

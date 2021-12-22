@@ -67,8 +67,6 @@ def apply_ir_passes(main_program, startup_program, config):
     return apply_build_strategy(main_program, startup_program, build_strategy,
                                 pass_attrs)
 
-__all__ = []
-
 
 def _inited_runtime_handler_(func):
     def __impl__(*args, **kwargs):

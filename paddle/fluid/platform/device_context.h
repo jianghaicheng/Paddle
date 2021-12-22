@@ -65,9 +65,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/platform/device/ipu/ipu_device.h"
 #endif
-#ifdef PADDLE_WITH_IPU
-#include "paddle/fluid/platform/device/ipu/ipu_device.h"
-#endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {
@@ -820,9 +817,6 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   // Register object to currently used executor's map
   void LinkEntryWithExecutor(BlobPtr_t<KeyBlob>, KeyBlob::iterator) const;
   void RemoveShapeEntriesWithExecutor(void) const;
-
-  // Register object to currently used executor's map
-  void LinkEntryWithExecutor(BlobPtr_t<KeyBlob>, KeyBlob::iterator) const;
 
   // Remove all entries from the blob map
   void ResetBlobMap(void* ptr);

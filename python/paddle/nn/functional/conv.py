@@ -30,8 +30,6 @@ from ...fluid.layers import nn
 
 __all__ = []
 
-__all__ = []
-
 
 def _is_list_or_tuple(input):
     return isinstance(input, (list, tuple))

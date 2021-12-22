@@ -785,6 +785,7 @@ if (WITH_IPU)
     inference_analysis_test(ipu_resnet50_fp16_test SRCS ipu_resnet50_fp16_test.cc
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
         ARGS --infer_model=${RESNET50_MODEL_DIR} --warmup=true --repeat=10)
+
     # Only support Resnet50 and Ernie currently
     inference_analysis_api_test(ipu_multi_model_profile SRCS ipu_multi_model_profile.cc
         ARGS --model_name="Resnet50" --infer_model=${RESNET50_MODEL_DIR} --warmup=true --repeat=10)

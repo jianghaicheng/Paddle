@@ -70,16 +70,6 @@ __inplace_unary_func__ = [
     'reciprocal_',
 ]
 
-__inplace_unary_func__ = [
-    'exp_',
-    'sqrt_',
-    'rsqrt_',
-    'ceil_',
-    'floor_',
-    'round_',
-    'reciprocal_',
-]
-
 __all__ = []
 
 for _OP in set(__all__):
@@ -120,14 +110,6 @@ for _OP in set(__inplace_unary_func__):
     _func = generate_inplace_fn(_OP)
     _func = deprecated(since="2.0.0", update_to="paddle.%s" % (_new_OP))(_func)
     globals()[_OP] = _func
-
-for _OP in set(__inplace_unary_func__):
-    _new_OP = _OP
-    if _OP in __deprecated_func_name__:
-        _new_OP = __deprecated_func_name__[_OP]
-    func = generate_inplace_fn(_OP)
-    func = deprecated(since="2.0.0", update_to="paddle.%s" % (_new_OP))(func)
-    globals()[_OP] = func
 
 add_sample_code(globals()["sigmoid"], r"""
 Examples:

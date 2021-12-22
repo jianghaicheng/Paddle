@@ -6,10 +6,6 @@ if (NOT WITH_NV_JETSON)
     list(APPEND CUDA_SRCS nvjpeg.cc)
 endif()
 
-if (NOT WITH_NV_JETSON)
-    list(APPEND CUDA_SRCS nvjpeg.cc)
-endif()
-
 if (WITH_ROCM)
   list(APPEND HIP_SRCS rocblas.cc miopen.cc hiprand.cc hipfft.cc)
 endif()

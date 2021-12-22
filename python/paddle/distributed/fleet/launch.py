@@ -81,8 +81,6 @@ from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
 
 __all__ = []
 
-__all__ = []
-
 
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")

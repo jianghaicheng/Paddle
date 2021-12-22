@@ -32,8 +32,6 @@ from paddle.tensor.creation import full
 
 __all__ = []
 
-__all__ = []
-
 
 def equal_all(x, y, name=None):
     """

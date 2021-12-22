@@ -84,7 +84,6 @@ _functional_dygraph_context_manager = None
 
 @signature_safe_contextmanager
 def param_guard(parameters):
-    from paddle.fluid.dygraph.dygraph_to_static.program_translator import in_declarative_mode
     # Note: parameters is a reference of self._parameters or self._buffers
     if in_declarative_mode() and not framework.in_dygraph_mode() and parameters:
         origin_parameters = parameters.copy()

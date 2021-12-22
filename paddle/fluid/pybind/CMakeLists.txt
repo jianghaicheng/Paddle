@@ -153,7 +153,6 @@ if(WITH_PYTHON)
   set(OP_IMPL_DEPS op_function_generator)
   set(EAGER_OP_IMPL_DEPS eager_op_function_generator)
 
-  set(OP_IMPL_DEPS op_function_generator)
   if(WIN32)
     if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
       set(op_impl_path "${CMAKE_CURRENT_BINARY_DIR}")
@@ -226,12 +225,6 @@ if(WITH_PYTHON)
         COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
         DEPENDS ${EAGER_OP_IMPL_DEPS})
     endif()
-
-    add_custom_command(OUTPUT ${impl_file}
-      COMMAND ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
-      COMMENT "copy_if_different ${tmp_impl_file} to ${impl_file}"
-      DEPENDS ${OP_IMPL_DEPS})
   else(WIN32)
     # If there are no *.so in /usr/lib or LD_LIBRARY_PATH,
     # copy these *.so to current directory and append current directory to

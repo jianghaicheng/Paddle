@@ -29,8 +29,6 @@ import paddle
 
 __all__ = []
 
-__all__ = []
-
 HOME = os.path.expanduser('~')
 DATA_HOME = os.path.join(HOME, '.cache', 'paddle', 'dataset')
 

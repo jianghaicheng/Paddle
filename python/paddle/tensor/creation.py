@@ -36,8 +36,6 @@ from ..fluid.framework import _in_eager_mode
 
 __all__ = []
 
-__all__ = []
-
 
 @dygraph_only
 def to_tensor(data, dtype=None, place=None, stop_gradient=True):

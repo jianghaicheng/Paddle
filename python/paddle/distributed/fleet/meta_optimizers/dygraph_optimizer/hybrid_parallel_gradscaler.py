@@ -26,8 +26,6 @@ from paddle import _C_ops
 
 __all__ = []
 
-__all__ = []
-
 
 class HybridParallelGradScaler:
     def __init__(self, scaler, hcg):

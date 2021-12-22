@@ -339,7 +339,6 @@ if is_compiled_with_cinn():
     if os.path.exists(cuh_file):
         os.environ['runtime_include_dir'] = runtime_include_dir
 
-from .tensor.random import check_shape  # noqa: F401
 disable_static()
 
 __all__ = [  # noqa

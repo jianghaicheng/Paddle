@@ -30,8 +30,6 @@ from paddle.fluid.data_feeder import convert_dtype
 
 __all__ = []
 
-__all__ = []
-
 
 def _convert_param_attr_to_list(param_attr, n):
     """

@@ -45,8 +45,6 @@ class PlaceType:
             return PlaceType.NPU_PINNED
         return PlaceType.CPU
 
-__all__ = []
-
 
 class OffloadHelper(object):
     cpu_place_type = 0

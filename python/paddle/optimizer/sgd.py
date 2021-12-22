@@ -21,8 +21,6 @@ from paddle import _C_ops
 
 __all__ = []
 
-__all__ = []
-
 
 class SGD(Optimizer):
     r"""

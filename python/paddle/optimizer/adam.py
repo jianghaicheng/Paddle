@@ -30,8 +30,6 @@ from paddle import _C_ops
 
 __all__ = []
 
-__all__ = []
-
 
 class Adam(Optimizer):
     r"""

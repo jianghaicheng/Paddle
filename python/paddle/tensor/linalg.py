@@ -27,8 +27,6 @@ import paddle
 
 __all__ = []
 
-__all__ = []
-
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """

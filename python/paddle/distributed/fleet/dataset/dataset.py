@@ -219,6 +219,7 @@ class DatasetBase(object):
     def _set_use_ps_gpu(self, use_ps_gpu):
         """
         set use_ps_gpu flag
+
         Args:
             use_ps_gpu: bool
         """

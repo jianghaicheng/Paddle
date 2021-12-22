@@ -45,8 +45,6 @@ from paddle import _C_ops
 
 __all__ = []
 
-__all__ = []
-
 
 class Optimizer(object):
     r"""Optimizer Base class.

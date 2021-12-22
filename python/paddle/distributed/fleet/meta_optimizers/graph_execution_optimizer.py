@@ -22,8 +22,6 @@ from paddle.static import BuildStrategy
 
 __all__ = []
 
-__all__ = []
-
 
 class GraphExecutionOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):

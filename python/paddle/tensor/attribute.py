@@ -26,8 +26,6 @@ from paddle import _C_ops
 
 __all__ = []
 
-__all__ = []
-
 
 def _complex_to_real_dtype(dtype):
     if dtype == core.VarDesc.VarType.COMPLEX64:

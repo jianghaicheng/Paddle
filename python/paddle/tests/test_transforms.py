@@ -546,11 +546,6 @@ class TestFunctional(unittest.TestCase):
         np.testing.assert_almost_equal(
             normalized_img_tensor.numpy(), normalized_img_np, decimal=4)
 
-        np.testing.assert_almost_equal(
-            np.array(normalized_img_pil), normalized_img_np)
-        np.testing.assert_almost_equal(normalized_img_tensor.numpy(),
-                                       normalized_img_np)
-
     def test_center_crop(self):
         np_img = (np.random.rand(28, 24, 3) * 255).astype('uint8')
         pil_img = Image.fromarray(np_img)

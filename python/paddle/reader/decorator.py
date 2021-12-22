@@ -33,8 +33,6 @@ from paddle.fluid.reader import QUEUE_GET_TIMEOUT
 
 __all__ = []
 
-__all__ = []
-
 # On macOS, the 'spawn' start method is now the default in Python3.8 multiprocessing,
 # Paddle is currently unable to solve this, so forces the process to start using 
 # the 'fork' start method.

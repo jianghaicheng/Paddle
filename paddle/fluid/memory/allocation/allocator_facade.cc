@@ -150,11 +150,6 @@ class AllocatorFacadePrivate {
           InitNaiveBestFitIPUAllocator(platform::IPUPlace(dev_id));
         }
 #endif
-#ifdef PADDLE_WITH_IPU
-        for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
-          InitNaiveBestFitIPUAllocator(platform::IPUPlace(dev_id));
-        }
-#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         if (FLAGS_use_stream_safe_cuda_allocator) {
           LOG(WARNING) << "FLAGS_use_stream_safe_cuda_allocator is invalid for "
