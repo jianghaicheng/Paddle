@@ -37,11 +37,11 @@ class TensorUtils;
 /// \brief Paddle data type.
 enum DataType {
   FLOAT32,
-  FLOAT16,
   INT64,
   INT32,
   UINT8,
   INT8,
+  FLOAT16,
   // TODO(Superjomn) support more data types if needed.
 };
 
