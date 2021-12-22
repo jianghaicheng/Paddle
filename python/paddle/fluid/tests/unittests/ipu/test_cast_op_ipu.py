@@ -67,7 +67,6 @@ class TestBase(IPUOpTest):
                 place = paddle.IPUPlace()
             else:
                 place = paddle.CPUPlace()
-
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
 

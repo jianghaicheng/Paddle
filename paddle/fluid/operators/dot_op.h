@@ -19,12 +19,15 @@
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/platform/for_range.h"
 
+// only can include the headers in paddle/pten/api dirs
+#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/pten/include/core.h"
+#include "paddle/pten/include/linalg.h"
+
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using complex64 = platform::complex64;
-using complex128 = platform::complex128;
 
 template <typename T, typename R>
 struct P {
@@ -205,84 +208,48 @@ struct DotGradFunction<DeviceContext, T, math::DisableComplex<T>> {
       }
     }
 #else
-    const auto* data_dout = tensor_dout->data<T>();
+    auto const *x = tensor_x->data<T>(), *y = tensor_y->data<T>(),
+               *dz = tensor_dout->data<T>();
+    auto&& d = tensor_x->dims();
+    auto const N = tensor_x->numel();
+    auto const B = d[d.size() - 1];
 
     if (tensor_dx) {
-      auto* data_dx = tensor_dx->mutable_data<T>(ctx.GetPlace());
-      const auto* data_y = tensor_y->data<T>();
-      const framework::DDim& dim = tensor_x->dims();
-      size_t N = static_cast<size_t>(framework::product(dim));
-
-      auto step = dim[dim.size() - 1];
-
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_dx[i] = data_y[i] * data_dout[s];
+      auto* dx = tensor_dx->mutable_data<T>(ctx.GetPlace());
+      for (auto j = 0; j < N / B; ++j) {
+        auto const ss = dz[j];
+        for (auto i = 0; i < B; ++i) *dx++ = *y++ * ss;
       }
     }
 
     if (tensor_dy) {
-      auto* data_dy = tensor_dy->mutable_data<T>(ctx.GetPlace());
-      const auto* data_x = tensor_x->data<T>();
-      const framework::DDim& dim = tensor_y->dims();
-      size_t N = static_cast<size_t>(framework::product(dim));
-
-      auto step = dim[dim.size() - 1];
-
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_dy[i] = data_x[i] * data_dout[s];
+      auto* dy = tensor_dy->mutable_data<T>(ctx.GetPlace());
+      for (auto j = 0; j < N / B; ++j) {
+        auto const ss = dz[j];
+        for (auto i = 0; i < B; i++) *dy++ = *x++ * ss;
       }
     }
 #endif
   }
 };
 
+// See Note [ Why still keep the original kernel implementation? ]
 template <typename DeviceContext, typename T>
 class DotKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* tensor_x = ctx.Input<Tensor>("X");
-    auto* tensor_y = ctx.Input<Tensor>("Y");
-    auto* tensor_out = ctx.Output<Tensor>("Out");
-    tensor_out->mutable_data<T>(ctx.GetPlace());
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* out = ctx.Output<Tensor>("Out");
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+    out->mutable_data<T>(x->place());
 
-#if defined(__NVCC__) || defined(__HIPCC__)
-    if (1 == tensor_out->dims().size()) {
-      auto out = framework::EigenScalar<T>::From(*tensor_out);
-      auto x = framework::EigenVector<T>::Flatten(*tensor_x);
-      auto y = framework::EigenVector<T>::Flatten(*tensor_y);
+    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
+    auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
+    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
-      auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-      out.device(dev) = (x * y).sum();
-    } else {
-      auto out = framework::EigenMatrix<T>::From(*tensor_out);
-      auto x = framework::EigenMatrix<T>::From(*tensor_x);
-      auto y = framework::EigenMatrix<T>::From(*tensor_y);
-
-      auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-      out.device(dev) = (x * y).sum(Eigen::DSizes<int, 1>(1));
-    }
-#else
-    const auto* data_x = tensor_x->data<T>();
-    const auto* data_y = tensor_y->data<T>();
-    auto* data_out = tensor_out->data<T>();
-
-    auto x_dims = tensor_x->dims();
-    auto step = x_dims[x_dims.size() - 1];
-    int size = static_cast<int>(framework::product(x_dims));
-
-    for (int ind = -1, j = 0; j < size; ++j) {
-      if (j % step == 0) {
-        ++ind;
-        data_out[ind] = data_x[j] * data_y[j];
-      } else {
-        data_out[ind] += data_x[j] * data_y[j];
-      }
-    }
-#endif
+    // call new kernel
+    pten::Dot<T>(dev_ctx, *pt_x.get(), *pt_y.get(), pt_out.get());
   }
 };
 

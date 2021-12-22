@@ -19,5 +19,3 @@ from ...fluid.contrib.mixed_precision import fp16_guard  # noqa: F401
 from ...fluid.contrib.mixed_precision import cast_model_to_fp16  # noqa: F401
 from ...fluid.contrib.mixed_precision import cast_parameters_to_fp16  # noqa: F401
 from ...fluid.contrib.mixed_precision import bf16  # noqa: F401
-
-__all__ = []

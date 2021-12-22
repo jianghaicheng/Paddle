@@ -12,22 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-cmake_minimum_required(VERSION 3.10)
-cmake_policy(VERSION 3.10)
+if(APPLE AND WITH_ARM)
+    # cmake 3.19.2 version starts to support M1
+    cmake_minimum_required(VERSION 3.19.2)
+    cmake_policy(VERSION 3.19.2)
+else(APPLE AND WITH_ARM)
+    cmake_minimum_required(VERSION 3.10)
+    cmake_policy(VERSION 3.10)
+endif(APPLE AND WITH_ARM)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 include(system)
 
+# Note(zhouwei): Ninja Generator will set CMAKE_BUILD_TYPE to Debug
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+      "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
+      FORCE)
+endif()
+
 project(paddle CXX C)
 
 # enable language CUDA
 # TODO(Shibo Tao): remove find_package(CUDA) completely.
 find_package(CUDA QUIET)
+find_package(MKL CONFIG QUIET)
+option(WITH_ONEMKL      "Compile PaddlePaddle with oneMKL"              OFF)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
+option(WITH_MLU    "Compile PaddlePaddle with CAMBRICON MLU"     OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode"    OFF)
 option(WITH_ASCEND         "Compile PaddlePaddle with ASCEND"        OFF)
 option(WITH_ROCM        "Compile PaddlePaddle with ROCM platform"       OFF)
@@ -49,6 +65,9 @@ endif()
 if (WITH_GPU AND WITH_ROCM)
     message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
 endif()
+if (WITH_GPU AND WITH_MLU)
+    message(FATAL_ERROR "Error when compile GPU and MLU at the same time")
+endif()
 
 if(WITH_GPU AND NOT APPLE)
     enable_language(CUDA)
@@ -65,6 +84,11 @@ message(STATUS "AR tools: ${CMAKE_AR}")
 # MUSL build turn off warnings
 if(WITH_MUSL)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations -Wno-error=pessimizing-move -Wno-error=deprecated-copy")
+endif()
+
+if(APPLE AND WITH_ARM)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target arm64-apple-darwin")
+    set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -target arm64-apple-darwin")
 endif()
 
 if(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
@@ -91,10 +115,6 @@ if(WIN32)
 
     if (MSVC_STATIC_CRT)
         message(STATUS "Use static C runtime time, refer to https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=vs-2019")
-        set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /MTd")
-        set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /MT")
-        set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
-        set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /MT")
         foreach(flag_var
             CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
             CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
@@ -106,8 +126,6 @@ if(WIN32)
         endforeach(flag_var)
     endif()
 
-    math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
-
     # windows build turn off warnings, use parallel compiling.
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
@@ -115,8 +133,12 @@ if(WIN32)
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
-        # NOTE(zhouwei25): GPU compile have too high memory utilization when parallel compiling
-        if(NOT WITH_GPU)
+        
+        # NOTE(zhouwei25): GPU compile have too high memory utilization when parallel compiling,
+        # For Visual Studio generators, /MP should be added. 
+        # For other generators like Ninja, it is not need to add /MP.
+        if(CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT WITH_GPU)
+            math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
             set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
         endif()
     endforeach(flag_var)
@@ -197,6 +219,8 @@ option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VER
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
+option(WITH_CINN   "Compile PaddlePaddle with CINN" OFF)
+option(WITH_INFRT  "Compile PaddlePaddle with INFRT" OFF)
 option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
 option(WITH_RCCL   "Compile PaddlePaddle with RCCL support"             ON)
 option(WITH_XPU_BKCL    "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL"   OFF)
@@ -207,19 +231,17 @@ option(WITH_MIPS   "Compile PaddlePaddle with mips support"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode"             OFF)
 option(WITH_STRIP       "Strip so files of Whl packages"         OFF)
+option(NEW_RELEASE_CUBIN   "PaddlePaddle next-level release strategy for pypi cubin package"             OFF)
+option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup jit package"             OFF)
+option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
+option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
-  set(PY_VERSION 2.7)
+  set(PY_VERSION 3.6)
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
-# CMAKE_BUILD_TYPE
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
-      "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
-      FORCE)
-endif()
 
 # the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined. Default: OFF
 if(SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
@@ -284,6 +306,10 @@ if(WITH_GPU)
     endif()
 endif()
 
+if(WITH_MLU)
+    include(neuware)
+endif()
+
 if(WITH_ROCM)
     include(hip)
     include(miopen) # set miopen libraries, must before configure
@@ -305,6 +331,17 @@ else()
      endif()
 endif()
 
+if(WITH_DISTRIBUTE)
+    if(LINUX)
+        set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
+    endif()
+    if(WITH_ASCEND_CL)
+        # disable WITH_PSCORE for NPU before include third_party
+        MESSAGE(WARNING "Disable WITH_PSCORE when compiling with NPU. Force WITH_PSCORE=OFF.")
+        set(WITH_PSCORE OFF CACHE BOOL "Disable WITH_PSCORE when compiling with NPU" FORCE)
+    endif()
+endif()
+
 include(third_party)  # download, build, install third_party, Contains about 20+ dependencies
 
 include(flags)              # set paddle compile flags
@@ -313,12 +350,6 @@ if(WITH_PROFILER)
     find_package(Gperftools REQUIRED)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})
     add_definitions(-DWITH_GPERFTOOLS)
-endif()
-
-if(WITH_DISTRIBUTE)
-    if(LINUX)
-        set(WITH_GLOO ON CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
-    endif()
 endif()
 
 include(ccache)             # set ccache for compilation
@@ -336,8 +367,9 @@ endif()
 if(WITH_ARM)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
-    set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_ARM=ON" FORCE)
+    set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_ARM=ON." FORCE)
     set(WITH_MKL OFF CACHE STRING "Disable MKL when compiling WITH_ARM=ON." FORCE)
+    set(WITH_AVX OFF CACHE STRING "Disable AVX when compiling WITH_AVX=OFF." FORCE)
     add_definitions(-DPADDLE_WITH_ARM)
 endif()
 
@@ -355,6 +387,15 @@ if (WITH_MIPS)
     add_definitions(-DPADDLE_WITH_MIPS)
 endif()
 
+if (WITH_ONEMKL)
+    add_definitions(-DPADDLE_WITH_ONEMKL)
+endif()
+
+if (WITH_HETERPS)
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -faligned-new")
+    endif()
+endif()
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
@@ -383,3 +424,7 @@ add_subdirectory(paddle)
 if(WITH_PYTHON)
     add_subdirectory(python)
 endif()
+
+get_directory_property(all_inc_dirs INCLUDE_DIRECTORIES)
+list(JOIN all_inc_dirs "\r\n" all_inc_dirs)
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/includes.txt" ${all_inc_dirs})

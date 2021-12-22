@@ -12,26 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_prod_op.h"
 
-#ifdef __HIPCC__
-// Eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h:922
-// do not support double in HIPCC platform (Eigen3 to be fixed)
-REGISTER_OP_CUDA_KERNEL(reduce_prod,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          float, ops::ProdFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          int, ops::ProdFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          int64_t, ops::ProdFunctor>);
-#else
-REGISTER_OP_CUDA_KERNEL(reduce_prod,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          float, ops::ProdFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          double, ops::ProdFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          int, ops::ProdFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          int64_t, ops::ProdFunctor>);
-#endif
+REGISTER_OP_CUDA_KERNEL(
+    reduce_prod,
+    ops::ReduceCudaKernel<float, kps::MulFunctor, kps::IdentityFunctor>,
+    ops::ReduceCudaKernel<int, kps::MulFunctor, kps::IdentityFunctor>,
+    ops::ReduceCudaKernel<double, kps::MulFunctor, kps::IdentityFunctor>,
+    ops::ReduceCudaKernel<int64_t, kps::MulFunctor, kps::IdentityFunctor>);

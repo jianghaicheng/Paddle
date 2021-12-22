@@ -17,6 +17,9 @@ from ... import core
 
 __all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
 
+# lookup_table fp16 is slower than fp32, though fp16 is supported.
+_extra_unsupported_fp16_list = {'lookup_table', 'lookup_table_v2'}
+
 
 class AutoMixedPrecisionLists(object):
     """
@@ -60,6 +63,8 @@ class AutoMixedPrecisionLists(object):
                 elif op_name in self.gray_list:
                     self.gray_list.remove(op_name)
                 self.white_list.add(op_name)
+                if op_name in _extra_unsupported_fp16_list:
+                    self.unsupported_list.remove(op_name)
         if self._custom_black_list:
             for op_name in self._custom_black_list:
                 if op_name in self.white_list:
@@ -94,14 +99,17 @@ black_list = {
     'softmax',
     'softmax_with_cross_entropy',
     'sigmoid_cross_entropy_with_logits',
+    'c_softmax_with_cross_entropy',
     'cross_entropy',
     'cross_entropy2',
     # fp16 is slower than fp32, though fp16 is supported.
     'lookup_table',
     'lookup_table_v2',
+    # default fp32 can avoid return inf when the sum value large than 65504
+    'reduce_sum',
 }
 
-# This set contains two types of ops. All ops supported fp16 calculation. One 
+# This set contains two types of ops. All ops supported fp16 calculation. One
 # of two types is considered numerically-safe, but may be made unsafe by an
 # upstream blacklist op. Another type do not have numerically-significant
 # effects, like stack, flatten2.
@@ -145,13 +153,28 @@ gray_list = {
     'sign',
     'cast',
     'fused_bn_add_activation',
+    'c_identity',
+    'c_concat',
+    'c_allreduce_sum',
+    'concat',
+    'split',
+    'fused_feedforward',
+    'fused_attention',
 }
 
 # The set of ops that don't support fp16 calculation
 # lookup_table fp16 is slower than fp32, though fp16 is supported.
-_, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-    'GPU', core.VarDesc.VarType.FP16)
-unsupported_fp16_list = {'lookup_table',
-                         'lookup_table_v2'} | _sys_unsupported_fp16_list
+_sys_unsupported_fp16_list = []
+if core.is_compiled_with_xpu():
+    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+        'XPU', core.VarDesc.VarType.FP16)
+elif core.is_compiled_with_npu():
+    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+        'NPU', core.VarDesc.VarType.FP16)
+else:
+    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+        'GPU', core.VarDesc.VarType.FP16)
+
+unsupported_fp16_list = _extra_unsupported_fp16_list | _sys_unsupported_fp16_list
 
 CustomOpLists = AutoMixedPrecisionLists

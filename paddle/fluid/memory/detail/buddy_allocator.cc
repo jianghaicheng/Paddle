@@ -18,11 +18,15 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_MLU)
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
+#endif
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
 namespace paddle {
@@ -31,9 +35,10 @@ namespace detail {
 
 BuddyAllocator::BuddyAllocator(
     std::unique_ptr<SystemAllocator> system_allocator, size_t min_chunk_size,
-    size_t max_chunk_size)
+    size_t max_chunk_size, size_t extra_padding_size)
     : min_chunk_size_(min_chunk_size),
       max_chunk_size_(max_chunk_size),
+      extra_padding_size_(extra_padding_size),
       cache_(system_allocator->UseGpu()),
       system_allocator_(std::move(system_allocator)) {}
 
@@ -59,9 +64,14 @@ inline size_t align(size_t size, size_t alignment) {
 
 void* BuddyAllocator::Alloc(size_t unaligned_size) {
   // adjust allocation alignment
-  size_t size =
-      align(unaligned_size + sizeof(MemoryBlock::Desc), min_chunk_size_);
 
+  size_t size =
+      align(unaligned_size + sizeof(MemoryBlock::Desc) + extra_padding_size_,
+            min_chunk_size_);
+  VLOG(10) << "alloc: " << unaligned_size
+           << ", padding for desc: " << sizeof(MemoryBlock::Desc)
+           << ", extra padding: " << extra_padding_size_
+           << ", alignment: " << min_chunk_size_;
   // acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
 
@@ -248,6 +258,21 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
       // user set FLAGS_reallocate_gpu_memory_in_mb to fix value.
       if (realloc_size_ == 0 || FLAGS_reallocate_gpu_memory_in_mb == 0ul) {
         realloc_size_ = platform::NPUReallocSize();
+      }
+      allocate_bytes = std::max(realloc_size_, request_bytes);
+    }
+  }
+#endif
+#ifdef PADDLE_WITH_MLU
+  if (system_allocator_->UseGpu()) {
+    if ((total_used_ + total_free_) == 0) {
+      // Compute the allocation size for mlu for the first allocation.
+      allocate_bytes = std::max(platform::MLUInitAllocSize(), request_bytes);
+    } else {
+      // Compute the re-allocation size, we store the re-allocation size when
+      // user set FLAGS_reallocate_gpu_memory_in_mb to fix value.
+      if (realloc_size_ == 0 || FLAGS_reallocate_gpu_memory_in_mb == 0ul) {
+        realloc_size_ = platform::MLUReallocSize();
       }
       allocate_bytes = std::max(realloc_size_, request_bytes);
     }

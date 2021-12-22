@@ -17,9 +17,11 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
+from quant_dequant_test import QuantDequantTest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import PassVersionChecker
 
 
 class FCFusePassTRTTest(InferencePassTest):
@@ -31,10 +33,7 @@ class FCFusePassTRTTest(InferencePassTest):
                                       size=128,
                                       num_flatten_dims=1,
                                       act="relu")
-            fc_out2 = fluid.layers.fc(input=fc_out1,
-                                      size=32,
-                                      num_flatten_dims=1)
-            out = fluid.layers.softmax(input=fc_out2)
+            out = fluid.layers.softmax(input=fc_out1)
 
         self.feeds = {
             "data": np.random.random((32, 128, 2, 2)).astype("float32")
@@ -45,6 +44,60 @@ class FCFusePassTRTTest(InferencePassTest):
         # self.enable_trt = True
         # self.trt_parameters = FCFusePassTRTTest.TensorRTParam(
         #     1 << 30, 32, 3, AnalysisConfig.Precision.Float32, False, False)
+        self.fetch_list = [out]
+
+    def test_check_output(self):
+        use_gpu = [False]
+        if core.is_compiled_with_cuda():
+            use_gpu.append(True)
+        for i in range(len(use_gpu)):
+            self.check_output_with_option(use_gpu[i])
+
+
+class FCFusePassTRTStaticDims4Cols1Test(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name="data", shape=[32, 128, 32, 8], dtype="float32")
+            fc_out1 = fluid.layers.fc(input=data,
+                                      size=64,
+                                      num_flatten_dims=1,
+                                      act="relu")
+            out = fluid.layers.softmax(input=fc_out1)
+
+        self.feeds = {
+            "data": np.random.random((32, 128, 32, 8)).astype("float32")
+        }
+        self.enable_trt = True
+        self.trt_parameters = FCFusePassTRTStaticDims4Cols1Test.TensorRTParam(
+            1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False)
+        self.fetch_list = [out]
+
+    def test_check_output(self):
+        use_gpu = [False]
+        if core.is_compiled_with_cuda():
+            use_gpu.append(True)
+        for i in range(len(use_gpu)):
+            self.check_output_with_option(use_gpu[i])
+
+
+class FCFusePassTRTStaticDims4Cols2Test(InferencePassTest):
+    def setUp(self):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            data = fluid.data(
+                name="data", shape=[3, 24, 16, 16], dtype="float32")
+            fc_out1 = fluid.layers.fc(input=data,
+                                      size=32,
+                                      num_flatten_dims=2,
+                                      act="relu")
+            out = fluid.layers.softmax(input=fc_out1)
+
+        self.feeds = {
+            "data": np.random.random((3, 24, 16, 16)).astype("float32")
+        }
+        self.enable_trt = True
+        self.trt_parameters = FCFusePassTRTStaticDims4Cols2Test.TensorRTParam(
+            1 << 30, 32, 2, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
 
     def test_check_output(self):

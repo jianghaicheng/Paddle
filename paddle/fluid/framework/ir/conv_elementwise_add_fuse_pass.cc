@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,52 @@ namespace ir {
   GET_IR_NODE(elementwise_add_in_y); \
   GET_IR_NODE(elementwise_add_out);
 
+ConvElementwiseAddFusePass::ConvElementwiseAddFusePass() {
+  AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("ResidualData")
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .End()
+      .AddAttr("paddings")
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW" /*, "NHWC", "AnyLayout"*/})
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
+      .End();
+}
+
 void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "conv_elementwise_add_fuse";
   FusePassBase::Init(pattern_name, graph);
@@ -41,9 +87,13 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
 
   patterns::ConvElementwiseadd pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x);
-
+  int found_conv_eltwise_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     GET_NODES;
 
     auto base_op_desc = *conv_op->Op()->Proto();
@@ -85,9 +135,12 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Delete the unneeded nodes.
     GraphSafeRemoveNodes(graph, {conv_op, conv_out, elementwise_add_op});
+    found_conv_eltwise_count++;
   };
 
   gpd(graph, handler);
+  // check if detect conv2d_fusion subgraph!
+  AddStatis(found_conv_eltwise_count);
 }
 
 }  // namespace ir

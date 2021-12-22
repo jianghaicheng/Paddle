@@ -29,10 +29,10 @@ def dyfunc_tensor_shape_1(x):
 
 
 def dyfunc_tensor_shape_2(x):
-    x = fluid.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     shape = x.shape
     shape2 = shape
-    res = fluid.layers.reshape(x, shape2)
+    res = paddle.reshape(x, shape2)
     return res
 
 
@@ -81,6 +81,13 @@ def dyfunc_tuple_shape_2(x):
     x = paddle.to_tensor(x)
     shape = x.shape
     a, b = shape
+    res = paddle.reshape(x, shape=(b, a))
+    return res
+
+
+def dyfunc_tuple_shape_3(x):
+    x = paddle.to_tensor(x)
+    a, b = paddle.shape(x)
     res = paddle.reshape(x, shape=(b, a))
     return res
 
@@ -190,7 +197,7 @@ def dyfunc_with_while_3(x):
 
 
 def dyfunc_with_while_4(x):
-    x = fluid.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     y = numpy.ones(5)
     y_shape_0 = y.shape[0]
     i = 1
@@ -208,6 +215,12 @@ def dyfunc_change_shape_after_assign(x):
     x = paddle.reshape(x, shape=(-1, 1))
     res = paddle.reshape(x, shape=(b, a))
     return res
+
+
+def dyfunc_len_paddle_shape():
+    x = paddle.to_tensor([1, 2, 3])
+    if len(paddle.shape(x)) > 0:
+        print(x)
 
 
 # 1. Basic tests without control flow
@@ -330,6 +343,18 @@ class TestTupleShape2(TestTensorShapeBasic):
         self.input = numpy.ones((5, 7)).astype("int32")
         self.input_spec = [paddle.static.InputSpec(shape=[5, 7], dtype="int32")]
         self.dygraph_func = dyfunc_tuple_shape_2
+
+    def _set_expected_op_num(self):
+        self.expected_op_num = 5
+        self.expected_shape_op_num = 1
+        self.expected_slice_op_num = 2
+
+
+class TestTupleShape3(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.input = numpy.ones((5, 7)).astype("int32")
+        self.input_spec = [paddle.static.InputSpec(shape=[5, 7], dtype="int32")]
+        self.dygraph_func = dyfunc_tuple_shape_3
 
     def _set_expected_op_num(self):
         self.expected_op_num = 5
@@ -561,6 +586,12 @@ class TestFindStatiConvertVarShapeSuffixVar(unittest.TestCase):
         func = paddle.jit.to_static(dyfunc_with_if_2, input_spec=[x_spec])
         # Call this function to trigger program translation.
         func.concrete_program
+
+
+class TestPaddleShape(unittest.TestCase):
+    def test_paddle_shape(self):
+        func = paddle.jit.to_static(dyfunc_len_paddle_shape)
+        self.assertEqual('paddle.shape(x)' in func.code, True)
 
 
 if __name__ == '__main__':

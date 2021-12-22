@@ -184,7 +184,7 @@ class TestGridSamplerOp(OpTest):
         self.align_corners = True
         self.padding_mode = "zeros"
         self.mode = "bilinear"
-        self.use_cudnn = True
+        self.use_cudnn = False if core.is_compiled_with_rocm() else True
 
 
 class Case1(TestGridSamplerOp):
@@ -197,7 +197,7 @@ class Case1(TestGridSamplerOp):
         self.mode = "bilinear"
 
 
-class Case1(TestGridSamplerOp):
+class Case1_(TestGridSamplerOp):
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 6)
         self.grid_shape = (2, 8, 9, 2)

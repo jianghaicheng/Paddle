@@ -14,11 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/place.h"
 
-DEFINE_bool(benchmark, false,
-            "Doing memory benchmark. It will make deleting scope synchronized, "
-            "and add some memory usage logs."
-            "Default cuda is asynchronous device, set to True will"
-            "force op run in synchronous mode.");
+PADDLE_DEFINE_EXPORTED_bool(
+    benchmark, false,
+    "Doing memory benchmark. It will make deleting scope synchronized, "
+    "and add some memory usage logs."
+    "Default cuda is asynchronous device, set to True will"
+    "force op run in synchronous mode.");
 
 namespace paddle {
 namespace platform {
@@ -33,7 +34,9 @@ class PlacePrinter : public boost::static_visitor<> {
     os_ << "CUDAPlace(" << p.device << ")";
   }
   void operator()(const XPUPlace &p) { os_ << "XPUPlace(" << p.device << ")"; }
+  void operator()(const MLUPlace &p) { os_ << "MLUPlace(" << p.device << ")"; }
   void operator()(const NPUPlace &p) { os_ << "NPUPlace(" << p.device << ")"; }
+  void operator()(const NPUPinnedPlace &p) { os_ << "NPUPinnedPlace"; }
   void operator()(const IPUPlace &p) { os_ << "IPUPlace(" << p.device << ")"; }
   void operator()(const CUDAPinnedPlace &p) { os_ << "CUDAPinnedPlace"; }
 
@@ -49,6 +52,10 @@ bool is_gpu_place(const Place &p) {
 
 bool is_xpu_place(const Place &p) {
   return boost::apply_visitor(IsXPUPlace(), p);
+}
+
+bool is_mlu_place(const Place &p) {
+  return boost::apply_visitor(IsMLUPlace(), p);
 }
 
 bool is_npu_place(const Place &p) {
@@ -67,6 +74,10 @@ bool is_cuda_pinned_place(const Place &p) {
   return boost::apply_visitor(IsCUDAPinnedPlace(), p);
 }
 
+bool is_npu_pinned_place(const Place &p) {
+  return boost::apply_visitor(IsNPUPinnedPlace(), p);
+}
+
 bool places_are_same_class(const Place &p1, const Place &p2) {
   return p1.which() == p2.which();
 }
@@ -77,6 +88,8 @@ bool is_same_place(const Place &p1, const Place &p2) {
       return true;
     } else if (is_xpu_place(p1)) {
       return BOOST_GET_CONST(XPUPlace, p1) == BOOST_GET_CONST(XPUPlace, p2);
+    } else if (is_mlu_place(p1)) {
+      return BOOST_GET_CONST(MLUPlace, p1) == BOOST_GET_CONST(MLUPlace, p2);
     } else if (is_npu_place(p1)) {
       return BOOST_GET_CONST(NPUPlace, p1) == BOOST_GET_CONST(NPUPlace, p2);
     } else if (is_ipu_place(p1)) {

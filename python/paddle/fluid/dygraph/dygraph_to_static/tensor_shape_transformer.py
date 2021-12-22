@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import copy
-import gast
+from paddle.utils import gast
 
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
@@ -282,6 +282,10 @@ class TensorShapeTransformer(gast.NodeTransformer):
             return False
 
         if isinstance(node, gast.Attribute):
+            # If node is `paddle.shape`, return False
+            if (node.attr == 'shape' and isinstance(node.value, gast.Name) and
+                    node.value.id == 'paddle'):
+                return False
             if node.attr != 'shape':
                 return False
             return True

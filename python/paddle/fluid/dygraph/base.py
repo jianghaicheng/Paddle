@@ -33,6 +33,17 @@ __all__ = [
     'enabled', 'to_variable'
 ]
 
+# Flag that indicates whether running code under `@declarative`
+_in_declarative_mode_ = False
+
+
+def in_declarative_mode():
+    """
+    Return a bool value that indicates whether running code under `@declarative`
+
+    """
+    return _in_declarative_mode_
+
 
 def _switch_to_static_graph_(func):
     def __impl__(*args, **kwargs):
@@ -43,6 +54,16 @@ def _switch_to_static_graph_(func):
 
 
 switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
+
+
+@signature_safe_contextmanager
+def _switch_declarative_mode_guard_(is_declarative=True):
+
+    global _in_declarative_mode_
+    original_val = _in_declarative_mode_
+    _in_declarative_mode_ = is_declarative
+    yield
+    _in_declarative_mode_ = original_val
 
 
 @signature_safe_contextmanager
@@ -414,7 +435,7 @@ def grad(outputs,
          no_grad_vars=None):
     ''' 
     .. note::
-        **This API is ONLY available in Dygraph mode.**
+        **This API is ONLY available in imperative mode.**
 
     This API computes the sum of gradients of `outputs` with respect to each `inputs` .
 
@@ -456,7 +477,7 @@ def grad(outputs,
             the Tensors whose gradients are not needed to compute. Default None.
 
     Returns:
-        tuple: a tuple of Tensors, whose length is the same as the Tensor number 
+        list: a list of Tensors, whose length is the same as the Tensor number 
         inside `inputs`, and the i-th returned Tensor is the sum of gradients of 
         `outputs` with respect to the i-th `inputs`.
 

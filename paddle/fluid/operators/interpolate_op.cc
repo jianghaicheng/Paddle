@@ -88,8 +88,11 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
         platform::errors::InvalidArgument(
             "OutSize's dimension size must be 1, but got dimention = %d .",
             out_size_dim.size()));
-    PADDLE_ENFORCE_EQ(out_size_dim[0], 1, platform::errors::InvalidArgument(
-                                              "OutSize's dim[0] must be 1"));
+    PADDLE_ENFORCE_EQ(
+        out_size_dim[0], 1,
+        platform::errors::InvalidArgument(
+            "OutSize's 0-th dimension's value must be 1, but got value = %d .",
+            out_size_dim[0]));
     ctx->ShareLoD("X", "Out");
     return;
   }
@@ -426,7 +429,8 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
           This operator samples input X to given output shape by using specified
           interpolation method, the interpolation methods can be \"nearest\"

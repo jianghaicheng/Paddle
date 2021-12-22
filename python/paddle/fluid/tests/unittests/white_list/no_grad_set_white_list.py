@@ -41,6 +41,9 @@ NEED_TO_FIX_OP_LIST = [
     'elementwise_min',
     'elementwise_mul',
     'elementwise_sub',
+    'elementwise_pow',
+    'elementwise_fmin',
+    'elementwise_fmax',
     'filter_by_instag',
     'fused_elemwise_activation',
     'fused_emb_seq_pool',
@@ -65,6 +68,7 @@ NEED_TO_FIX_OP_LIST = [
     'rank_loss',
     'sequence_conv',
     'smooth_l1_loss',
-    'spectral_norm'
+    'spectral_norm',
+    'complex',
 ]
 # yapf: enable

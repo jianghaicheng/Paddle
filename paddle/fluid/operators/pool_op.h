@@ -23,19 +23,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/pooling.h"
 #if defined(__HIPCC__) || defined(__NVCC__)
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #endif
 
 namespace paddle {
 namespace operators {
-template <typename T>
-struct DivideFunctor {
-  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
-  HOSTDEVICE inline T operator()(const T& x) const { return x * n_inv; }
-
- private:
-  T n_inv;
-};
 
 using Tensor = framework::Tensor;
 
@@ -210,14 +202,14 @@ class PoolKernel : public framework::OpKernel<T> {
         } else if (pooling_type == "avg") {
           std::vector<int> reduce_dim;
           int reduce_num = getReduceNum(*in_x, out, data_format, &reduce_dim);
-
           if (reduce_num > 0 &&
               adaptive) {  // for adaptive_avg_pool2d && output_size == 1
 #if defined(__HIPCC__) || defined(__NVCC__)
             auto stream = dev_ctx.stream();
-            TensorReduce<T, T, cub::Sum, DivideFunctor<T>>(
-                *in_x, out, reduce_dim, static_cast<T>(0), cub::Sum(),
-                DivideFunctor<T>(reduce_num), stream);
+            TensorReduceFunctorImpl<T, T, kps::AddFunctor,
+                                    kps::DivideFunctor<T>>(
+                *in_x, out, kps::DivideFunctor<T>(reduce_num), reduce_dim,
+                stream);
 #else  // for cpu
             paddle::operators::math::Pool2dFunctor<
                 DeviceContext, paddle::operators::math::AvgPool<T>, T>
@@ -349,6 +341,20 @@ class PoolGradKernel : public framework::OpKernel<T> {
               "Pool op only supports 2D and 3D input."));
         }
       }
+    }
+  }
+};
+
+template <typename DeviceContext, typename T>
+class PoolGradGradKernel : public PoolKernel<DeviceContext, T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    std::string pooling_type = context.Attr<std::string>("pooling_type");
+    if (pooling_type == "max") {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Pool op grad grad only supports avgpool."));
+    } else {
+      PoolKernel<DeviceContext, T>::Compute(context);
     }
   }
 };

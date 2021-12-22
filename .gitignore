@@ -4,6 +4,7 @@ paddle/fluid/API_DEV.spec
 paddle/fluid/API_PR.spec
 paddle/fluid/op_use_default_grad_maker_DEV.spec
 paddle/fluid/op_use_default_grad_maker_PR.spec
+paddle/pten/api/*/api*
 
 *.DS_Store
 *.vs
@@ -33,18 +34,5 @@ cmake-build-*
 paddle/fluid/operators/distributed/send_recv.proto
 model_test
 
-# clangd background index
-.clangd/
-.cache/
-
-python/paddle/distributed/fleet/proto/
-python/paddle/fluid/core*.so
-
-scripts
-sdk/
-demos/
-*.onnx
-*.pdmodel
-*.log
-
-__pycache__
+Testing
+tools/__pycache__
