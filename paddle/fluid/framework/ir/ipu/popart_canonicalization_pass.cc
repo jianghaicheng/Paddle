@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/framework/ir/ipu/popart_canonicalization_pass.h"
 
-#include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
-#include "paddle/fluid/framework/ipu/popart_canonicalization/post_canonicalization.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/post_canonicalization.h"
 
 namespace paddle {
 namespace framework {
@@ -38,11 +38,11 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
     auto op_type = op->Type();
 
     ir::Node* new_node = nullptr;
-    ipu::SymbolHandler handler = ipu::GetHandler(op_type);
+    platform::ipu::SymbolHandler handler = platform::ipu::GetHandler(op_type);
     if (!handler && !custom_ops.empty()) {
       if (custom_ops.count(op_type)) {
         VLOG(10) << "Found custom op: " << op_type;
-        handler = ipu::GetHandler("custom_op");
+        handler = platform::ipu::GetHandler("custom_op");
       }
     }
 
@@ -53,7 +53,7 @@ void PopartCanonicalizationPass::ApplyImpl(ir::Graph* graph) const {
       if (new_node) {
         VLOG(11) << "Post Popart Node:";
         VLOG(11) << new_node->Op()->Proto()->DebugString();
-        ipu::ClearNode(node);
+        platform::ipu::ClearNode(node);
         graph->RemoveNode(node);
       }
     } else {

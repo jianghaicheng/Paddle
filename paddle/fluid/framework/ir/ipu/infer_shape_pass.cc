@@ -15,11 +15,11 @@
 #include "paddle/fluid/framework/ir/ipu/infer_shape_pass.h"
 
 #include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/ipu/ipu_backend.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 
 namespace paddle {
 namespace framework {
@@ -32,7 +32,7 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
 
   // Make batch_size fixed
   bool need_infer_shape = false;
-  auto ipu_backend = ipu::IpuBackend::GetInstance();
+  auto ipu_backend = platform::ipu::IpuBackend::GetInstance();
   auto micro_batch_size = ipu_backend->GetIpuStrategy()->micro_batch_size;
   auto feed_list = Get<std::vector<std::string>>("feed_list");
   for (auto node : graph->Nodes()) {

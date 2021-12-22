@@ -14,8 +14,8 @@
 
 #ifdef PADDLE_WITH_IPU
 
-#include "paddle/fluid/framework/ipu/ipu_backend.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 
 namespace paddle {
 namespace framework {
@@ -40,7 +40,7 @@ class IpuRuntimeOp : public framework::OperatorBase {
                const platform::Place& place) const {
     PADDLE_ENFORCE_EQ(platform::is_ipu_place(place), true,
                       platform::errors::InvalidArgument("must be IPUPlace"));
-    auto ipu_backend = framework::ipu::IpuBackend::GetInstance();
+    auto ipu_backend = platform::ipu::IpuBackend::GetInstance();
     auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     framework::RuntimeContext runtime_ctx(inputs_, outputs_, scope);
     framework::ExecutionContext ctx(*this, scope, *dev_ctx, runtime_ctx);

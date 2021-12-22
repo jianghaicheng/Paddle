@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/ir/ipu/transfer_cast_op_pass.h"
 
-#include "paddle/fluid/framework/ipu/ipu_backend.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 
 namespace paddle {
 namespace framework {
@@ -28,7 +28,7 @@ void TransferCastOpPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
-  auto ipu_backend = ipu::IpuBackend::GetInstance();
+  auto ipu_backend = platform::ipu::IpuBackend::GetInstance();
   auto enable_fp16 = ipu_backend->GetIpuStrategy()->enable_fp16;
   if (enable_fp16) {
     for (auto* node : graph->Nodes()) {

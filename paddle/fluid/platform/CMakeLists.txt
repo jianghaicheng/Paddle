@@ -62,10 +62,6 @@ IF(WITH_GPU)
     nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce monitor dynload_cuda)
 ENDIF()
 
-IF(WITH_IPU)
-    cc_library(ipu_info SRCS ipu_info.cc DEPS ipu_backend)
-ENDIF()
-
 IF(WITH_ROCM)
     hip_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce monitor dynload_cuda)
 ENDIF()
@@ -85,6 +81,7 @@ if(WITH_ASCEND_CL)
     cc_library(npu_info SRCS npu_info.cc DEPS gflags glog enforce monitor ascendcl acl_op_compiler)
 endif()
 
+add_subdirectory(device)
 add_subdirectory(dynload)
 add_subdirectory(stream)
 

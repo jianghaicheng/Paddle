@@ -14,17 +14,5 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/ipu/ipu_pass_base.h"
-#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
-namespace paddle {
-namespace framework {
-namespace ir {
-
-class DeleteScaleOpPass : public IPUPassBase {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+#include "paddle/fluid/platform/device/ipu/supported_ops_autogen.h"
+#include "paddle/fluid/platform/device/ipu/supported_ops_custom.h"

@@ -14,17 +14,14 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/ipu/ipu_pass_base.h"
-#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
+
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace platform {
+namespace ipu {
 
-class DeleteScaleOpPass : public IPUPassBase {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
+//
 
-}  // namespace ir
-}  // namespace framework
+}  // namespace ipu
+}  // namespace platform
 }  // namespace paddle

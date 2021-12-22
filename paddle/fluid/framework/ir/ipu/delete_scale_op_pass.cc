@@ -15,12 +15,12 @@
 #include "paddle/fluid/framework/ir/ipu/delete_scale_op_pass.h"
 
 #include "paddle/fluid/framework/ddim.h"
-#include "paddle/fluid/framework/ipu/popart_canonicalization/canonicalization_utils.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/canonicalization_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -65,8 +65,8 @@ void DeleteScaleOpPass::ApplyImpl(ir::Graph* graph) const {
         next_op_node = node->outputs[0]->outputs[0];
         input_var_node->outputs.push_back(next_op_node);
         next_op_node->inputs.push_back(input_var_node);
-        ipu::DisConnectNodes(output_var_node, node);
-        ipu::DisConnectNodes(input_var_node, node);
+        platform::ipu::DisConnectNodes(output_var_node, node);
+        platform::ipu::DisConnectNodes(input_var_node, node);
         auto var_map = next_op_node->Op()->Inputs();
         for (auto& name_m : var_map) {
           if (std::find(name_m.second.begin(), name_m.second.end(),
@@ -87,8 +87,8 @@ void DeleteScaleOpPass::ApplyImpl(ir::Graph* graph) const {
         pre_op_node = node->inputs[0]->inputs[0];
         output_var_node->inputs.push_back(pre_op_node);
         pre_op_node->outputs.push_back(output_var_node);
-        ipu::DisConnectNodes(input_var_node, node);
-        ipu::DisConnectNodes(output_var_node, node);
+        platform::ipu::DisConnectNodes(input_var_node, node);
+        platform::ipu::DisConnectNodes(output_var_node, node);
 
         auto var_map = pre_op_node->Op()->Inputs();
         std::vector<std::string> new_outputs;

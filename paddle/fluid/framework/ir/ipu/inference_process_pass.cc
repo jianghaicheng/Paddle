@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/ir/ipu/inference_process_pass.h"
 
-#include "paddle/fluid/framework/ipu/ipu_backend.h"
-#include "paddle/fluid/framework/ipu/ipu_strategy.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/device/ipu/ipu_strategy.h"
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
@@ -29,15 +29,15 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter InferenceProcessPass::ApplyImpl";
 
   // Get a new instance of ipu_backend
-  auto ipu_backend = ipu::IpuBackend::GetInstance();
+  auto ipu_backend = platform::ipu::IpuBackend::GetInstance();
 
   // Set scope
   auto& scope = graph->Get<Scope>(kParamScopeAttr);
   ipu_backend->SetScope(scope);
 
   // Set ipu_strategy
-  static std::shared_ptr<ipu::IpuStrategy> ipu_strategy_instance_(
-      new ipu::IpuStrategy());
+  static std::shared_ptr<platform::ipu::IpuStrategy> ipu_strategy_instance_(
+      new platform::ipu::IpuStrategy());
   ipu_strategy_instance_->is_training = false;
   // Set graph replication
   auto replica_num = graph->Get<int>("replica_num");
@@ -51,11 +51,11 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   if (num_ipus > 1) {
     ipu_strategy_instance_->need_avg_shard = true;
     ipu_strategy_instance_->popart_options.virtualGraphMode =
-        ipu::VirtualGraphMode::Manual;
+        platform::ipu::VirtualGraphMode::Manual;
   } else {
     ipu_strategy_instance_->need_avg_shard = false;
     ipu_strategy_instance_->popart_options.virtualGraphMode =
-        ipu::VirtualGraphMode::Off;
+        platform::ipu::VirtualGraphMode::Off;
   }
   // total num IPUs = num_ipus * replica_num
   ipu_strategy_instance_->num_ipus = num_ipus * replica_num;

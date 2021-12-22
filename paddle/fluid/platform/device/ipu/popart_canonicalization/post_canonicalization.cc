@@ -12,19 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/platform/device/ipu/popart_canonicalization/post_canonicalization.h"
 
-#include "paddle/fluid/framework/ir/ipu/ipu_pass_base.h"
-#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace platform {
+namespace ipu {
 
-class DeleteScaleOpPass : public IPUPassBase {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
+//
 
-}  // namespace ir
-}  // namespace framework
+}  // namespace ipu
+}  // namespace platform
 }  // namespace paddle
