@@ -68,6 +68,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
                               "The scope ptr should not be nullptr."));
   argument->main_graph().SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
 
+// ipu related
 #ifdef PADDLE_WITH_IPU
   if (argument->Has("use_ipu")) {
     if (argument->use_ipu()) {
