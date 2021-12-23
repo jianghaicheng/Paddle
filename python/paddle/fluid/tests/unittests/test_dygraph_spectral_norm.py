@@ -101,7 +101,7 @@ class TestDygraphSpectralNorm(unittest.TestCase):
 
 class TestDygraphWeightNormCase(TestDygraphSpectralNorm):
     def init_test_case(self):
-        self.batch_size = 2
+        self.batch_size = 3
         self.data_desc = (['x', [2, 3, 3]], )
         self.n_power_iterations = 1
         self.eps = 1e-12
@@ -110,7 +110,7 @@ class TestDygraphWeightNormCase(TestDygraphSpectralNorm):
 
 class TestDygraphWeightNormWithIterations(TestDygraphSpectralNorm):
     def init_test_case(self):
-        self.batch_size = 2
+        self.batch_size = 3
         self.data_desc = (['x', [2, 3, 3]], )
         self.n_power_iterations = 2
         self.eps = 1e-12
@@ -119,7 +119,7 @@ class TestDygraphWeightNormWithIterations(TestDygraphSpectralNorm):
 
 class TestDygraphWeightNormWithDim(TestDygraphSpectralNorm):
     def init_test_case(self):
-        self.batch_size = 2
+        self.batch_size = 3
         self.data_desc = (['x', [2, 3, 3]], )
         self.n_power_iterations = 1
         self.eps = 1e-12
@@ -128,7 +128,7 @@ class TestDygraphWeightNormWithDim(TestDygraphSpectralNorm):
 
 class TestDygraphWeightNormWithEps(TestDygraphSpectralNorm):
     def init_test_case(self):
-        self.batch_size = 2
+        self.batch_size = 3
         self.data_desc = (['x', [2, 3, 3]], )
         self.n_power_iterations = 1
         self.eps = 1e-10

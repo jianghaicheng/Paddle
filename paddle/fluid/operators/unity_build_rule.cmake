@@ -30,6 +30,7 @@ register_unity_group(cc
     bmm_op.cc
     bpr_loss_op.cc
     cast_op.cc
+    mkldnn/cast_mkldnn_op.cc
     cholesky_op.cc
     chunk_eval_op.cc
     clip_by_norm_op.cc
@@ -108,7 +109,6 @@ register_unity_group(cc
     gaussian_random_batch_size_like_op.cc
     gaussian_random_op.cc
     mkldnn/gaussian_random_mkldnn_op.cc
-    grid_sampler_op.cc
     group_norm_op.cc gru_op.cc)
 register_unity_group(cc
     hash_op.cc
@@ -186,7 +186,6 @@ register_unity_group(cc
     norm_op.cc
     one_hot_op.cc
     one_hot_v2_op.cc
-    p_norm_op.cc
     pad2d_op.cc
     pad3d_op.cc
     pad_constant_like_op.cc
@@ -234,6 +233,7 @@ register_unity_group(cc
     save_combine_op.cc
     save_op.cc
     scale_op.cc
+    mkldnn/scale_mkldnn_op.cc
     scatter_nd_add_op.cc
     scatter_op.cc
     seed_op.cc
@@ -467,7 +467,6 @@ register_unity_group(cu
     nll_loss_op.cu
     norm_op.cu
     one_hot_op.cu
-    p_norm_op.cu
     pad2d_op.cu
     pad3d_op.cu
     pad_constant_like_op.cu

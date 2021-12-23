@@ -90,12 +90,9 @@ class TestAssignOpError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.assign, x1)
-            # When the type of input is Variable, the dtype of input must be float16, float32, float64, int32, int64, bool.
-            x3 = fluid.layers.data(name='x3', shape=[4], dtype="uint8")
-            self.assertRaises(TypeError, fluid.layers.assign, x3)
             # When the type of input is numpy.ndarray, the dtype of input must be float32, int32.
-            x4 = np.array([[2.5, 2.5]], dtype='uint8')
-            self.assertRaises(TypeError, fluid.layers.assign, x4)
+            x2 = np.array([[2.5, 2.5]], dtype='uint8')
+            self.assertRaises(TypeError, fluid.layers.assign, x2)
 
 
 class TestAssignOApi(unittest.TestCase):
@@ -180,12 +177,16 @@ class TestAssignOpErrorApi(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
             self.assertRaises(TypeError, paddle.assign, x1)
-            # When the type of input is Variable, the dtype of input must be float16, float32, float64, int32, int64, bool.
-            x3 = fluid.layers.data(name='x3', shape=[4], dtype="uint8")
-            self.assertRaises(TypeError, paddle.assign, x3)
             # When the type of input is numpy.ndarray, the dtype of input must be float32, int32.
-            x4 = np.array([[2.5, 2.5]], dtype='uint8')
-            self.assertRaises(TypeError, paddle.assign, x4)
+            x2 = np.array([[2.5, 2.5]], dtype='uint8')
+            self.assertRaises(TypeError, paddle.assign, x2)
+
+    def test_type_error(self):
+        paddle.enable_static()
+        with program_guard(Program(), Program()):
+            x = [paddle.randn([3, 3]), paddle.randn([3, 3])]
+            # not support to assign list(var)
+            self.assertRaises(TypeError, paddle.assign, x)
 
 
 if __name__ == '__main__':

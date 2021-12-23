@@ -33,6 +33,7 @@
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/tests/api/config_printer.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
@@ -474,7 +475,8 @@ void PredictionWarmUp(PaddlePredictor *predictor,
   }
   int iterations = 1;
   if (FLAGS_warmup_iters > 1)
-    iterations = std::min(FLAGS_warmup_iters, static_cast<int>(inputs.size()));
+    iterations =
+        (std::min)(FLAGS_warmup_iters, static_cast<int>(inputs.size()));
   outputs->resize(iterations);
   Timer warmup_timer;
   double elapsed_time = 0;
