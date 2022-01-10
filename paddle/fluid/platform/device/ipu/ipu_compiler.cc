@@ -320,7 +320,7 @@ void Compiler::LowerWeights(const Graph* graph, const Scope* scope) {
             shape.push_back(tensor.dims().at(i));
           }
           popart::TensorInfo tensor_info(dtype, shape);
-          popart::ConstVoidData const_data{tensor.data<void>(), tensor_info};
+          popart::ConstVoidData const_data{tensor.data(), tensor_info};
           popart::TensorId result =
               builder_->addInitializedInputTensor(const_data, var_name);
           one_builder_->tensors.emplace(var_name, result);
