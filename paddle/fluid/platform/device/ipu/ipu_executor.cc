@@ -84,7 +84,8 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   std::map<popart::TensorId, PaddleIArray> input_wrappers;
   for (size_t i = 0; i < inputs.size(); i++) {
     auto tensor_id = one_builder_->inputs[i];
-    auto tensor = const_cast<Tensor *>(inputs[i]);
+    framework::Tensor *tensor = nullptr;
+    tensor->ShareDataWith(*inputs[i]);
     input_wrappers.emplace(tensor_id, PaddleIArray(tensor));
     popart_inputs.emplace(tensor_id, input_wrappers.at(tensor_id));
   }
@@ -93,7 +94,8 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   std::map<popart::TensorId, PaddleIArray> anchor_wrappers;
   for (size_t i = 0; i < outputs.size(); i++) {
     auto tensor_id = one_builder_->outputs[i];
-    auto tensor = const_cast<Tensor *>(outputs[i]);
+    framework::Tensor *tensor = nullptr;
+    tensor->ShareDataWith(*outputs[i]);
     // get dims & dtype from session
     auto fetch_info = session_->getInfo(tensor_id);
     auto output_shape = fetch_info.shape();
@@ -194,7 +196,7 @@ void Executor::SetWeightsIO() {
       }
 
       auto var = scope_->GetVar(paddle_var_name);
-      auto data_ptr = var->GetMutable<framework::LoDTensor>()->data<void>();
+      auto data_ptr = var->GetMutable<framework::LoDTensor>()->data();
 
       auto tensor_info = session_->getInfo(popart_var_name);
       one_session_->weights_io.insert(popart_var_name, {data_ptr, tensor_info});

@@ -19,7 +19,8 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
-void* PaddleIArray::data() { return const_cast<void*>(tensor_->data<void>()); }
+// TODO(alleng) remove const_cast
+void* PaddleIArray::data() { return const_cast<void*>(tensor_->data()); }
 
 popart::DataType PaddleIArray::dataType() const {
   return VarType2PopartType(tensor_->type());
