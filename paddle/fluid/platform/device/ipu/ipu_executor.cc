@@ -84,9 +84,7 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   std::map<popart::TensorId, PaddleIArray> input_wrappers;
   for (size_t i = 0; i < inputs.size(); i++) {
     auto tensor_id = one_builder_->inputs[i];
-    framework::Tensor *tensor = nullptr;
-    tensor->ShareDataWith(*inputs[i]);
-    input_wrappers.emplace(tensor_id, PaddleIArray(tensor));
+    input_wrappers.emplace(tensor_id, PaddleIArray(inputs[i]));
     popart_inputs.emplace(tensor_id, input_wrappers.at(tensor_id));
   }
   // anchors
@@ -94,8 +92,6 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   std::map<popart::TensorId, PaddleIArray> anchor_wrappers;
   for (size_t i = 0; i < outputs.size(); i++) {
     auto tensor_id = one_builder_->outputs[i];
-    framework::Tensor *tensor = nullptr;
-    tensor->ShareDataWith(*outputs[i]);
     // get dims & dtype from session
     auto fetch_info = session_->getInfo(tensor_id);
     auto output_shape = fetch_info.shape();
@@ -112,6 +108,7 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
                           ipu_strategy_->popart_options.replicatedGraphCount);
     }
 
+    auto *tensor = outputs[i];
     tensor->Resize(framework::make_ddim(output_shape));
     auto fetch_dtype = fetch_info.dataType();
     auto paddle_type = PopartType2VarType(fetch_dtype);
