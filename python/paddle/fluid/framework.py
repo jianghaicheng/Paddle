@@ -106,6 +106,7 @@ def _test_eager_guard(tracer=None):
         core._disable_eager_mode()
         _C_ops.switch_to_core_ops()
 
+
 global_ipu_index = None
 global_ipu_stage = None
 ipu_index_attr_name = 'ipu_index'
@@ -6974,21 +6975,6 @@ def _get_paddle_place(place):
         device_id = int(device_id)
         return core.NPUPlace(device_id)
 
-    # IPU
-    avaliable_ipu_place = re.match(r'ipu:\d+', place)
-    if avaliable_ipu_place:
-        if not core.is_compiled_with_ipu():
-            raise ValueError(
-                "The device should not be {}, since PaddlePaddle is " \
-                "not compiled with IPU".format(avaliable_ipu_place))
-        place_info_list = place.split(':', 1)
-        device_id = place_info_list[1]
-        device_id = int(device_id)
-        return core.IPUPlace(device_id)
-
-    raise ValueError(
-        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace, NPUPlace, MLUPlace and IPUPlace, but received {}.".
-
     # MLU
     avaliable_mlu_place = re.match(r'mlu:\d+', place)
     if avaliable_mlu_place:
@@ -7000,6 +6986,18 @@ def _get_paddle_place(place):
         device_id = place_info_list[1]
         device_id = int(device_id)
         return core.MLUPlace(device_id)
+
+    # IPU
+    avaliable_ipu_place = re.match(r'ipu:\d+', place)
+    if avaliable_ipu_place:
+        if not core.is_compiled_with_ipu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with IPU".format(avaliable_ipu_place))
+        place_info_list = place.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.IPUPlace(device_id)
 
     raise ValueError(
         "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace, MLUPlace, MLUPlace and IPUPlace, but received {}.".
