@@ -286,8 +286,7 @@ void Compiler::LowerConstants(const Graph* graph, const Scope* scope) {
 
       auto const_data = std::unique_ptr<popart::ConstVoidData>();
       popart::TensorInfo tensor_info(VarType2PopartType(tensor->type()), shape);
-      const_data.reset(
-          new popart::ConstVoidData(tensor->data<void>(), tensor_info));
+      const_data.reset(new popart::ConstVoidData(tensor->data(), tensor_info));
       popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
       SetIpuIndexStage(result, op_desc);
       one_builder_->tensors.emplace(tensor_name, result);
@@ -320,7 +319,7 @@ void Compiler::LowerWeights(const Graph* graph, const Scope* scope) {
             shape.push_back(tensor.dims().at(i));
           }
           popart::TensorInfo tensor_info(dtype, shape);
-          popart::ConstVoidData const_data{tensor.data<void>(), tensor_info};
+          popart::ConstVoidData const_data{tensor.data(), tensor_info};
           popart::TensorId result =
               builder_->addInitializedInputTensor(const_data, var_name);
           one_builder_->tensors.emplace(var_name, result);

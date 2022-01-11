@@ -62,7 +62,7 @@ enum ONNXDataType : int {
 
 class PaddleIArray final : public popart::IArray {
  public:
-  explicit PaddleIArray(Tensor* tensor) : tensor_(tensor) {
+  explicit PaddleIArray(const Tensor* tensor) : tensor_(tensor) {
     for (int i = 0; i < tensor->dims().size(); ++i) {
       shape_.push_back(tensor->dims().at(i));
     }
@@ -96,7 +96,7 @@ std::unique_ptr<popart::NDArrayWrapper<T>> Tensor2IArray(const Tensor& tensor) {
   popart::TensorInfo tensor_info(dtype, shape);
 
   return std::make_unique<popart::NDArrayWrapper<T>>(
-      reinterpret_cast<T*>(tensor.data<void>()), tensor_info);
+      reinterpret_cast<T*>(tensor.data()), tensor_info);
 }
 
 template <typename T>
