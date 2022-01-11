@@ -140,7 +140,8 @@ void Compiler::RegisterOpFunc() {
      SetSerializeAttributes(output_ids, op_desc);             \
      InsertTensors(output_names, output_ids);                 \
    }},  // NOLINT
-#include "paddle/fluid/platform/device/ipu/supported_ops.h"
+#include "paddle/fluid/platform/device/ipu/supported_ops_autogen.h"
+#include "paddle/fluid/platform/device/ipu/supported_ops_custom.h"
   };
 
 #undef OP_DECL
