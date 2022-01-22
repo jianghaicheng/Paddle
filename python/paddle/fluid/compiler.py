@@ -23,8 +23,7 @@ from .framework import cuda_places, cpu_places, xpu_places
 from . import core
 
 __all__ = [
-    'CompiledProgram', 'ExecutionStrategy', 'BuildStrategy',
-    'IpuCompiledProgram', 'IpuStrategy'
+    'CompiledProgram', 'ExecutionStrategy', 'BuildStrategy', 'IpuStrategy'
 ]
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
