@@ -6975,6 +6975,18 @@ def _get_paddle_place(place):
         device_id = int(device_id)
         return core.NPUPlace(device_id)
 
+    # IPU
+    avaliable_ipu_place = re.match(r'ipu:\d+', place)
+    if avaliable_ipu_place:
+        if not core.is_compiled_with_ipu():
+            raise ValueError(
+                "The device should not be {}, since PaddlePaddle is " \
+                "not compiled with IPU".format(avaliable_ipu_place))
+        place_info_list = place.split(':', 1)
+        device_id = place_info_list[1]
+        device_id = int(device_id)
+        return core.IPUPlace(device_id)
+
     # MLU
     avaliable_mlu_place = re.match(r'mlu:\d+', place)
     if avaliable_mlu_place:

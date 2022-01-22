@@ -1580,11 +1580,10 @@ class Executor(object):
                               LRScheduler), "must be LRScheduler"
             lr_sheduler = program.lr_sheduler
             lr_value = lr_sheduler()
-
-            if hasattr(program.lr_sheduler, 'lr_var'):
-                lr_var = program.lr_sheduler.lr_var
-            else:
-                lr_var = program.global_block().vars[lr_sheduler._var_name]
+            lr_var = program.global_block().vars[lr_sheduler._var_name]
+            if core.is_compiled_with_ipu():
+                if hasattr(program.lr_sheduler, 'lr_var'):
+                    lr_var = program.lr_sheduler.lr_var
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
             tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
 

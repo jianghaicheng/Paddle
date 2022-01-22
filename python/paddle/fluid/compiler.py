@@ -22,7 +22,10 @@ from .framework import _get_paddle_place, _get_paddle_place_list
 from .framework import cuda_places, cpu_places, xpu_places
 from . import core
 
-__all__ = ['CompiledProgram', 'ExecutionStrategy', 'BuildStrategy']
+__all__ = [
+    'CompiledProgram', 'ExecutionStrategy', 'BuildStrategy',
+    'IpuCompiledProgram', 'IpuStrategy'
+]
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
@@ -83,6 +86,16 @@ def _has_optimizer_in_control_flow(program):
                 return True
 
     return False
+
+
+def _should_broadcast_or_not_exists(program, var_name):
+    block = program.global_block()
+    var = block.vars.get(var_name, None)
+    if var is None:
+        return True
+    is_distributed = getattr(var, '_is_distributed', False) or getattr(
+        var, 'is_distributed', False)
+    return not is_distributed
 
 
 class CompiledProgram(object):
@@ -398,7 +411,10 @@ class CompiledProgram(object):
         for node in self._graph.nodes():
             if node.is_var() and node.var() is not None and node.var().persistable() and \
                     node.var().type() != core.VarDesc.VarType.RAW:
-                self._persistable_vars.append(cpt.to_text(node.name()))
+                name = cpt.to_text(node.name())
+                if self._program is not None and _should_broadcast_or_not_exists(
+                        self._program, name):
+                    self._persistable_vars.append(cpt.to_text(node.name()))
 
         places = list(map(_place_obj, places))
 

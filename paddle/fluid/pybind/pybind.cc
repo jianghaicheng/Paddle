@@ -43,7 +43,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/generate_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -54,7 +53,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/type_defs.h"
@@ -75,6 +74,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/pten/core/lod_utils.h"
 #ifndef PADDLE_ON_INFERENCE
 #include "paddle/fluid/pybind/eager.h"
 #endif
@@ -129,6 +129,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
 
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
@@ -171,6 +172,7 @@ PyTypeObject *g_npuplace_pytype = nullptr;
 PyTypeObject *g_cudapinnedplace_pytype = nullptr;
 PyTypeObject *g_mluplace_pytype = nullptr;
 PyTypeObject *g_framework_tensor_pytype = nullptr;
+PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 
 bool IsCompiledWithCUDA() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
@@ -373,7 +375,7 @@ static inline bool IsSamePlace(const PlaceType1 &p1, const PlaceType2 &p2) {
 
 template <typename PlaceType>
 static inline int PlaceIndex(const PlaceType &p) {
-  return static_cast<int>(paddle::platform::Place(p).which());
+  return static_cast<int>(paddle::platform::Place(p).GetType());
 }
 
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
@@ -1092,7 +1094,7 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("recursive_sequence_lengths",
            [](framework::Tensor &self) -> std::vector<std::vector<size_t>> {
              // output the length-based lod info
-             LoD lod = ConvertToLengthBasedLoD(self.lod());
+             LoD lod = pten::ConvertToLengthBasedLoD(self.lod());
              std::vector<std::vector<size_t>> new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
@@ -1762,6 +1764,13 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_device_version",
         [](int device_id) { return platform::get_xpu_version(device_id); });
+  m.def("get_xpu_device_op_support_types",
+        [](const std::string &op_name, platform::XPUVersion version) {
+          return platform::get_xpu_op_support_type(op_name, version);
+        });
+  m.def("get_xpu_device_op_list", [](platform::XPUVersion version) {
+    return platform::get_xpu_op_list(version);
+  });
   m.def("is_float16_supported", [](const platform::XPUPlace &place) -> bool {
     // XPUs with Compute Capability > xpu2 support float16 and bfloat16
     return platform::get_xpu_version(place.device) > platform::XPUVersion::XPU1;
@@ -2051,26 +2060,11 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("is_mlu_place",
            [](platform::Place &self) { return platform::is_mlu_place(self); })
-      .def("gpu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::CUDAPlace, self).device;
-           })
-      .def("xpu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::XPUPlace, self).device;
-           })
-      .def("npu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::NPUPlace, self).device;
-           })
-      .def("ipu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::IPUPlace, self).device;
-           })
-      .def("mlu_device_id",
-           [](platform::Place &self) {
-             return BOOST_GET_CONST(platform::MLUPlace, self).device;
-           })
+      .def("gpu_device_id", [](platform::Place &self) { return self.device; })
+      .def("xpu_device_id", [](platform::Place &self) { return self.device; })
+      .def("npu_device_id", [](platform::Place &self) { return self.device; })
+      .def("ipu_device_id", [](platform::Place &self) { return self.device; })
+      .def("mlu_device_id", [](platform::Place &self) { return self.device; })
       .def("set_place", [](platform::Place &self,
                            const platform::Place &other) { self = other; })
       .def("set_place",
@@ -2436,7 +2430,7 @@ All parameter, weight, gradient are variables in Paddle.
         return res;
       });
 
-  py::class_<LoDTensorArray>(m, "LoDTensorArray", R"DOC(
+  py::class_<LoDTensorArray> pylodtensorarray(m, "LoDTensorArray", R"DOC(
     LoDTensorArray is array of LoDTensor, it supports operator[], len() and for-loop iteration.
 
     Examples:
@@ -2445,7 +2439,10 @@ All parameter, weight, gradient are variables in Paddle.
           import paddle.fluid as fluid
 
           arr = fluid.LoDTensorArray()
-)DOC")
+)DOC");
+  g_framework_lodtensorarray_pytype =
+      reinterpret_cast<PyTypeObject *>(pylodtensorarray.ptr());
+  pylodtensorarray
       .def("__init__",
            [](LoDTensorArray &instance) { new (&instance) LoDTensorArray(); })
       .def("__getitem__",
@@ -2985,7 +2982,8 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
       .value("Reduce", BuildStrategy::ReduceStrategy::kReduce)
-      .value("AllReduce", BuildStrategy::ReduceStrategy::kAllReduce);
+      .value("AllReduce", BuildStrategy::ReduceStrategy::kAllReduce)
+      .value("_NoReduce", BuildStrategy::ReduceStrategy::kNoReduce);
   py::enum_<BuildStrategy::GradientScaleStrategy>(build_strategy,
                                                   "GradientScaleStrategy")
       .value("CoeffNumDevice",
