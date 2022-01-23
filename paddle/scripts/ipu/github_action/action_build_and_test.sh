@@ -61,6 +61,9 @@ tar czf /paddle_wheels/paddle_ipu_${GITHUB_SHA}.tar.gz /paddle_build/python/dist
 echo "create paddle wheel file: /paddle_wheels/paddle_ipu_${GITHUB_SHA}.tar.gz"
 ls -lh /paddle_wheels/paddle_ipu_${GITHUB_SHA}.tar.gz
 
+# clean build files
+rm -rf /checkout/paddle/pten
+
 # run unittests
 cd /paddle_build/python
 # install `pytest-xdist`
