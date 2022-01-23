@@ -1580,7 +1580,6 @@ class Executor(object):
                               LRScheduler), "must be LRScheduler"
             lr_sheduler = program.lr_sheduler
             lr_value = lr_sheduler()
-
             if hasattr(program.lr_sheduler, 'lr_var'):
                 lr_var = program.lr_sheduler.lr_var
             else:

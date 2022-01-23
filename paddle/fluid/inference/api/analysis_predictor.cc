@@ -129,7 +129,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx =
         static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
-    auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place);
+    auto dst_gpu_place = place;
     memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
                  platform::CPUPlace(), pt.data.data(), pt.data.length(),
                  dev_ctx->stream());
@@ -139,7 +139,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
 #endif
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
-    auto dst_xpu_place = BOOST_GET_CONST(platform::XPUPlace, place);
+    auto dst_xpu_place = place;
     memory::Copy(dst_xpu_place, static_cast<void *>(input_ptr),
                  platform::CPUPlace(), pt.data.data(), pt.data.length());
 #else
@@ -966,14 +966,14 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       // model.
       res->SetPlace(PaddlePlace::kCPU);
     } else {
-      auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      auto xpu_place = place_;
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
   } else if (platform::is_npu_place(place_)) {
-    auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
+    auto npu_place = place_;
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else {
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
+    auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
   return res;
@@ -1005,14 +1005,14 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       // model.
       res->SetPlace(PaddlePlace::kCPU);
     } else {
-      auto xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      auto xpu_place = place_;
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
   } else if (platform::is_npu_place(place_)) {
-    auto npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
+    auto npu_place = place_;
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
   } else {
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
+    auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
   return res;
@@ -1062,7 +1062,7 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
   if (stream != nullptr) {
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto gpu_place = BOOST_GET_CONST(paddle::platform::CUDAPlace, place_);
+    auto gpu_place = place_;
     auto *dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext *>(
         pool.Get(gpu_place));
     dev_ctx->SetThreadLocalStream(stream);
@@ -1077,7 +1077,7 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto gpu_place = BOOST_GET_CONST(paddle::platform::CUDAPlace, place_);
+    auto gpu_place = place_;
     auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
         pool.Get(gpu_place));
 #ifdef PADDLE_WITH_HIP
