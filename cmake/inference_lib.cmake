@@ -183,23 +183,10 @@ IF(WITH_XPU)
 ENDIF()
 
 IF(WITH_IPU)
-        set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/install/ipu")
-        copy(inference_lib_dist
-                SRCS ${CMAKE_BINARY_DIR}/paddle/fluid/platform/libflags.a
-                DSTS ${dst_dir})
-        copy(inference_lib_dist
-                SRCS ${CMAKE_BINARY_DIR}/paddle/fluid/platform/device/ipu/libpaddle_ipu.so
-                DSTS ${dst_dir})
-ENDIF()
-
-IF(WITH_IPU)
-        set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/install/ipu")
-        copy(inference_lib_dist
-                SRCS ${CMAKE_BINARY_DIR}/paddle/fluid/platform/libflags.a
-                DSTS ${dst_dir})
-        copy(inference_lib_dist
-                SRCS ${CMAKE_BINARY_DIR}/paddle/fluid/platform/device/ipu/libpaddle_ipu.so
-                DSTS ${dst_dir})
+    set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/install/ipu")
+    copy(inference_lib_dist
+        SRCS ${CMAKE_BINARY_DIR}/paddle/fluid/platform/device/ipu/libpaddle_ipu.so
+        DSTS ${dst_dir})
 ENDIF()
 
 # CMakeCache Info
