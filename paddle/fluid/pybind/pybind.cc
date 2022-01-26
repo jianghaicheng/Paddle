@@ -3596,7 +3596,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_scope", &platform::ipu::IpuBackend::SetScope)
       .def("set_ipu_strategy", &platform::ipu::IpuBackend::SetIpuStrategy)
       .def("set_custom_ops", &platform::ipu::IpuBackend::SetCustomOps)
-      .def("save_molde_proto", &platform::ipu::IpuBackend::SaveMoldeProto);
+      .def("save_model_proto", &platform::ipu::IpuBackend::SaveModelProto);
 
   py::class_<platform::ipu::IpuStrategy>(m, "IpuStrategy")
       .def(py::init())
@@ -3710,23 +3710,23 @@ All parameter, weight, gradient are variables in Paddle.
           )DOC")
       .def_property(
           "enableReplicatedGraphs",
-                    [](const platform::ipu::IpuStrategy &self) {
+          [](const platform::ipu::IpuStrategy &self) {
             return self.popart_options.enableReplicatedGraphs;
-                    },
+          },
           [](platform::ipu::IpuStrategy &self, bool enableReplicatedGraphs) {
             self.popart_options.enableReplicatedGraphs = enableReplicatedGraphs;
-                    },
+          },
           R"DOC(The type is BOOL. True for enable model replica,
                           Default False.
           )DOC")
       .def_property(
           "replicatedGraphCount",
-                    [](const platform::ipu::IpuStrategy &self) {
+          [](const platform::ipu::IpuStrategy &self) {
             return self.popart_options.replicatedGraphCount;
-                    },
+          },
           [](platform::ipu::IpuStrategy &self, int replicatedGraphCount) {
             self.popart_options.replicatedGraphCount = replicatedGraphCount;
-                    },
+          },
           R"DOC(The type is INT. Number of model replica. Default 1.
           )DOC")
       .def_property(
@@ -3813,18 +3813,18 @@ All parameter, weight, gradient are variables in Paddle.
           )DOC")
       .def_property(
           "enable_engine_caching",
-                    [](const platform::ipu::IpuStrategy &self) {
+          [](const platform::ipu::IpuStrategy &self) {
             return self.popart_options.enableEngineCaching;
-                    },
+          },
           [](platform::ipu::IpuStrategy &self, bool flag) {
             self.popart_options.enableEngineCaching = flag;
-                    },
+          },
           R"DOC(The type is Bool. True enable Poplar executable caching.
            Default False.
           )DOC")
       .def_property(
           "cache_path",
-                    [](const platform::ipu::IpuStrategy &self) {
+          [](const platform::ipu::IpuStrategy &self) {
             return self.popart_options.cachePath;
           },
           [](platform::ipu::IpuStrategy &self, const std::string &cache_path) {
@@ -3855,7 +3855,7 @@ All parameter, weight, gradient are variables in Paddle.
           "domain",
           [](const platform::ipu::IpuCustomOpIdentifier &self) {
             return self.popart_op.domain;
-                    },
+          },
           [](platform::ipu::IpuCustomOpIdentifier &self,
              const std::string &domain) { self.popart_op.domain = domain; })
       .def_property("version",

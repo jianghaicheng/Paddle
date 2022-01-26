@@ -643,7 +643,7 @@ class IpuCompiler(object):
         self._backend.reset()
 
     def save_onnx_model(self, file_name):
-        self._backend.save_molde_proto(file_name)
+        self._backend.save_model_proto(file_name)
 
 
 def get_ipu_strategy():
