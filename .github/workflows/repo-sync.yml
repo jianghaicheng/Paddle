@@ -10,10 +10,8 @@ jobs:
   repo-sync:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v2
-        with:
-          persist-credentials: false
-          fetch-depth: 2
+      # TODO use latest git version and actions/checkout@v2
+      - uses: actions/checkout@v1
       - name: repo-sync
         uses: gglin001/github-sync@v2
         with:
