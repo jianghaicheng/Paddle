@@ -1,30 +1,30 @@
-# # auto sync PaddlePaddle/Paddle:develop to develop and create pr to develop-ipu
-# # ref: https://github.com/repo-sync/repo-sync
+# auto sync PaddlePaddle/Paddle:develop to develop and create pr to develop-ipu
+# ref: https://github.com/repo-sync/repo-sync
 
-# on:
-#   schedule:
-#     - cron: "0 10 * * *" # 2:00 AM UTC+08:00 everyday
-#   workflow_dispatch:
+on:
+  schedule:
+    - cron: "0 10 * * *" # 2:00 AM UTC+08:00 everyday
+  workflow_dispatch:
 
-# jobs:
-#   repo-sync:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@v2
-#         with:
-#           persist-credentials: false
-#       - name: repo-sync
-#         uses: gglin001/github-sync@v2
-#         with:
-#           source_repo: "PaddlePaddle/Paddle"
-#           source_branch: "develop"
-#           destination_branch: develop
-#           github_token: ${{ secrets.GITHUB_TOKEN }}
-#       - uses: gglin001/pull-request@v2
-#         name: Create pull request
-#         with:
-#           source_branch: develop
-#           destination_branch: develop-ipu
-#           pr_title: "[AUTO PR] Pulling develop into develop-ipu"
-#           # pr_body: ":crown: *An automated PR*"
-#           github_token: ${{ secrets.GITHUB_TOKEN }}
+jobs:
+  repo-sync:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+      - name: repo-sync
+        uses: gglin001/github-sync@v2
+        with:
+          source_repo: "PaddlePaddle/Paddle"
+          source_branch: "develop"
+          destination_branch: develop
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: gglin001/pull-request@v2
+        name: Create pull request
+        with:
+          source_branch: develop
+          destination_branch: develop-ipu
+          pr_title: "[AUTO PR] Pulling develop into develop-ipu"
+          # pr_body: ":crown: *An automated PR*"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
