@@ -2,8 +2,8 @@
 # ref: https://github.com/repo-sync/repo-sync
 
 on:
-  schedule:
-    - cron: "0 10 * * *" # 2:00 AM UTC+08:00 everyday
+  # schedule:
+  #   - cron: "0 10 * * *" # 2:00 AM UTC+08:00 everyday
   workflow_dispatch:
 
 jobs:
