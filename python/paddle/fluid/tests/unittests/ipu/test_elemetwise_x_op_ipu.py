@@ -31,7 +31,10 @@ class TestMul(IPUOpTest):
 
     @property
     def fp16_enabled(self):
-        return True
+        if IPUOpTest.use_ipumodel:
+            return False
+        else:
+            return True
 
     def set_test_op(self):
         self.op = paddle.fluid.layers.elementwise_mul

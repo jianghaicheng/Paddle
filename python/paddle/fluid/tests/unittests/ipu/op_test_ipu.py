@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 import numpy as np
@@ -78,6 +79,15 @@ class IPUOpTest(unittest.TestCase):
         random.setstate(cls._py_rand_state)
 
         _set_use_system_allocator(cls._use_system_allocator)
+
+    @property
+    def use_ipumodel():
+        if 'POPLAR_IPUMODEL' not in os.environ:
+            return False
+        else:
+            flag = os.environ['POPLAR_IPUMODEL']
+            if flag.upper() in ['1', "TRUE"]:
+                return True
 
     def set_atol(self):
         self.atol = 1e-10

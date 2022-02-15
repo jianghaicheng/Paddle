@@ -153,7 +153,12 @@ void Executor::AcquireDevice() {
 
   bool use_ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
   if (use_ipu_model) {
-    std::map<std::string, std::string> deviceOpts{{"numIPUs", "1 "}};
+    std::map<std::string, std::string> deviceOpts{
+        {
+            "numIPUs", std::to_string(ipu_strategy_->num_ipus),
+        },
+        {"ipuVersion", "ipu2"},
+    };
     device_ = popart::DeviceManager::createDeviceManager().createIpuModelDevice(
         deviceOpts);
   } else {

@@ -157,6 +157,7 @@ class TestLamb(TestBase):
         self.attrs['model_path'] = tempfile.TemporaryDirectory().name
 
 
+@unittest.skipIf(IPUOpTest.use_ipumodel, "skip for ipumodel")
 class TestSGDFP16(TestBase):
     def set_op_attrs(self):
         self.attrs = {}
@@ -168,6 +169,7 @@ class TestSGDFP16(TestBase):
         self.attrs['model_path'] = tempfile.TemporaryDirectory().name
 
 
+@unittest.skipIf(IPUOpTest.use_ipumodel, "skip for ipumodel")
 class TestAdamFP16(TestBase):
     def set_op_attrs(self):
         self.attrs = {}
@@ -179,6 +181,7 @@ class TestAdamFP16(TestBase):
         self.attrs['model_path'] = tempfile.TemporaryDirectory().name
 
 
+@unittest.skipIf(IPUOpTest.use_ipumodel, "skip for ipumodel")
 class TestLambFP16(TestBase):
     def set_op_attrs(self):
         self.attrs = {}
