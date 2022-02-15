@@ -17,7 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import paddle
-import paddle.fluid.compiler as compiler
+import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
@@ -88,10 +88,10 @@ class TestBase(IPUOpTest):
             if run_ipu:
                 feed_list = [image.name]
                 fetch_list = [loss.name]
-                ipu_strategy = compiler.get_ipu_strategy()
-                ipu_strategy.is_training = True
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.SetGraphConfig(is_training=True)
                 ipu_strategy.loss_scaling = self.attrs["loss_scaling"]
-                program = compiler.IpuCompiler(
+                program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
                                                                   fetch_list)
             else:

@@ -17,7 +17,7 @@ import shutil
 
 import numpy as np
 import paddle
-import paddle.fluid.compiler as compiler
+import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
@@ -94,9 +94,10 @@ class TestBase(IPUOpTest):
                 exe = paddle.static.Executor(place)
                 exe.run(startup_prog)
 
-                ipu_strategy = compiler.get_ipu_strategy()
-                ipu_strategy.is_training = self.attrs['is_training']
-                program = compiler.IpuCompiler(
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.SetGraphConfig(
+                    is_training=self.attrs['is_training'])
+                program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(
                         self.feed_list, fetch_list)
 
@@ -123,9 +124,9 @@ class TestBase(IPUOpTest):
         if run_ipu:
             feed_list = feed_target_names
             fetch_list = [fetch_targets[0].name]
-            ipu_strategy = compiler.get_ipu_strategy()
-            ipu_strategy.is_training = False
-            program = compiler.IpuCompiler(
+            ipu_strategy = paddle.static.IpuStrategy()
+            ipu_strategy.SetGraphConfig(is_training=False)
+            program = paddle.static.IpuCompiledProgram(
                 inference_program,
                 ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
         else:

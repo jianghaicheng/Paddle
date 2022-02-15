@@ -18,7 +18,7 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid.compiler as compiler
+import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
@@ -63,10 +63,10 @@ class TestBase(IPUOpTest):
             with paddle.static.program_guard(main_prog, startup_prog):
                 image = paddle.static.data(
                     name='image', shape=[bs, 3, 10, 10], dtype='float32')
-                with paddle.fluid.ipu_shard(ipu_index=0):
+                with paddle.static.ipu_shard_guard(index=0):
                     conv1 = paddle.static.nn.conv2d(
                         image, num_filters=3, filter_size=3, bias_attr=False)
-                with paddle.fluid.ipu_shard(ipu_index=1):
+                with paddle.static.ipu_shard_guard(index=1):
                     conv2 = paddle.static.nn.conv2d(
                         conv1, num_filters=3, filter_size=3, bias_attr=False)
                     # should consider influence of bs
@@ -93,13 +93,13 @@ class TestBase(IPUOpTest):
             if run_ipu:
                 feed_list = [image.name]
                 fetch_list = [loss.name]
-                ipu_strategy = compiler.get_ipu_strategy()
+                ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.enableReplicatedGraphs = self.attrs[
                     'enableReplicatedGraphs']
                 ipu_strategy.replicatedGraphCount = self.attrs[
                     'replicatedGraphCount']
                 ipu_strategy.num_ipus = 2 * self.attrs['replicatedGraphCount']
-                ipu_strategy.is_training = self.is_training
+                ipu_strategy.SetGraphConfig(is_training=self.is_training)
                 ipu_strategy.enable_manual_shard = True
                 ipu_strategy.enable_pipelining = self.attrs['enable_pipeline']
                 ipu_strategy.batches_per_step = self.attrs['batches_per_step']
@@ -107,7 +107,7 @@ class TestBase(IPUOpTest):
                     'enableGradientAccumulation']
                 ipu_strategy.accumulationFactor = self.attrs[
                     'accumulationFactor']
-                program = compiler.IpuCompiler(
+                program = paddle.static.IpuCompiledProgram(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
             else:

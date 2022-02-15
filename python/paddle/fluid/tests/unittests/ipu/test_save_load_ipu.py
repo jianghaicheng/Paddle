@@ -17,7 +17,7 @@ import shutil
 
 import numpy as np
 import paddle
-import paddle.fluid.compiler as compiler
+import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 import tempfile
 
@@ -91,11 +91,15 @@ class TestBase(IPUOpTest):
                 if not save_otherwise_load:
                     paddle.static.load(main_prog, self.attrs['model_path'])
 
-                ipu_strategy = compiler.get_ipu_strategy()
-                ipu_strategy.is_training = self.attrs['is_training']
-                ipu_strategy.save_per_n_step = self.attrs['save_at_step']
-                ipu_strategy.enable_fp16 = self.attrs['enable_fp16']
-                program = compiler.IpuCompiler(
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.SetGraphConfig(
+                    is_training=self.attrs['is_training'])
+                ipu_strategy.SetHalfConfig(
+                    enable_fp16=self.attrs['enable_fp16'])
+                ipu_strategy.set_option({
+                    'save_per_n_step': self.attrs['save_at_step']
+                })
+                program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(
                         self.feed_list, fetch_list)
 

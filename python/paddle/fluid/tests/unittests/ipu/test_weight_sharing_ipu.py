@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid.compiler as compiler
+import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
@@ -65,7 +65,7 @@ class TestWeightSharing(IPUOpTest):
                     shape=self.feed_shape[0],
                     dtype=dtype)
 
-                with paddle.fluid.ipu_shard(ipu_index=0, ipu_stage=0):
+                with paddle.static.ipu_shard_guard(index=0, stage=0):
                     y = paddle.fluid.layers.embedding(
                         input=x,
                         size=[768, 768],
@@ -74,13 +74,13 @@ class TestWeightSharing(IPUOpTest):
                             name='word_embedding'),
                         is_sparse=False)
 
-                with paddle.fluid.ipu_shard(ipu_index=1, ipu_stage=1):
+                with paddle.static.ipu_shard_guard(index=1, stage=1):
                     z = paddle.fluid.layers.fc(
                         input=y,
                         size=768,
                         param_attr=paddle.fluid.ParamAttr(name="fc"))
 
-                with paddle.fluid.ipu_shard(ipu_index=0, ipu_stage=2):
+                with paddle.static.ipu_shard_guard(index=0, stage=2):
                     out = paddle.fluid.layers.matmul(
                         x=z,
                         y=main_prog.global_block().var('word_embedding'),
@@ -97,13 +97,14 @@ class TestWeightSharing(IPUOpTest):
 
             if run_ipu:
                 feed_list = self.feed_list
-                ipu_strategy = compiler.get_ipu_strategy()
-                ipu_strategy.num_ipus = 2
-                ipu_strategy.is_training = self.is_training
-                ipu_strategy.enable_manual_shard = True
-                ipu_strategy.enable_pipelining = True
-                ipu_strategy.batches_per_step = 3
-                program = compiler.IpuCompiler(
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.SetGraphConfig(
+                    num_ipus=2,
+                    is_training=self.is_training,
+                    enable_manual_shard=True)
+                ipu_strategy.SetPipeliningConfig(
+                    enable_pipelining=True, batches_per_step=3)
+                program = paddle.static.IpuCompiledProgram(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
             else:

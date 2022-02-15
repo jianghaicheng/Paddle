@@ -17,7 +17,7 @@ from __future__ import print_function
 import numpy as np
 import unittest
 import paddle
-import paddle.fluid.compiler as compiler
+import paddle.static
 
 paddle.enable_static()
 SEED = 2021
@@ -40,10 +40,10 @@ class TestCastNet(unittest.TestCase):
             with paddle.static.program_guard(main_prog, startup_prog):
                 image = paddle.static.data(
                     name='image', shape=[1, 3, 10, 10], dtype='float32')
-                with paddle.fluid.ipu_shard(ipu_index=0):
+                with paddle.static.ipu_shard_guard(index=0):
                     conv1 = paddle.static.nn.conv2d(
                         image, num_filters=3, filter_size=3, bias_attr=False)
-                with paddle.fluid.ipu_shard(ipu_index=1):
+                with paddle.static.ipu_shard_guard(index=1):
                     conv2 = paddle.static.nn.conv2d(
                         conv1, num_filters=3, filter_size=3, bias_attr=False)
                     loss = paddle.mean(conv2)
@@ -58,12 +58,11 @@ class TestCastNet(unittest.TestCase):
             if run_ipu:
                 feed_list = [image.name]
                 fetch_list = [loss.name]
-                ipu_strategy = compiler.get_ipu_strategy()
-                ipu_strategy.num_ipus = 2
-                ipu_strategy.is_training = False
-                ipu_strategy.enable_manual_shard = True
-                ipu_strategy.enable_pipelining = False
-                program = compiler.IpuCompiler(
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.SetGraphConfig(
+                    num_ipus=2, is_training=False, enable_manual_shard=True)
+                ipu_strategy.SetPipeliningConfig(enable_pipelining=False)
+                program = paddle.static.IpuCompiledProgram(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
             else:

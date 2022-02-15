@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid.compiler as compiler
+import paddle.static
 import paddle.fluid.contrib.mixed_precision.fp16_utils as fp16_utils
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMode
 
@@ -95,13 +95,13 @@ class TestBase(IPUOpTest):
 
             if exec_mode != ExecutionMode.CPU_FP32:
                 feed_list = self.feed_list
-                ipu_strategy = compiler.get_ipu_strategy()
-                ipu_strategy.is_training = self.is_training
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.SetGraphConfig(is_training=self.is_training)
                 if exec_mode == ExecutionMode.IPU_POPART_FP16:
-                    ipu_strategy.enable_fp16 = True
+                    ipu_strategy.SetHalfConfig(enable_fp16=True)
                 # set batch size
                 ipu_strategy.micro_batch_size = 2
-                program = compiler.IpuCompiler(
+                program = paddle.static.IpuCompiledProgram(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
             else:

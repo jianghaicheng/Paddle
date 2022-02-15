@@ -19,7 +19,7 @@ from enum import Enum
 from typing import Optional
 
 import paddle
-import paddle.fluid.compiler as compiler
+import paddle.static
 import paddle.static.amp as amp
 from paddle.fluid.tests.unittests.op_test import _set_use_system_allocator
 

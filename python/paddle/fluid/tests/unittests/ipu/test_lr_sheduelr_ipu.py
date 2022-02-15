@@ -19,7 +19,7 @@ import unittest
 import sys
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
+import paddle.static
 from paddle.optimizer.lr import LRScheduler
 
 paddle.enable_static()
@@ -70,9 +70,9 @@ class TestConvNet(unittest.TestCase):
             if run_ipu:
                 feed_list = [image.name]
                 fetch_list = [loss.name]
-                ipu_strategy = compiler.get_ipu_strategy()
-                ipu_strategy.is_training = True
-                program = compiler.IpuCompiler(
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.SetGraphConfig(is_training=True)
+                program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
                                                                   fetch_list)
             else:
