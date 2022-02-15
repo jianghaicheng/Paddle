@@ -680,6 +680,9 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetIpuEnableHalfPartial(config_.ipu_enable_half_partial_);
 #endif
 
+  argument_.SetUseNpu(config_.use_npu_);
+  argument_.SetNPUDeviceId(config_.npu_device_id());
+
   if (config_.use_mkldnn_) {
     LOG(INFO) << "MKLDNN is enabled";
     argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
