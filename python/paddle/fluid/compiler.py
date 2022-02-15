@@ -23,7 +23,8 @@ from .framework import cuda_places, cpu_places, xpu_places
 from . import core
 
 __all__ = [
-    'CompiledProgram', 'ExecutionStrategy', 'BuildStrategy', 'IpuStrategy'
+    'CompiledProgram', 'ExecutionStrategy', 'BuildStrategy',
+    'IpuCompiledProgram', 'IpuStrategy'
 ]
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
@@ -497,28 +498,275 @@ class CompiledProgram(object):
         return place_list
 
 
-class IpuCompiler(object):
+class IpuStrategy(object):
     """
-    The IpuCompiler is used to transform a program to a ipu-target program.
+    Help users precisely control the graph building in :code:`paddle.static.IpuCompiledProgram` .
 
     Args:
-      program(framework.Program): This argument is the Program being executed.
-      scope: This argument is the scope which contains model parameters.
-      ipu_strategy: This argument is used to build the program with the
-          specified options, such as operators' replacement, dtype, etc.
-      custom_ops: List of `IpuCustomOpIdentifier`, Custom ops will be used.
-
+        None.
+        
     Returns:
-      framework.Program
+        The IpuStrategy instance.
+
+    Examples:
+        .. code-block:: python
+	
+            # required: ipu
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+            ipu_strategy = static.IpuStrategy()
     """
 
-    def __init__(self, program, scope=None, ipu_strategy=None, custom_ops=None):
+    def __init__(self):
+        if core.is_compiled_with_ipu():
+            self._ipu_strategy = core.IpuStrategy()
+            default_conf = {
+                'location_optimizer': {
+                    'onChip': 0,
+                    'useReplicatedTensorSharding': 1,
+                },  # set optimizer location
+                'accumulationAndReplicationReductionType':
+                1,  # popart::ReductionType::Mean
+                'meanAccumulationAndReplicationReductionStrategy':
+                1,  # popart::MeanReductionStrategy::Post
+                'logDir': 'popart_log'
+            }
+            self._ipu_strategy.set_option(default_conf)
+        else:
+            raise RuntimeError(
+                "Can not use IpuStrategy in non IPU compiled environment, please re-compile with WITH_IPU=ON."
+            )
+
+    def SetGraphConfig(self,
+                       num_ipus=1,
+                       is_training=True,
+                       batch_size=1,
+                       enable_manual_shard=False,
+                       need_avg_shard=False):
+        """
+        Set graph configuration to the IpuStrategy instance.
+
+        Args:
+            num_ipus (int, optional): Number of IPU devices. Default 1, which means only use 1 IPU.
+            is_training (bool, optional): True is training graph, False is inference graph. Default True, which means is training mode.
+            batch_size (int, optional): The batch-size in the graph. Used to make the graph batch-size fixed,
+                if the batch-size in the graph is dynamic. Default 1, which means the batch-size would be set 1, if the batch-size is dynamice.
+            enable_manual_shard (bool, optional): Enable graph sharding or not. Only if num_ipus > 1, enable_manual_shard is able to be set True. 
+                Default False, which means disabled.    
+            need_avg_shard (bool, optional): Enable auto graph sharding or not. Only if num_ipus > 1 and enable_manual_shard=True, need_avg_shard is able to be set Trues. 
+                Default False, which means disabled.
+            
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+	
+                # required: ipu
+
+                import paddle
+                import paddle.static as static
+
+                paddle.enable_static()
+                ipu_strategy = static.IpuStrategy()
+                ipu_strategy.SetGraphConfig(num_ipus=1,
+                                            is_training=True,
+                                            batch_size=1,
+                                            enable_manual_shard=False,
+                                            need_avg_shard=False)
+        """
+        if num_ipus == 1 and enable_manual_shard:
+            raise RuntimeError(
+                "Only if num_ipus > 1, enable_manual_shard is able to be set True."
+            )
+        if enable_manual_shard != True and need_avg_shard:
+            raise RuntimeError(
+                "Only if enable_manual_shard=True, need_avg_shard is able to be set True."
+            )
+        conf = {
+            'num_ipus': num_ipus,
+            'is_training': is_training,
+            'micro_batch_size': batch_size,
+            'enable_manual_shard': enable_manual_shard,
+            'need_avg_shard': need_avg_shard,
+        }
+        self.set_option(conf)
+
+    def SetPipeliningConfig(self,
+                            enable_pipelining=False,
+                            batches_per_step=1,
+                            accumulationFactor=1):
+        """
+        Set pipelining configuration to the IpuStrategy instance. Used to optimize the throughput performance.
+
+        Args:
+            enable_pipelining (bool, optional): Enable data pipelining between subgraphs. Only if enable_manual_shard=True, enable_pipelining is able to be set True. 
+                Default False, which means disabled.
+            batches_per_step (int, optional): Set the batches per run in data pipelining mode. Only if enable_pipelining=True, batches_per_step is able to be set > 1.
+                Default 1, which means no data pipelining.
+            accumulationFactor (int, optional): Specify the number of micro-batches to accumulate 
+                before applying the varUpdate. Default 1, which means disable the accumulation.
+        
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                # required: ipu
+
+                import paddle
+                import paddle.static as static
+
+                paddle.enable_static()
+
+                ipu_strategy = static.IpuStrategy()
+                ipu_strategy.SetPipeliningConfig(enable_pipelining=False,
+                                                 batches_per_step=1,
+                                                 accumulationFactor=1)
+        """
+        enable_manual_shard = self.get_option('enable_manual_shard')
+        if enable_manual_shard != True and enable_pipelining:
+            raise RuntimeError(
+                "Only if enable_manual_shard=True, enable_pipelining is able to be set True."
+            )
+        # if enable_pipelining != True and batches_per_step > 1:
+        #     raise RuntimeError(
+        #         "Only if enable_pipelining=True, batches_per_step is able to be set > 1."
+        #     )
+        conf = {
+            'enable_pipelining': enable_pipelining,
+            'batches_per_step': batches_per_step,
+            'accumulationFactor': accumulationFactor,
+        }
+        self.set_option(conf)
+
+    def SetHalfConfig(self, enable_fp16=False):
+        """
+        Set half computation configuration to the IpuStrategy instance. Used to optimize the performance.
+
+        Args:
+            enable_fp16 (bool, optional): Enable FLOAT16 mode and transform FLOAT32 to FLOAT16. Default False, which means disable FLOAT16 mode.
+        
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                # required: ipu
+
+                import paddle
+                import paddle.static as static
+
+                paddle.enable_static()
+
+                ipu_strategy = static.IpuStrategy()
+                ipu_strategy.SetHalfConfig(enable_fp16=False)
+        """
+        conf = {'enable_fp16': enable_fp16, }
+        self.set_option(conf)
+
+    def set_option(self, conf):
+        self._ipu_strategy.set_option(conf)
+
+    def get_option(self, option):
+        return self._ipu_strategy.get_option(option)['value']
+
+    def enable_pattern(self, pattern):
+        self._ipu_strategy.enable_pattern(pattern)
+
+    def disable_pattern(self, pattern):
+        self._ipu_strategy.disable_pattern(pattern)
+
+    def is_pattern_enabled(self, pattern):
+        return self._ipu_strategy.is_pattern_enabled(pattern)
+
+    @property
+    def num_ipus(self):
+        """
+        Get the number of IPU devices from IpuStrategy instance.
+        """
+        return self.get_option('num_ipus')
+
+    @property
+    def is_training(self):
+        """
+        Get the boolean of training or inference from IpuStrategy instance.
+        """
+        return self.get_option('is_training')
+
+    @property
+    def enable_fp16(self):
+        """
+        Get the boolean of float16 mode or not from IpuStrategy instance.
+        """
+        return self.get_option('enable_fp16')
+
+
+class IpuCompiledProgram(object):
+    """
+    The IpuCompiledProgram is used to transform a program to a ipu-target program,
+    such as forward graph extraction, computing graph transformation, useless scale Ops clean, etc.
+
+    Args:
+        program(Program, optional): This parameter represents the :code:`Program`
+            to be executed. Default is None, which means the program will be set to 
+            the default program :code:`paddle.static.default_main_program()` .
+        scope(Scope, optional): The scope used to run this program, you can switch
+            it to different scope. Default is None, which means use the global 
+            scope :code:`paddle.static.global_scope()` .
+        ipu_strategy(IpuStrategy, optional): This argument is used to build the program with the
+            specified options, such as half computation, training or inference session, the number of IPUs, etc.
+            Default is None, which means build the program based on the default `ipu_strategy`. 
+
+    Returns:
+        IpuCompiledProgram
+
+    Example:
+        .. code-block:: python
+	
+            # required: ipu
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+
+            a = static.data(name='data', shape=[None, 1], dtype='int32')
+            b = a + 1
+            main_prog = static.default_main_program()
+            
+            ipu_strategy = static.IpuStrategy()
+            ipu_strategy.SetGraphConfig(num_ipus=1, is_training=True, batch_size=1)
+            ipu_strategy.SetPipeliningConfig(enable_pipelining=False, batches_per_step=1, accumulationFactor=1)
+            ipu_strategy.SetHalfConfig(enable_fp16=False)
+            
+            ipu_compiled_program = static.IpuCompiledProgram(
+                main_prog,
+                ipu_strategy=ipu_strategy)
+    """
+
+    def __init__(self,
+                 program=None,
+                 scope=None,
+                 ipu_strategy=None,
+                 custom_ops=None):
+        if not core.is_compiled_with_ipu():
+            raise ValueError(
+                "Can not use this function since PaddlePaddle is not compiled with IPU"
+            )
+
+        if program is None:
+            program = framework.default_main_program()
+
         if not isinstance(program, framework.Program):
             raise TypeError(
                 "The type of program is wrong, expected Program, but got %s" %
                 type(program))
-        # import here to avoiding confused
-        import paddle
 
         self._program = program
         self._compiled = False
@@ -526,12 +774,14 @@ class IpuCompiler(object):
         if scope is not None:
             self._scope = scope
         else:
+            # import here to avoiding confused
+            import paddle
             self._scope = paddle.static.global_scope()
 
         if ipu_strategy is not None:
             self._ipu_strategy = ipu_strategy
         else:
-            self._ipu_strategy = get_ipu_strategy()
+            self._ipu_strategy = IpuStrategy()
 
         if custom_ops is not None:
             self._custom_ops = custom_ops
@@ -542,9 +792,45 @@ class IpuCompiler(object):
 
         self._backend = core.IpuBackend.get_instance()
 
-    def compile(self, feed_list, fetch_list, feed_var_name='feed', scope=None):
+    def compile(self, feed_list, fetch_list):
+        """
+        This interface is used to compile the input Program to a program
+        to run the model on the ipu.
+        
+        Args:
+            feed_list(list): This parameter represents the input Tensors of the model.
+
+            fetch_list(list): This parameter represents the Tensors that need to be returned
+                after the model.
+
+        Returns:
+            Program
+
+        Example:
+            .. code-block:: python
+    	
+                # required: ipu
+    
+                import paddle
+                import paddle.static as static
+    
+                paddle.enable_static()
+    
+                a = static.data(name='data', shape=[None, 1], dtype='int32')
+                b = a + 1
+                main_prog = static.default_main_program()
+
+                ipu_strategy = static.IpuStrategy()
+                ipu_strategy.SetGraphConfig(num_ipus=1, is_training=True, batch_size=1)
+                ipu_strategy.SetPipeliningConfig(enable_pipelining=False, batches_per_step=1, accumulationFactor=1)
+                ipu_strategy.SetHalfConfig(enable_fp16=False)
+                
+                program = static.IpuCompiledProgram(
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile([a.name], [b.name])
+        """
         self._backend.set_scope(self._scope)
-        self._backend.set_ipu_strategy(self._ipu_strategy)
+        self._backend.set_ipu_strategy(self._ipu_strategy._ipu_strategy)
         if (self._custom_ops):
             self._backend.set_custom_ops(self._custom_ops)
 
@@ -644,39 +930,6 @@ class IpuCompiler(object):
 
     def save_onnx_model(self, file_name):
         self._backend.save_model_proto(file_name)
-
-
-def get_ipu_strategy():
-    """
-    Create and return IpuStrategy instance. We get IpuStrategy from
-    python side, and then set by IpuBackend.set_ipu_strategy.
-    """
-    if not core.is_compiled_with_ipu():
-        raise ValueError(
-            "Can't get ipu_strategy, since PaddlePaddle is not compiled" \
-            " with IPU"
-        )
-
-    ipu_strategy = IpuStrategy()
-
-    return ipu_strategy
-
-
-class IpuStrategy(core.IpuStrategy):
-    if not core.is_compiled_with_ipu():
-        raise ValueError(
-            "Can't get IpuStrategy, since PaddlePaddle is not " \
-            "compiled with IPU"
-        )
-
-    def __init__(self):
-        super().__init__()
-
-    def load_dict(self, conf):
-        assert isinstance(conf, dict), "Config should dict."
-        for k, v in conf.items():
-            if hasattr(self, k):
-                self.__setattr__(k, v)
 
 
 class IpuCustomOpIdentifier(core.IpuCustomOpIdentifier):

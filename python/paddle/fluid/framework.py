@@ -48,11 +48,10 @@ __all__ = [
     'default_main_program',
     'program_guard',
     'name_scope',
-    'ipu_shard',
+    'ipu_shard_guard',
     'cuda_places',
     'cpu_places',
     'xpu_places',
-    'ipu_places',
     'mlu_places',
     'cuda_pinned_places',
     'in_dygraph_mode',
@@ -114,20 +113,51 @@ ipu_stage_attr_name = 'ipu_stage'
 
 
 @signature_safe_contextmanager
-def ipu_shard(ipu_index=None, ipu_stage=None):
+def ipu_shard_guard(index=None, stage=None):
     """
-    Set model sharding id and pipeline stage.
+    Used to shard the graph on IPUs. Set each Op run on which IPU in the sharding and which stage in the pipelining.
 
     Args:
-        ipu_index: set device index of subgraph
-        ipu_stage: set pipeline stage of subgraph
+        index(int, optional): Specify which ipu the Tensor is computed on, (such as ‘0, 1, 2, 3’).
+            The default value is None, which means the Op only run on IPU 0.
+        stage(int, optional): Specify the computation order of the sharded model(such as ‘0, 1, 2, 3’).
+            The sharded model will be computed from small to large. The default value is None, 
+            which means no pipelining computation order and run Ops in terms of graph.
+    
+    **Note**:
+    Only if the enable_manual_shard=True, the ‘index’ is able to be set not None. Please refer 
+    to :code:`paddle.static.IpuStrategy` . 
+    Only if the enable_pipelining=True, the ‘stage’ is able to be set not None. Please refer 
+    to :code:`paddle.static.IpuStrategy` .
+    A index is allowed to match none stage or a stage. A stage is only allowed to match a new or 
+    duplicated index.
+
+    Examples:
+        .. code-block:: python
+
+            # required: ipu
+
+            import paddle
+            paddle.enable_static()
+            a = paddle.static.data(name='data', shape=[None, 1], dtype='int32')
+            with paddle.static.ipu_shard_guard(index=0, stage=0):
+                b = a + 1
+            with paddle.static.ipu_shard_guard(index=1, stage=1):
+                c = b + 1
+            with paddle.static.ipu_shard_guard(index=0, stage=2):
+                d = c + 1
     """
+    if not core.is_compiled_with_ipu():
+        raise ValueError(
+            "Can not use this function since PaddlePaddle is not compiled with IPU"
+        )
+
     global global_ipu_index
     global global_ipu_stage
     prev_ipu_index = global_ipu_index
     prev_ipu_stage = global_ipu_stage
-    global_ipu_index = ipu_index
-    global_ipu_stage = ipu_stage
+    global_ipu_index = index
+    global_ipu_stage = stage
     try:
         yield
     finally:
@@ -502,21 +532,6 @@ def is_compiled_with_xpu():
     return core.is_compiled_with_xpu()
 
 
-def is_compiled_with_ipu():
-    """
-    Whether this whl package can be used to run the model on IPU.
-
-    Returns (bool): support ipu or not.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            support_ipu = fluid.is_compiled_with_ipu()
-    """
-    return core.is_compiled_with_ipu()
-
-
 def is_compiled_with_npu():
     """
     Whether this whl package can be used to run the model on NPU.
@@ -530,6 +545,21 @@ def is_compiled_with_npu():
             support_npu = fluid.is_compiled_with_npu()
     """
     return core.is_compiled_with_npu()
+
+
+def is_compiled_with_ipu():
+    """
+    Whether this whl package can be used to run the model on IPU.
+
+    Returns (bool): support ipu or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            support_ipu = fluid.is_compiled_with_ipu()
+    """
+    return core.is_compiled_with_ipu()
 
 
 def disable_signal_handler():
@@ -688,26 +718,6 @@ def xpu_places(device_ids=None):
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.XPUPlace(dev_id) for dev_id in device_ids]
-
-
-def ipu_places():
-    """
-    This function creates a list of :code:`paddle.IPUPlace` objects, and returns the created list.
-
-    Returns:
-        list of paddle.IPUPlace: Created IPU place list.
-    Examples:
-        .. code-block:: python
-        
-            import paddle
-            import paddle.static as static
-            
-            paddle.enable_static()
-            ipu_places = static.ipu_places()
-    """
-    assert core.is_compiled_with_ipu(), \
-        "Not compiled with IPU"
-    return [core.IPUPlace()]
 
 
 def npu_places(device_ids=None):
@@ -6920,7 +6930,7 @@ def _get_paddle_place(place):
         return place
     if isinstance(place, (core.Place, core.XPUPlace, core.CPUPlace,
                           core.CUDAPinnedPlace, core.CUDAPlace, core.NPUPlace,
-                          core.MLUPlace, core.IPUPlace)):
+                          core.IPUPlace, core.MLUPlace)):
         return place
 
     if not isinstance(place, str):
@@ -6999,20 +7009,8 @@ def _get_paddle_place(place):
         device_id = int(device_id)
         return core.MLUPlace(device_id)
 
-    # IPU
-    avaliable_ipu_place = re.match(r'ipu:\d+', place)
-    if avaliable_ipu_place:
-        if not core.is_compiled_with_ipu():
-            raise ValueError(
-                "The device should not be {}, since PaddlePaddle is " \
-                "not compiled with IPU".format(avaliable_ipu_place))
-        place_info_list = place.split(':', 1)
-        device_id = place_info_list[1]
-        device_id = int(device_id)
-        return core.IPUPlace(device_id)
-
     raise ValueError(
-        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace, MLUPlace, MLUPlace and IPUPlace, but received {}.".
+        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace, IPUPlace, MLUPlace and NPUPlace, but received {}.".
         format(place))
 
 
