@@ -89,7 +89,7 @@ class TestBase(IPUOpTest):
                     ipu_strategy.SetHalfConfig(enable_fp16=True)
                 program = paddle.static.IpuCompiledProgram(
                     main_prog,
-                    iipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
             else:
                 program = main_prog
 
