@@ -19,6 +19,14 @@ jobs:
     runs-on: self-hosted
 
     steps:
+      - name: clean space
+        run: |
+          docker run \
+            -v $PWD:/checkout \
+            --rm \
+            paddle_ipu_ci:2.3.0 \
+            bash -c "cd /checkout && pwd && ls -l /checkout && rm -rf *"
+
       - uses: actions/checkout@v2
 
       - name: build
@@ -37,8 +45,3 @@ jobs:
             --rm \
             paddle_ipu_ci:2.3.0 \
             bash /checkout/paddle/scripts/ipu/github_action/action_build_and_test.sh
-
-      # - uses: actions/upload-artifact@v2
-      #   with:
-      #     name: paddle_ipu_${{github.sha}}.zip
-      #     path: /tmp/paddlepaddle-0.0.0-cp37-cp37m-linux_x86_64.whl
