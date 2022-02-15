@@ -2,16 +2,25 @@
 # ref: https://github.com/repo-sync/repo-sync
 
 on:
-  # schedule:
-  #   - cron: "0 10 * * *" # 2:00 AM UTC+08:00 everyday
+  schedule:
+    - cron: "0 10 * * *" # 2:00 AM UTC+08:00 everyday
   workflow_dispatch:
 
 jobs:
   repo-sync:
     runs-on: self-hosted
     steps:
+      - name: clean space
+        run: |
+          docker run \
+            -v $PWD:/checkout \
+            --rm \
+            paddle_ipu_ci:2.3.0 \
+            bash -c "cd /checkout && pwd && ls -a /checkout && rm -rf ..?* .[!.]* *"
+
       # TODO use latest git version and actions/checkout@v2
       - uses: actions/checkout@v1
+
       - name: repo-sync
         uses: gglin001/github-sync@v2
         with:
@@ -19,6 +28,7 @@ jobs:
           source_branch: "develop"
           destination_branch: develop
           github_token: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: gglin001/pull-request@v2
         name: Create pull request
         with:
@@ -27,3 +37,11 @@ jobs:
           pr_title: "[AUTO PR] Pulling develop into develop-ipu"
           # pr_body: ":crown: *An automated PR*"
           github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: clean space
+        run: |
+          docker run \
+            -v $PWD:/checkout \
+            --rm \
+            paddle_ipu_ci:2.3.0 \
+            bash -c "cd /checkout && pwd && ls -a /checkout && rm -rf ..?* .[!.]* *"
