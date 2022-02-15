@@ -286,6 +286,10 @@ struct Argument {
                       IpuAvailableMemoryProportion, float);
   DECL_ARGUMENT_FIELD(ipu_enable_half_partial, IpuEnableHalfPartial, bool);
 
+  // npu related
+  DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);
+  DECL_ARGUMENT_FIELD(npu_device_id, NPUDeviceId, int);
+
  private:
   std::unordered_set<std::string> valid_fields_;
 };
