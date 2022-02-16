@@ -95,7 +95,7 @@ class TestBase(IPUOpTest):
                 exe.run(startup_prog)
 
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(
+                ipu_strategy.set_graph_config(
                     is_training=self.attrs['is_training'])
                 program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(
@@ -125,7 +125,7 @@ class TestBase(IPUOpTest):
             feed_list = feed_target_names
             fetch_list = [fetch_targets[0].name]
             ipu_strategy = paddle.static.IpuStrategy()
-            ipu_strategy.SetGraphConfig(is_training=False)
+            ipu_strategy.set_graph_config(is_training=False)
             program = paddle.static.IpuCompiledProgram(
                 inference_program,
                 ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)

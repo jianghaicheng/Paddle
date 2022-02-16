@@ -59,7 +59,7 @@ class TestSGD(unittest.TestCase):
                 feed_list = [image.name]
                 fetch_list = [loss.name]
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(is_training=True)
+                ipu_strategy.set_graph_config(is_training=True)
                 program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
                                                                   fetch_list)

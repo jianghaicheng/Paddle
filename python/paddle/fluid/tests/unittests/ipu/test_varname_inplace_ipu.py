@@ -83,7 +83,7 @@ class TestBase(IPUOpTest):
             if run_ipu:
                 feed_list = self.feed_list
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(is_training=self.is_training)
+                ipu_strategy.set_graph_config(is_training=self.is_training)
                 program = paddle.static.IpuCompiledProgram(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)

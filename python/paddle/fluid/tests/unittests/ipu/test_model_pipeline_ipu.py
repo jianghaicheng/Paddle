@@ -59,9 +59,9 @@ class TestCastNet(unittest.TestCase):
                 feed_list = [image.name]
                 fetch_list = [loss.name]
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(
+                ipu_strategy.set_graph_config(
                     num_ipus=2, is_training=False, enable_manual_shard=True)
-                ipu_strategy.SetPipeliningConfig(enable_pipelining=False)
+                ipu_strategy.set_pipelining_config(enable_pipelining=False)
                 program = paddle.static.IpuCompiledProgram(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)

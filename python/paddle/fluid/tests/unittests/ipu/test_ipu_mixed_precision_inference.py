@@ -93,10 +93,10 @@ class TestBase(IPUOpTest):
 
                     if exec_mode != ExecutionMode.CPU_FP32:
                         ipu_strategy = paddle.static.IpuStrategy()
-                        ipu_strategy.SetGraphConfig(is_training=False)
+                        ipu_strategy.set_graph_config(is_training=False)
                         ipu_strategy.save_init_onnx = True
                         if exec_mode == ExecutionMode.IPU_POPART_FP16:
-                            ipu_strategy.SetHalfConfig(enable_fp16=True)
+                            ipu_strategy.set_half_config(enable_fp16=True)
                         program = paddle.static.IpuCompiledProgram(
                             main_prog, ipu_strategy=ipu_strategy).compile(
                                 self.feed_list, fetch_list)

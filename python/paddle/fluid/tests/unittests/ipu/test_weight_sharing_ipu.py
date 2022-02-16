@@ -98,11 +98,11 @@ class TestWeightSharing(IPUOpTest):
             if run_ipu:
                 feed_list = self.feed_list
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(
+                ipu_strategy.set_graph_config(
                     num_ipus=2,
                     is_training=self.is_training,
                     enable_manual_shard=True)
-                ipu_strategy.SetPipeliningConfig(
+                ipu_strategy.set_pipelining_config(
                     enable_pipelining=True, batches_per_step=3)
                 program = paddle.static.IpuCompiledProgram(
                     main_prog,

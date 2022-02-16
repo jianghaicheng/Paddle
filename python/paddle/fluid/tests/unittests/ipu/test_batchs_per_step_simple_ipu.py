@@ -60,8 +60,8 @@ class TestFunc(unittest.TestCase):
                 feed_list = [image.name]
                 fetch_list = [out.name]
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(is_training=False)
-                ipu_strategy.SetPipeliningConfig(batches_per_step=bps)
+                ipu_strategy.set_graph_config(is_training=False)
+                ipu_strategy.set_pipelining_config(batches_per_step=bps)
                 program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
                                                                   fetch_list)

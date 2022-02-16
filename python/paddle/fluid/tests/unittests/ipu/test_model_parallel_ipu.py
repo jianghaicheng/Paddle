@@ -99,7 +99,7 @@ class TestBase(IPUOpTest):
                 ipu_strategy.replicatedGraphCount = self.attrs[
                     'replicatedGraphCount']
                 ipu_strategy.num_ipus = 2 * self.attrs['replicatedGraphCount']
-                ipu_strategy.SetGraphConfig(is_training=self.is_training)
+                ipu_strategy.set_graph_config(is_training=self.is_training)
                 ipu_strategy.enable_manual_shard = True
                 ipu_strategy.enable_pipelining = self.attrs['enable_pipeline']
                 ipu_strategy.batches_per_step = self.attrs['batches_per_step']

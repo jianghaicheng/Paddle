@@ -540,12 +540,12 @@ class IpuStrategy(object):
                 "Can not use IpuStrategy in non IPU compiled environment, please re-compile with WITH_IPU=ON."
             )
 
-    def SetGraphConfig(self,
-                       num_ipus=1,
-                       is_training=True,
-                       batch_size=1,
-                       enable_manual_shard=False,
-                       need_avg_shard=False):
+    def set_graph_config(self,
+                         num_ipus=1,
+                         is_training=True,
+                         batch_size=1,
+                         enable_manual_shard=False,
+                         need_avg_shard=False):
         """
         Set graph configuration to the IpuStrategy instance.
 
@@ -568,11 +568,10 @@ class IpuStrategy(object):
                 # required: ipu
 
                 import paddle
-                import paddle.static as static
 
                 paddle.enable_static()
-                ipu_strategy = static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(num_ipus=1,
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.set_graph_config(num_ipus=1,
                                             is_training=True,
                                             batch_size=1,
                                             enable_manual_shard=False,
@@ -595,10 +594,10 @@ class IpuStrategy(object):
         }
         self.set_option(conf)
 
-    def SetPipeliningConfig(self,
-                            enable_pipelining=False,
-                            batches_per_step=1,
-                            accumulationFactor=1):
+    def set_pipelining_config(self,
+                              enable_pipelining=False,
+                              batches_per_step=1,
+                              accumulationFactor=1):
         """
         Set pipelining configuration to the IpuStrategy instance. Used to optimize the throughput performance.
 
@@ -622,9 +621,8 @@ class IpuStrategy(object):
                 import paddle.static as static
 
                 paddle.enable_static()
-
                 ipu_strategy = static.IpuStrategy()
-                ipu_strategy.SetPipeliningConfig(enable_pipelining=False,
+                ipu_strategy.set_pipelining_config(enable_pipelining=False,
                                                  batches_per_step=1,
                                                  accumulationFactor=1)
         """
@@ -633,10 +631,6 @@ class IpuStrategy(object):
             raise RuntimeError(
                 "Only if enable_manual_shard=True, enable_pipelining is able to be set True."
             )
-        # if enable_pipelining != True and batches_per_step > 1:
-        #     raise RuntimeError(
-        #         "Only if enable_pipelining=True, batches_per_step is able to be set > 1."
-        #     )
         conf = {
             'enable_pipelining': enable_pipelining,
             'batches_per_step': batches_per_step,
@@ -644,7 +638,7 @@ class IpuStrategy(object):
         }
         self.set_option(conf)
 
-    def SetHalfConfig(self, enable_fp16=False):
+    def set_half_config(self, enable_fp16=False):
         """
         Set half computation configuration to the IpuStrategy instance. Used to optimize the performance.
 
@@ -660,29 +654,72 @@ class IpuStrategy(object):
                 # required: ipu
 
                 import paddle
-                import paddle.static as static
 
                 paddle.enable_static()
-
-                ipu_strategy = static.IpuStrategy()
-                ipu_strategy.SetHalfConfig(enable_fp16=False)
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.set_half_config(enable_fp16=False)
         """
         conf = {'enable_fp16': enable_fp16, }
         self.set_option(conf)
 
     def set_option(self, conf):
+        """
+        Set option from Dict
+
+        Args:
+            conf(Dict): Dict of options.
+        
+        Returns:
+            None.
+        """
         self._ipu_strategy.set_option(conf)
 
     def get_option(self, option):
+        """
+        Get option.
+
+        Args:
+            option(str): name of option.
+        
+        Returns:
+            option value.
+        """
         return self._ipu_strategy.get_option(option)['value']
 
     def enable_pattern(self, pattern):
+        """
+        Enable a popart pattern.
+
+        Args:
+            pattern(str): name of a pattern.
+        
+        Returns:
+            None.
+        """
         self._ipu_strategy.enable_pattern(pattern)
 
     def disable_pattern(self, pattern):
+        """
+        Disable a popart pattern.
+
+        Args:
+            pattern(str): name of a pattern.
+        
+        Returns:
+            None.
+        """
         self._ipu_strategy.disable_pattern(pattern)
 
     def is_pattern_enabled(self, pattern):
+        """
+        Check if a popart pattern is enabled.
+
+        Args:
+            pattern(str): name of a pattern.
+        
+        Returns:
+            bool.
+        """
         return self._ipu_strategy.is_pattern_enabled(pattern)
 
     @property
@@ -698,6 +735,13 @@ class IpuStrategy(object):
         Get the boolean of training or inference from IpuStrategy instance.
         """
         return self.get_option('is_training')
+
+    @property
+    def enable_pipelining(self):
+        """
+        Get the boolean of enable pipelining or not from IpuStrategy instance.
+        """
+        return self.get_option('enable_pipelining')
 
     @property
     def enable_fp16(self):
@@ -741,9 +785,9 @@ class IpuCompiledProgram(object):
             main_prog = static.default_main_program()
             
             ipu_strategy = static.IpuStrategy()
-            ipu_strategy.SetGraphConfig(num_ipus=1, is_training=True, batch_size=1)
-            ipu_strategy.SetPipeliningConfig(enable_pipelining=False, batches_per_step=1, accumulationFactor=1)
-            ipu_strategy.SetHalfConfig(enable_fp16=False)
+            ipu_strategy.set_graph_config(num_ipus=1, is_training=True, batch_size=1)
+            ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, accumulationFactor=1)
+            ipu_strategy.set_half_config(enable_fp16=False)
             
             ipu_compiled_program = static.IpuCompiledProgram(
                 main_prog,
@@ -821,9 +865,9 @@ class IpuCompiledProgram(object):
                 main_prog = static.default_main_program()
 
                 ipu_strategy = static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(num_ipus=1, is_training=True, batch_size=1)
-                ipu_strategy.SetPipeliningConfig(enable_pipelining=False, batches_per_step=1, accumulationFactor=1)
-                ipu_strategy.SetHalfConfig(enable_fp16=False)
+                ipu_strategy.set_graph_config(num_ipus=1, is_training=True, batch_size=1)
+                ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, accumulationFactor=1)
+                ipu_strategy.set_half_config(enable_fp16=False)
                 
                 program = static.IpuCompiledProgram(
                     main_prog,
