@@ -40,7 +40,7 @@ class TestWeightSharing(IPUOpTest):
         x = np.random.randint(0, 768, size=(128, 1)).astype(np.int32)
         self.feed_cpu = {"x": x.astype(np.int64)}
         self.feed_ipu = {
-            "x": np.tile(x.astype(np.int32)[np.newaxis, :], [3, 1, 1])
+            "x": np.tile(x.astype(np.int64)[np.newaxis, :], [3, 1, 1])
         }
 
     def set_feed_attr(self):
@@ -59,11 +59,10 @@ class TestWeightSharing(IPUOpTest):
 
         with paddle.fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                dtype = 'int32' if run_ipu else 'int64'
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
-                    dtype=dtype)
+                    dtype='int64')
 
                 with paddle.static.ipu_shard_guard(index=0, stage=0):
                     y = paddle.fluid.layers.embedding(

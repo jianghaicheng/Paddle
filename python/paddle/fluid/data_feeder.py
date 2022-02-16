@@ -128,7 +128,7 @@ def check_dtype(input_dtype,
                 op_name,
                 extra_message=''):
     # See NOTE [ Why skip dynamic graph check ]
-    if in_dygraph_mode() or core.is_compiled_with_ipu():
+    if in_dygraph_mode():
         return
     if convert_dtype(input_dtype) in ['float16']:
         warnings.warn(
