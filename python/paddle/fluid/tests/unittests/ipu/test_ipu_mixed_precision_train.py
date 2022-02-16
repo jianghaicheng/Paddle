@@ -21,8 +21,7 @@ import paddle.nn.functional as F
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMode
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
+@unittest.skipIf(True, "not support mixed precision yet")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -88,21 +87,6 @@ class TestBase(IPUOpTest):
                         pool = F.max_pool2d(bn, kernel_size=2, stride=2)
                         loss = paddle.mean(pool)
                         optimizer = paddle.optimizer.Adam(learning_rate=1e-2)
-
-                    if exec_mode == ExecutionMode.IPU_PADDLE_FP16:
-                        amp_list = paddle.static.amp.CustomOpLists(
-                            custom_black_list=[
-                                # 'conv2d', 'batch_norm', 'reduce_mean'
-                            ])
-                        optimizer = paddle.static.amp.decorate(
-                            optimizer,
-                            amp_list,
-                            init_loss_scaling=1.0,
-                            use_dynamic_loss_scaling=False,
-                            use_pure_fp16=False)
-                        optimizer.minimize(loss, startup_prog)
-                        self.dtype_check(main_prog)
-                    else:
                         optimizer.minimize(loss, startup_prog)
 
                 fetch_list = [loss.name]

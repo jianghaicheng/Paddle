@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 import paddle
 import paddle.static
-import paddle.fluid.contrib.mixed_precision.fp16_utils as fp16_utils
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMode
 
 
@@ -84,12 +83,6 @@ class TestTopKOp(IPUOpTest):
                 place = paddle.CPUPlace()
             else:
                 place = paddle.IPUPlace()
-
-            if exec_mode == ExecutionMode.IPU_PADDLE_FP16:
-                fp16_utils.rewrite_program_v2(
-                    startup_prog=startup_prog,
-                    main_prog=main_prog,
-                    amp_lists=self.amp_list)
 
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)

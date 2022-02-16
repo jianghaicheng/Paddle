@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 import paddle
 import paddle.static
-import paddle.fluid.contrib.mixed_precision.fp16_utils as fp16_utils
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMode
 
 

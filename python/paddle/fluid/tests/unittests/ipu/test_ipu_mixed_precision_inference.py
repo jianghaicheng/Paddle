@@ -18,12 +18,10 @@ import numpy as np
 import paddle
 import paddle.static
 import paddle.nn.functional as F
-import paddle.fluid.contrib.mixed_precision.fp16_utils as fp16_utils
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMode
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
+@unittest.skipIf(True, "not support mixed precision yet")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -89,14 +87,6 @@ class TestBase(IPUOpTest):
                         place = paddle.CPUPlace()
                     else:
                         place = paddle.IPUPlace()
-
-                    if exec_mode == ExecutionMode.IPU_PADDLE_FP16:
-                        amp_list = paddle.static.amp.CustomOpLists(
-                            custom_black_list=[])
-                        fp16_utils.rewrite_program_v2(
-                            startup_prog=startup_prog,
-                            main_prog=main_prog,
-                            amp_lists=amp_list)
 
                     exe = paddle.static.Executor(place)
                     exe.run(startup_prog)
