@@ -440,8 +440,7 @@ void IpuStrategy::SetTensorLocation(const std::string& tensor,
 
 void IpuStrategy::AddCustomOp(const std::string& paddle_op,
                               const std::string& popart_op,
-                              const std::string& domain,
-                              std::uint64_t version) {
+                              const std::string& domain, int version) {
   LOG(INFO) << "IpuStrategy add custom op: " << paddle_op;
   custom_ops.push_back(
       IpuCustomOpIdentifier(paddle_op, popart_op, domain, version));

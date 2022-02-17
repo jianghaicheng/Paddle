@@ -119,7 +119,7 @@ struct IpuStrategy {
   void SetTensorLocation(const std::string &tensor, const std::string &option,
                          std::uint64_t value);
   void AddCustomOp(const std::string &paddle_op, const std::string &popart_op,
-                   const std::string &domain, std::uint64_t version);
+                   const std::string &domain, int version);
 
   std::string GetOption(const std::string &);
   std::vector<std::string> GetVectorOption(const std::string &);
