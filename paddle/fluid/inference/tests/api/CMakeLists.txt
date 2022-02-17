@@ -8,10 +8,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set(INFERENCE_EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ${analysis_deps})
 endif()
 
-if(WITH_IPU)
-    set(INFERENCE_EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_ipu)
-endif()
-
 function(download_data install_dir data_file check_sum)
     string(REGEX MATCH "[^/\\]+$" file_name ${data_file})
     if (NOT EXISTS ${install_dir}/${file_name})
