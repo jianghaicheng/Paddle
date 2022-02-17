@@ -683,7 +683,6 @@ class IpuStrategy(object):
         
         Returns:
             None.
-
         """
         if popart_op is None:
             popart_op = paddle_op
