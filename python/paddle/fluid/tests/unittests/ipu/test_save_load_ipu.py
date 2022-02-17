@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 import unittest
-import shutil
 
 import numpy as np
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
-import tempfile
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -47,7 +46,7 @@ class TestBase(IPUOpTest):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'sgd'
         self.attrs['enable_fp16'] = False
-        self.attrs['model_path'] = tempfile.TemporaryDirectory().name
+        self.attrs['model_path'] = tempfile.TemporaryDirectory()
 
     def _test_base(self, save_otherwise_load):
         scope = paddle.fluid.core.Scope()
@@ -89,7 +88,7 @@ class TestBase(IPUOpTest):
                 exe.run(startup_prog)
 
                 if not save_otherwise_load:
-                    paddle.static.load(main_prog, self.attrs['model_path'])
+                    paddle.static.load(main_prog, self.attrs['model_path'].name)
 
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(
@@ -116,7 +115,8 @@ class TestBase(IPUOpTest):
                     # will optimize
                     if save_otherwise_load and \
                         i == self.attrs['save_at_step'] - 1:
-                        paddle.static.save(main_prog, self.attrs['model_path'])
+                        paddle.static.save(main_prog,
+                                           self.attrs['model_path'].name)
 
                     if save_otherwise_load and i >= self.attrs['save_at_step']:
                         result.append(tmp)
@@ -132,7 +132,7 @@ class TestBase(IPUOpTest):
         self.assertTrue(
             np.allclose(
                 res0.flatten(), res1.flatten(), atol=self.atol))
-        shutil.rmtree(self.attrs['model_path'], True)
+        self.attrs['model_path'].cleanup()
 
 
 class TestAdam(TestBase):
@@ -143,7 +143,7 @@ class TestAdam(TestBase):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'adam'
         self.attrs['enable_fp16'] = False
-        self.attrs['model_path'] = tempfile.TemporaryDirectory().name
+        self.attrs['model_path'] = tempfile.TemporaryDirectory()
 
 
 class TestLamb(TestBase):
@@ -154,7 +154,7 @@ class TestLamb(TestBase):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'lamb'
         self.attrs['enable_fp16'] = False
-        self.attrs['model_path'] = tempfile.TemporaryDirectory().name
+        self.attrs['model_path'] = tempfile.TemporaryDirectory()
 
 
 @unittest.skipIf(IPUOpTest.use_ipumodel, "skip for ipumodel")
@@ -166,7 +166,7 @@ class TestSGDFP16(TestBase):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'sgd'
         self.attrs['enable_fp16'] = True
-        self.attrs['model_path'] = tempfile.TemporaryDirectory().name
+        self.attrs['model_path'] = tempfile.TemporaryDirectory()
 
 
 @unittest.skipIf(IPUOpTest.use_ipumodel, "skip for ipumodel")
@@ -178,7 +178,7 @@ class TestAdamFP16(TestBase):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'adam'
         self.attrs['enable_fp16'] = True
-        self.attrs['model_path'] = tempfile.TemporaryDirectory().name
+        self.attrs['model_path'] = tempfile.TemporaryDirectory()
 
 
 @unittest.skipIf(IPUOpTest.use_ipumodel, "skip for ipumodel")
@@ -190,7 +190,7 @@ class TestLambFP16(TestBase):
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'lamb'
         self.attrs['enable_fp16'] = True
-        self.attrs['model_path'] = tempfile.TemporaryDirectory().name
+        self.attrs['model_path'] = tempfile.TemporaryDirectory()
 
 
 if __name__ == "__main__":

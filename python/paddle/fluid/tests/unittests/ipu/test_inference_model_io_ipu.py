@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 import unittest
-import shutil
 
 import numpy as np
 import paddle
@@ -50,7 +50,7 @@ class TestBase(IPUOpTest):
         self.attrs['save_at_step'] = 20
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'sgd'
-        self.attrs['path'] = 'model'
+        self.attrs['path'] = tempfile.TemporaryDirectory()
         self.attrs['model_name'] = 'test'
 
     def _test_save(self):
@@ -61,7 +61,7 @@ class TestBase(IPUOpTest):
         startup_prog.random_seed = self.SEED
         generator = paddle.fluid.unique_name.UniqueNameGenerator()
         self.full_name = '/'.join(
-            [self.attrs['path'], self.attrs['model_name']])
+            [self.attrs['path'].name, self.attrs['model_name']])
 
         with paddle.fluid.unique_name.guard(generator):
             with paddle.fluid.scope_guard(scope):
@@ -142,8 +142,7 @@ class TestBase(IPUOpTest):
         ipu_res = self._test_load(True)
 
         self.assertTrue(np.allclose(cpu_res, ipu_res, atol=self.atol))
-
-        shutil.rmtree(self.attrs['path'], True)
+        self.attrs['path'].cleanup()
 
 
 class TestAdam(TestBase):
@@ -152,7 +151,7 @@ class TestAdam(TestBase):
         self.attrs['steps'] = 100
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'adam'
-        self.attrs['path'] = 'model'
+        self.attrs['path'] = tempfile.TemporaryDirectory()
         self.attrs['model_name'] = 'test'
 
 
@@ -162,7 +161,7 @@ class TestLamb(TestBase):
         self.attrs['steps'] = 100
         self.attrs['is_training'] = True
         self.attrs['opt_type'] = 'lamb'
-        self.attrs['path'] = 'model'
+        self.attrs['path'] = tempfile.TemporaryDirectory()
         self.attrs['model_name'] = 'test'
 
 

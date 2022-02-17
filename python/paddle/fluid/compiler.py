@@ -535,6 +535,8 @@ class IpuStrategy(object):
                 'logDir': 'popart_log'
             }
             self._ipu_strategy.set_option(default_conf)
+            self.has_custom_ops = False
+            self.custom_op_names = []
         else:
             raise RuntimeError(
                 "Can not use IpuStrategy in non IPU compiled environment, please re-compile with WITH_IPU=ON."
@@ -661,6 +663,40 @@ class IpuStrategy(object):
         """
         conf = {'enable_fp16': enable_fp16, }
         self.set_option(conf)
+
+    def add_custom_op(self,
+                      paddle_op,
+                      popart_op=None,
+                      domain='custom.ops',
+                      version=1):
+        """
+        Add a mapping to use popart custom ops running on the IPU.
+
+        Args:
+            paddle_op(str): the name of custom op in paddle.
+
+            popart_op(str): the name of custom op in popart.
+
+            domain(str): domain name of custom op in popart.
+
+            version(int): version of custom op in popart.
+        
+        Returns:
+            None.
+
+        """
+        if popart_op is None:
+            popart_op = paddle_op
+        custom_op = {
+            'paddle_op': paddle_op,
+            'popart_op': popart_op,
+            'domain': domain,
+            'version': version,
+        }
+        self.set_option({'custom_op': custom_op})
+        self.custom_op_names.append(paddle_op)
+        if not self.has_custom_ops:
+            self.has_custom_ops = True
 
     def set_option(self, conf):
         """
@@ -794,11 +830,7 @@ class IpuCompiledProgram(object):
                 ipu_strategy=ipu_strategy)
     """
 
-    def __init__(self,
-                 program=None,
-                 scope=None,
-                 ipu_strategy=None,
-                 custom_ops=None):
+    def __init__(self, program=None, scope=None, ipu_strategy=None):
         if not core.is_compiled_with_ipu():
             raise ValueError(
                 "Can not use this function since PaddlePaddle is not compiled with IPU"
@@ -827,11 +859,9 @@ class IpuCompiledProgram(object):
         else:
             self._ipu_strategy = IpuStrategy()
 
-        if custom_ops is not None:
-            self._custom_ops = custom_ops
-            self._custom_op_names = set([x.paddle_op for x in custom_ops])
+        if ipu_strategy.has_custom_ops:
+            self._custom_op_names = set(ipu_strategy.custom_op_names)
         else:
-            self._custom_ops = []
             self._custom_op_names = ()
 
         self._backend = core.IpuBackend.get_instance()
@@ -875,8 +905,6 @@ class IpuCompiledProgram(object):
         """
         self._backend.set_scope(self._scope)
         self._backend.set_ipu_strategy(self._ipu_strategy._ipu_strategy)
-        if (self._custom_ops):
-            self._backend.set_custom_ops(self._custom_ops)
 
         # feed and fetch doesn't have corresponding popart op, so we rm both here
         global_block = self._program.global_block()
@@ -918,7 +946,7 @@ class IpuCompiledProgram(object):
             a_pass.apply(self._graph)
 
         a_pass = core.get_pass('popart_canonicalization_pass')
-        if (self._custom_op_names):
+        if self._custom_op_names:
             a_pass.set('custom_ops', self._custom_op_names)
         a_pass.apply(self._graph)
 
@@ -966,34 +994,14 @@ class IpuCompiledProgram(object):
 
         return program
 
-    def detach(self):
-        self._backend.detach()
-
-    def reset(self):
-        self._backend.reset()
-
     def save_onnx_model(self, file_name):
+        """
+        Save compiled IpuCompiledProgram in ONNX format.
+
+        Args:
+            file_name(str): path of onnx model.
+
+        Returns:
+            None
+        """
         self._backend.save_model_proto(file_name)
-
-
-class IpuCustomOpIdentifier(core.IpuCustomOpIdentifier):
-    if not core.is_compiled_with_ipu():
-        raise ValueError(
-            "Can't get IpuCustomOpIdentifier, since PaddlePaddle is not " \
-            "compiled with IPU"
-        )
-
-    def __init__(self,
-                 paddle_op: str,
-                 popart_op: str=None,
-                 domain: str='custom.ops',
-                 version: int=1):
-        if popart_op is None:
-            popart_op = paddle_op
-        super().__init__(paddle_op, popart_op, domain, version)
-
-    def __repr__(self):
-        return self.repr()
-
-    def __str__(self):
-        return self.repr()

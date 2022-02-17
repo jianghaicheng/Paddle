@@ -95,11 +95,9 @@ void IpuBackend::SetIpuStrategy(const IpuStrategy& strategy) {
   ipu_strategy_ = &strategy;
   compiler_->SetIpuStrategy(strategy);
   executor_->SetIpuStrategy(strategy);
-}
-
-void IpuBackend::SetCustomOps(
-    const std::vector<IpuCustomOpIdentifier>& custom_ops) {
-  compiler_->SetCustomOps(custom_ops);
+  if (!strategy.custom_ops.empty()) {
+    compiler_->SetCustomOps(strategy.custom_ops);
+  }
 }
 
 void IpuBackend::SaveModelProto(const std::string& path) {
