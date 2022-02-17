@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
-import os
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
 import paddle.optimizer
 import paddle.static
-from paddle.utils.cpp_extension import load
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
                                                           np_dtype_to_fluid_str)
+from paddle.utils.cpp_extension import load
 
 paddle.enable_static()
 
@@ -39,13 +37,6 @@ if enable_test:
             f"{cur_dir}/leaky_relu_ipu.cc",
         ],
         extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'])
-
-    # build a list of IpuCustomOpIdentifier
-    # `custom_leaky_relu` was defined in leaky_relu_cpu.cc
-    # `LeakyRelu` was defined in leaky_relu_ipu.cc
-    custom_ops_list = [
-        compiler.IpuCustomOpIdentifier("custom_leaky_relu", "LeakyRelu"),
-    ]
 
 
 @unittest.skipIf(not enable_test, "disable in CI")
@@ -74,14 +65,14 @@ class TestBase(IPUOpTest):
         self.attrs = {'alpha': 0.1}
 
     def _test_base(self, run_ipu=True):
-        scope = fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         SEED = self.SEED
         main_prog.random_seed = SEED
         startup_prog.random_seed = SEED
 
-        with fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
@@ -101,12 +92,20 @@ class TestBase(IPUOpTest):
             if run_ipu:
                 feed_list = self.feed_list
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(is_training=False)
-                ipu_strategy.SetHalfConfig(enable_fp16=True)
-                program = compiler.IPUCompiledProgram(
-                    main_prog,
-                    ipu_strategy=ipu_strategy,
-                    custom_ops=custom_ops_list).compile(feed_list, fetch_list)
+                ipu_strategy.set_graph_config(is_training=False)
+
+                # add name mapping for paddle custom op and popart custom ops
+                # `paddle_op` was defined in leaky_relu_cpu.cc
+                # `popart_op`, `domain` and `version` was defined in leaky_relu_ipu.cc
+                ipu_strategy.add_custom_op(
+                    paddle_op="custom_leaky_relu",
+                    popart_op="LeakyRelu",
+                    domain='custom.ops',
+                    version=1)
+
+                program = paddle.static.IpuCompiledProgram(
+                    main_prog, scope=scope,
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
             else:
                 program = main_prog
 

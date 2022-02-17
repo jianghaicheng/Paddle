@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
-import os
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
 import paddle.optimizer
 import paddle.static
-from paddle.utils.cpp_extension import load
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
                                                           np_dtype_to_fluid_str)
+from paddle.utils.cpp_extension import load
 
 paddle.enable_static()
 
@@ -69,14 +67,14 @@ class TestBase(IPUOpTest):
         self.attrs = {}
 
     def _test_base(self, run_ipu=True):
-        scope = fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         SEED = self.SEED
         main_prog.random_seed = SEED
         startup_prog.random_seed = SEED
 
-        with fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
@@ -98,10 +96,10 @@ class TestBase(IPUOpTest):
             if run_ipu:
                 feed_list = self.feed_list
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(is_training=self.is_training)
-                program = compiler.IpuCompiler(
-                    main_prog,
-                    ipu_strategy=ipu_strategy, ).compile(feed_list, fetch_list)
+                ipu_strategy.set_graph_config(is_training=self.is_training)
+                program = paddle.static.IpuCompiledProgram(
+                    main_prog, scope=scope,
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
             else:
                 program = main_prog
 

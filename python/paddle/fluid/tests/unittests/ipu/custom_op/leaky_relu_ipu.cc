@@ -15,6 +15,7 @@
 #include <popart/opmanager.hpp>
 #include <popart/opserialiser.hpp>
 #include <popart/popx/opxmanager.hpp>
+#include <popart/shapeinference.hpp>
 
 #include <popops/ElementWise.hpp>
 
@@ -122,6 +123,11 @@ static popart::OpCreator<LeakyReluOp> leakyReluOpCreator(
     },
     true);
 }  // namespace
+
+static popart::RegisterShapeInferenceFunction leakyReluShapeInfer(
+    CustomOperators::LeakyReluId,
+    [](popart::ShapeInferenceContext &ctx  // NO_LINT
+       ) { ctx.outInfo(0) = ctx.inInfo(0); });
 
 namespace pe = popops::expr;
 

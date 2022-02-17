@@ -42,15 +42,18 @@ custom_ops = load(
 
 ```
 
-由于 Paddle 中 op 的定义和 PopART 中存在一些差异, 需要创建一个 custom op 的映射表
+由于 Paddle 中 op 的定义和 PopART 中存在一些差异, 需要手动映射 custom op
 
 ```python
 
-# custom_leaky_relu is custom op type in Paddle
-# LeakyRelu is custom op type in PopART
-custom_ops_list = [
-    compiler.IpuCustomOpIdentifier("custom_leaky_relu", "LeakyRelu"),
-]
+# paddle_op is custom op type in Paddle
+# popart_op, domain and version is custom op identifier in PopART
+ipu_strategy = paddle.static.IpuStrategy()
+ipu_strategy.add_custom_op(
+    paddle_op="custom_leaky_relu",
+    popart_op="LeakyRelu",
+    domain='custom.ops',
+    version=1)
 
 ```
 
@@ -71,9 +74,8 @@ out = custom_ops.custom_leaky_relu(x, **self.attrs)
 
 ```python
 
-program = compiler.IpuCompiler(
-    main_prog,
-    ipu_strategy=ipu_strategy,
-    custom_ops=custom_ops_list).compile(feed_list, fetch_list)
+program = paddle.static.IpuCompiledProgram(
+    main_prog, scope=scope,
+    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
 
 ```
