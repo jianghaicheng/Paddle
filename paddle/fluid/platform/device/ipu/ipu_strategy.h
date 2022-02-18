@@ -66,49 +66,14 @@ struct IpuStrategy {
   // defaultMaxWeightNorm for adam optimizer
   float max_weight_norm = 65504.0f;
 
+  // popart session option
   popart::SessionOptions popart_options;
 
   // popart pattern manager
   popart::Patterns popart_patterns;
+
+  // custom ops
   std::vector<IpuCustomOpIdentifier> custom_ops;
-
- private:
-  std::map<std::string, std::function<void(bool)>> bool_options;
-  std::map<std::string, std::function<void(std::uint64_t)>> uint64_options;
-  std::map<std::string, std::function<void(double)>> double_options;
-  std::map<std::string, std::function<void(std::string)>> string_options;
-  std::map<std::string,
-           std::function<void(std::pair<std::string, std::string>)>>
-      container_options;
-
-  std::map<std::string, std::function<std::string()>> options_getter;
-  std::map<std::string, std::function<std::vector<std::string>()>>
-      vector_options_getter;
-  std::map<std::string, std::function<std::map<std::string, std::string>()>>
-      map_options_getter;
-  std::map<std::string, std::string> options_type;
-
-  template <typename ValueType>
-  void set(
-      const std::string &key, ValueType value,
-      std::map<std::string, std::function<void(ValueType)>> &options,  // NOLINT
-      const std::string &type_str) {
-    auto it = options.find(key);
-    PADDLE_ENFORCE_NE(it, options.end(),
-                      platform::errors::InvalidArgument("Option: %s, type: %s",
-                                                        key, type_str));
-    it->second(value);
-  }
-
-  template <typename ValueType>
-  ValueType get(
-      const std::string &key,
-      std::map<std::string, std::function<ValueType()>> &options) {  // NOLINT
-    auto it = options.find(key);
-    PADDLE_ENFORCE_NE(it, options.end(),
-                      platform::errors::InvalidArgument("Option: %s", key));
-    return it->second();
-  }
 
  private:
   std::map<std::string, std::function<void(bool)>> bool_options;
