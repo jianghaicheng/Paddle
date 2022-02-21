@@ -63,34 +63,15 @@ class TestConfigure(unittest.TestCase):
         confs['available_memory_proportion'] = 0.3
 
         for k, v in confs.items():
-            ipu_strategy.set_option({k: v})
+            ipu_strategy.set_options({k: v})
             assert v == ipu_strategy.get_option(
                 k), f"Setting option: {k} to value: {v} failed "
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
-class TestEnablePattern(unittest.TestCase):
-    def test_enable_patern(self):
-        ipu_strategy = paddle.static.IpuStrategy()
-        pattern = 'LSTMOp'
-        # LSTMOp Pattern is not enabled by default
-        # assert not ipu_strategy.is_pattern_enabled(pattern)
-        ipu_strategy.enable_pattern(pattern)
-        assert ipu_strategy.is_pattern_enabled(pattern) == True
-
-    def test_disable_pattern(self):
-        ipu_strategy = paddle.static.IpuStrategy()
-        pattern = 'LSTMOp'
-        ipu_strategy.enable_pattern(pattern)
-        ipu_strategy.disable_pattern(pattern)
-        assert ipu_strategy.is_pattern_enabled(pattern) == False
-
-
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestIpuStrategyLoadDict(unittest.TestCase):
-    def test_enable_patern(self):
+    def test_func(self):
         ipu_strategy = paddle.static.IpuStrategy()
         test_conf = {
             "micro_batch_size": 23,
@@ -101,7 +82,7 @@ class TestIpuStrategyLoadDict(unittest.TestCase):
             "save_init_onnx": True,
             "save_onnx_checkpoint": True
         }
-        ipu_strategy.set_option(test_conf)
+        ipu_strategy.set_options(test_conf)
         for k, v in test_conf.items():
             assert v == ipu_strategy.get_option(k)
 
@@ -109,14 +90,14 @@ class TestIpuStrategyLoadDict(unittest.TestCase):
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
 class TestIpuStrategyEngineOptions(unittest.TestCase):
-    def test_enable_patern(self):
+    def test_func(self):
         ipu_strategy = paddle.static.IpuStrategy()
         engine_conf = {
             'debug.allowOutOfMemory': 'true',
             'autoReport.directory': 'path',
             'autoReport.all': 'true'
         }
-        ipu_strategy.set_option({'engineOptions': engine_conf})
+        ipu_strategy.set_options({'engineOptions': engine_conf})
         for k, v in ipu_strategy.get_option('engineOptions').items():
             assert v == engine_conf[k]
 

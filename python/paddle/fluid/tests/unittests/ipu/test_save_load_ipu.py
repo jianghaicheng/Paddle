@@ -95,7 +95,7 @@ class TestBase(IPUOpTest):
                     is_training=self.attrs['is_training'])
                 ipu_strategy.set_half_config(
                     enable_fp16=self.attrs['enable_fp16'])
-                ipu_strategy.set_option({
+                ipu_strategy.set_options({
                     'save_per_n_step': self.attrs['save_at_step']
                 })
                 program = paddle.static.IpuCompiledProgram(
