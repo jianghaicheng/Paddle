@@ -43,17 +43,17 @@ void IpuBackend::Compile(Graph* graph,
                          const std::vector<std::string>& feed_list,
                          const std::vector<std::string>& fetch_list) {
   VLOG(10) << "enter IpuBackend::Compile";
-  compiler_->Prepare();
-  executor_->SetCompilerResources(compiler_->GetResources());
-
-  compiler_->InitInputs(graph, feed_list);
-  compiler_->LowerConstants(graph, scope_);
-  compiler_->LowerWeights(graph, scope_);
-  compiler_->LowerBody(graph);
+  compiler_->Prepare(graph);
+  compiler_->InitInputs(feed_list);
+  compiler_->LowerConstants(scope_);
+  compiler_->LowerWeights(scope_);
+  compiler_->LowerBody();
   compiler_->InitOutputs(fetch_list);
   if (ipu_strategy_->is_training) {
-    compiler_->LowerOptimier(graph, scope_);
+    compiler_->LowerOptimizer(scope_);
   }
+  executor_->SetCompilerResources(compiler_->GetResources());
+
   is_compiled_ = true;
   // when call compile, means a new graph
   is_prepared_ = false;
