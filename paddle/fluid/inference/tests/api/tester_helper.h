@@ -73,6 +73,9 @@ DEFINE_int32(warmup_iters, 1, "Number of batches to process during warmup.");
 
 DEFINE_bool(enable_profile, false, "Turn on profiler for fluid");
 DEFINE_int32(cpu_num_threads, 1, "Number of threads for each paddle instance.");
+DEFINE_bool(fuse_multi_gru, false,
+            "Running the inference program with multi_gru_fuse_pass");
+
 // ipu related
 DEFINE_int32(ipu_micro_batch_size, 1, "micro batch size");
 DEFINE_int32(ipu_device_num, 1, "device num");
@@ -1071,7 +1074,8 @@ static bool CompareTensor(const framework::LoDTensor &a,
   return true;
 }
 
-void ConvertFP32toFP16(paddle::PaddleTensor &tensor) {
+void ConvertFP32toFP16(paddle::PaddleTensor &tensor  // NOLINT
+                       ) {
   int num = 1;
   for (auto dim : tensor.shape) {
     num *= dim;
@@ -1081,7 +1085,7 @@ void ConvertFP32toFP16(paddle::PaddleTensor &tensor) {
       platform::errors::InvalidArgument(
           "The tensor dtype is not float32, only support float32 as input"));
   float *fp32_data = reinterpret_cast<float *>(tensor.data.data());
-  float16 *fp16_data = (float16 *)std::malloc(num * sizeof(float16));
+  float16 *fp16_data = new float16[num];
   for (int i = 0; i < num; i++) {
     fp16_data[i] = float16(fp32_data[i]);
   }
@@ -1090,7 +1094,8 @@ void ConvertFP32toFP16(paddle::PaddleTensor &tensor) {
   tensor.dtype = PaddleDType::FLOAT16;
 }
 
-void ConvertFP16toFP32(paddle::PaddleTensor &tensor) {
+void ConvertFP16toFP32(paddle::PaddleTensor &tensor  // NOLINT
+                       ) {
   int num = 1;
   for (auto dim : tensor.shape) {
     num *= dim;
@@ -1100,9 +1105,9 @@ void ConvertFP16toFP32(paddle::PaddleTensor &tensor) {
       platform::errors::InvalidArgument(
           "The tensor dtype is not float16, only support float16 as input"));
   float16 *fp16_data = reinterpret_cast<float16 *>(tensor.data.data());
-  float *fp32_data = (float *)std::malloc(num * sizeof(float));
+  float *fp32_data = new float[num];
   for (int i = 0; i < num; i++) {
-    fp32_data[i] = float(fp16_data[i]);
+    fp32_data[i] = static_cast<float>(fp16_data[i]);
   }
   tensor.data = PaddleBuf(static_cast<void *>(fp32_data), num * sizeof(float));
   tensor.dtype = PaddleDType::FLOAT32;

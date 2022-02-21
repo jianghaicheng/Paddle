@@ -232,18 +232,6 @@ struct PD_INFER_DECL AnalysisConfig {
                  bool adaptive_seqlen = false);
 
   ///
-  /// \brief Set XPU device id.
-  ///
-  /// \param device_id the XPU card to use (default is 0).
-  ///
-  void SetXpuDeviceId(int device_id = 0);
-  ///
-  /// \brief Turn on NPU.
-  ///
-  /// \param device_id device_id the NPU card to use (default is 0).
-  ///
-  void EnableNpu(int device_id = 0);
-  ///
   /// \brief Turn on IPU.
   ///
   /// \param ipu_device_num the number of IPUs.
@@ -255,6 +243,7 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableIpu(int ipu_device_num = 1, int ipu_micro_batch_size = 1,
                  bool ipu_enable_pipelining = false,
                  int ipu_batches_per_step = 1);
+
   ///
   /// \brief Set IPU config.
   ///
@@ -268,6 +257,19 @@ struct PD_INFER_DECL AnalysisConfig {
   void SetIpuConfig(bool ipu_enable_fp16 = false, int ipu_replica_num = 1,
                     float ipu_available_memory_proportion = 1.0,
                     bool ipu_enable_half_partial = false);
+
+  ///
+  /// \brief Set XPU device id.
+  ///
+  /// \param device_id the XPU card to use (default is 0).
+  ///
+  void SetXpuDeviceId(int device_id = 0);
+  ///
+  /// \brief Turn on NPU.
+  ///
+  /// \param device_id device_id the NPU card to use (default is 0).
+  ///
+  void EnableNpu(int device_id = 0);
   ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
