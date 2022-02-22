@@ -494,6 +494,20 @@ std::string IpuStrategy::GetOptionType(const std::string& option) {
   return options_type[option];
 }
 
+std::vector<std::string> IpuStrategy::GetAllOptionNames() {
+  std::vector<std::string> names;
+  for (auto& option : options_getter) {
+    names.push_back(option.first);
+  }
+  for (auto& option : vector_options_getter) {
+    names.push_back(option.first);
+  }
+  for (auto& option : map_options_getter) {
+    names.push_back(option.first);
+  }
+  return names;
+}
+
 void IpuStrategy::EnablePattern(const std::string& t) {
   VLOG(10) << "enable popart pattern: " << t;
   popart_patterns.enablePattern(t, true);
