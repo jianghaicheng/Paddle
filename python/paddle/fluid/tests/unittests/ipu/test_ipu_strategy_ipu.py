@@ -76,8 +76,8 @@ class TestIpuStrategyLoadDict(unittest.TestCase):
         test_conf = {
             "micro_batch_size": 23,
             "batches_per_step": 233,
-            "enableGradientAccumulation": True,
-            "enableReplicatedGraphs": True,
+            "enable_gradient_accumulation": True,
+            "enable_replicated_graphs": True,
             "enable_fp16": True,
             "save_init_onnx": True,
             "save_onnx_checkpoint": True
@@ -97,8 +97,8 @@ class TestIpuStrategyEngineOptions(unittest.TestCase):
             'autoReport.directory': 'path',
             'autoReport.all': 'true'
         }
-        ipu_strategy.set_options({'engineOptions': engine_conf})
-        for k, v in ipu_strategy.get_option('engineOptions').items():
+        ipu_strategy.set_options({'engine_options': engine_conf})
+        for k, v in ipu_strategy.get_option('engine_options').items():
             assert v == engine_conf[k]
 
 

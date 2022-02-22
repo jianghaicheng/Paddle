@@ -39,7 +39,7 @@ class TestBase(IPUOpTest):
             "batches_per_step": 1,
             "enable_pipeline": False,
             "enableGradientAccumulation": False,
-            "accumulationFactor": 1,
+            "accumulation_factor": 1,
             "enableReplicatedGraphs": False,
             "replicatedGraphCount": 1,
             "cpu_bs": 1,
