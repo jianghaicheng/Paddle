@@ -758,7 +758,6 @@ if(ON_INFER OR WITH_GPU)
     set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT 120)
 endif()
 
-# IPU
 if (WITH_IPU)
     #word2vec sample
     set(WORD2VEC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/word2vec/word2vec.inference.model")
