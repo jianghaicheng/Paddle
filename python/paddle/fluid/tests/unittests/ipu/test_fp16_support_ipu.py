@@ -68,15 +68,14 @@ class TestBase(IPUOpTest):
                     shape=self.feed_shape[0],
                     dtype='float32')
 
-                with paddle.static.amp.fp16_guard():
-                    conv1 = paddle.static.nn.conv2d(
-                        x, num_filters=3, filter_size=3, bias_attr=False)
-                    conv2 = paddle.static.nn.conv2d(
-                        x, num_filters=3, filter_size=3, bias_attr=False)
-                    add1 = conv1 + conv2
-                    conv3 = paddle.static.nn.conv2d(
-                        add1, num_filters=8, filter_size=8, bias_attr=False)
-                    out = paddle.fluid.layers.relu(conv3, **self.attrs)
+                conv1 = paddle.static.nn.conv2d(
+                    x, num_filters=3, filter_size=3, bias_attr=False)
+                conv2 = paddle.static.nn.conv2d(
+                    x, num_filters=3, filter_size=3, bias_attr=False)
+                add1 = conv1 + conv2
+                conv3 = paddle.static.nn.conv2d(
+                    add1, num_filters=8, filter_size=8, bias_attr=False)
+                out = paddle.fluid.layers.relu(conv3, **self.attrs)
 
             fetch_list = [out.name]
 
@@ -167,8 +166,7 @@ class TestIntInput(IPUOpTest):
                     shape=self.feed_shape[1],
                     dtype='int32')
 
-                with paddle.static.amp.fp16_guard():
-                    out = paddle.fluid.layers.gather(x, index=y)
+                out = paddle.fluid.layers.gather(x, index=y)
 
             fetch_list = [out.name]
 

@@ -52,14 +52,14 @@ class TestBase(IPUOpTest):
         self.feed_ipu = {"image": np_image}
 
     def _test_base(self, run_ipu=True):
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
         startup_prog.random_seed = self.SEED
 
         bs = self.attrs['ipu_bs'] if run_ipu else self.attrs['cpu_bs']
-        with paddle.fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 image = paddle.static.data(
                     name='image', shape=[bs, 3, 10, 10], dtype='float32')

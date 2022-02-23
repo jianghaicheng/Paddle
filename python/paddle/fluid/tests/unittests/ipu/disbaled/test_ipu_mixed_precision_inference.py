@@ -49,36 +49,32 @@ class TestBase(IPUOpTest):
 
     def _test_base(self, exec_mode):
         generator = paddle.fluid.unique_name.UniqueNameGenerator()
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
         startup_prog.random_seed = self.SEED
 
         with paddle.fluid.unique_name.guard(generator):
-            with paddle.fluid.scope_guard(scope):
+            with paddle.static.scope_guard(scope):
                 with paddle.static.program_guard(main_prog, startup_prog):
                     data = paddle.static.data(
                         name=self.feed_list[0],
                         shape=self.feed_shape[0],
                         dtype='float32')
 
-                    with paddle.static.amp.fp16_guard():
-                        conv2d = paddle.static.nn.conv2d(
-                            input=data, num_filters=3, filter_size=3)
+                    conv2d = paddle.static.nn.conv2d(
+                        input=data, num_filters=3, filter_size=3)
 
                     pool_0 = F.max_pool2d(conv2d, kernel_size=2, stride=2)
 
-                    with paddle.static.amp.fp16_guard():
-                        conv2d1 = paddle.static.nn.conv2d(
-                            input=pool_0, num_filters=6, filter_size=3)
-                        bn = paddle.static.nn.batch_norm(
-                            input=conv2d1, act="relu")
+                    conv2d1 = paddle.static.nn.conv2d(
+                        input=pool_0, num_filters=6, filter_size=3)
+                    bn = paddle.static.nn.batch_norm(input=conv2d1, act="relu")
 
                     pool = F.max_pool2d(bn, kernel_size=2, stride=2)
 
-                    with paddle.static.amp.fp16_guard():
-                        hidden = paddle.static.nn.fc(pool, size=10)
+                    hidden = paddle.static.nn.fc(pool, size=10)
 
                     loss = paddle.mean(hidden)
                     fetch_list = [loss.name]

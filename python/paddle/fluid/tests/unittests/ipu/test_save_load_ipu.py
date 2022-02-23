@@ -49,7 +49,7 @@ class TestBase(IPUOpTest):
         self.attrs['model_path'] = tempfile.TemporaryDirectory()
 
     def _test_base(self, save_otherwise_load):
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
@@ -57,7 +57,7 @@ class TestBase(IPUOpTest):
         generator = paddle.fluid.unique_name.UniqueNameGenerator()
 
         with paddle.fluid.unique_name.guard(generator):
-            with paddle.fluid.scope_guard(scope):
+            with paddle.static.scope_guard(scope):
                 with paddle.static.program_guard(main_prog, startup_prog):
                     x = paddle.static.data(
                         name=self.feed_list[0],
