@@ -85,7 +85,7 @@ class TestBase(IPUOpTest):
                 feed_list = self.feed_list
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=self.is_training)
-                ipu_strategy.need_avg_shard = True
+                ipu_strategy.set_options({'need_avg_shard': True})
                 if exec_mode == ExecutionMode.IPU_POPART_FP16:
                     ipu_strategy.set_precision_config(enable_fp16=True)
                 program = paddle.static.IpuCompiledProgram(
