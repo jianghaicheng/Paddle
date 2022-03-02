@@ -67,6 +67,9 @@ class IpuStrategy {
   // defaultMaxWeightNorm for adam optimizer
   float max_weight_norm = 65504.0f;
 
+  // enable transfer cast Op target from fp32 to fp16 in fp16 mode
+  bool transfer_cast_op = true;
+
   // popart session option
   popart::SessionOptions popart_options;
 

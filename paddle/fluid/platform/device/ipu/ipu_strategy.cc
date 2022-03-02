@@ -66,6 +66,7 @@ IpuStrategy::IpuStrategy() {
   ADD_BOOL_OPTION(save_onnx_checkpoint);
   ADD_BOOL_OPTION(need_avg_shard);
   ADD_BOOL_OPTION(enable_fp16);
+  ADD_BOOL_OPTION(transfer_cast_op);
   ADD_UINT64_OPTION(num_ipus);
   ADD_UINT64_OPTION(batches_per_step);
   ADD_UINT64_OPTION(micro_batch_size);
