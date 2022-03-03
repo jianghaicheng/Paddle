@@ -65,6 +65,7 @@ IpuStrategy::IpuStrategy() {
   ADD_BOOL_OPTION(need_avg_shard);
   ADD_BOOL_OPTION(enable_fp16);
   ADD_BOOL_OPTION(transfer_cast_op);
+  ADD_BOOL_OPTION(use_no_bias_optimizer);
   ADD_UINT64_OPTION(num_ipus);
   ADD_UINT64_OPTION(batches_per_step);
   ADD_UINT64_OPTION(micro_batch_size);
@@ -72,6 +73,9 @@ IpuStrategy::IpuStrategy() {
   ADD_DOUBLE_OPTION(available_memory_proportion);
   ADD_DOUBLE_OPTION(loss_scaling);
   ADD_DOUBLE_OPTION(max_weight_norm);
+  ADD_STRING_OPTION(accl1_type);
+  ADD_STRING_OPTION(accl2_type);
+  ADD_STRING_OPTION(accl3_type);
   ADD_STRING_OPTION(onnx_dump_path);
 
 #undef ADD_STRING_OPTION

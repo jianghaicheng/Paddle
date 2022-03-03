@@ -25,13 +25,20 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
-popart::AdamMode AdamModeFromStr(const std::string& str) {
+popart::AdamMode AdamModeFromStr(const std::string& str,
+                                 const bool& use_no_bias_optimizer) {
   if (str == "adam") {
-    return popart::AdamMode::Adam;
+    if (!use_no_bias_optimizer)
+      return popart::AdamMode::Adam;
+    else
+      return popart::AdamMode::AdamNoBias;
   } else if (str == "adamax") {
     return popart::AdamMode::AdaMax;
   } else if (str == "lamb") {
-    return popart::AdamMode::Lamb;
+    if (!use_no_bias_optimizer)
+      return popart::AdamMode::Lamb;
+    else
+      return popart::AdamMode::LambNoBias;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Uknown AdamMode: %s, AdamMode must be one of these values: adam, "
@@ -67,6 +74,17 @@ popart::WeightDecayMode WeightDecayModeFromStr(const std::string& str) {
         "Uknown WeightDecayMode: %s, WeightDecayMode must be decay or "
         "l2_regularization",
         str));
+  }
+}
+
+popart::DataType DataTypeFromStr(const std::string& str) {
+  if (str == "FLOAT") {
+    return popart::DataType::FLOAT;
+  } else if (str == "FLOAT16") {
+    return popart::DataType::FLOAT16;
+  } else {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("Unsupported DataType: %s", str));
   }
 }
 
@@ -299,6 +317,7 @@ void Compiler::LowerBody() {
       auto inputs = GetOpInputs(op_desc);
       auto outputs = GetOpOutputs(op_desc);
       auto output_ids = builder_->checkpointOutput(inputs);
+      SetIpuIndexStage(output_ids, op_desc);
       InsertTensors(outputs, output_ids);
     } else if (op_type == "popart_custom_op") {
       auto inputs = GetOpInputs(op_desc);
@@ -367,8 +386,27 @@ void Compiler::LowerOptimizer(const Scope* scope) {
         resources_->with_lr_sched = false;
       }
       VLOG(10) << "Set initial lr: " << resources_->lr;
-      auto loss_scaling = ipu_strategy_->loss_scaling;
+
+      // Get the type of optimizer
       auto type = BOOST_GET_CONST(std::string, op_desc->GetAttr("type"));
+
+      // Get the maximum permissible value for gradient clipping
+      std::vector<popart::ClipNormSettings> clip_norm_settings = {};
+      if (op_desc->HasAttr("clip_norm")) {
+        auto clip_norm = BOOST_GET_CONST(float, op_desc->GetAttr("clip_norm"));
+        clip_norm_settings.push_back(
+            popart::ClipNormSettings::clipAllWeights(clip_norm));
+        VLOG(10) << "Set the global gradient clipping with the maximum "
+                    "permissible value: "
+                 << clip_norm;
+      }
+
+      // Values from ipu_strategy
+      auto loss_scaling = ipu_strategy_->loss_scaling;
+      auto accl1_type = DataTypeFromStr(ipu_strategy_->accl1_type);
+      auto accl2_type = DataTypeFromStr(ipu_strategy_->accl2_type);
+      auto accl3_type = DataTypeFromStr(ipu_strategy_->accl3_type);
+
       if (type == "sgd") {
         auto weight_decay =
             BOOST_GET_CONST(float, op_desc->GetAttr("weight_decay"));
@@ -380,7 +418,7 @@ void Compiler::LowerOptimizer(const Scope* scope) {
               popart::OptimizerValue(momentum, true),
               popart::SGD::getUnsetDampening(),
               popart::SGD::getUnsetVelocityScaling(),
-              popart::OptimizerValue(loss_scaling, true));
+              popart::OptimizerValue(loss_scaling, true), clip_norm_settings);
         };
       } else if (type == "adam") {
         auto weight_decay =
@@ -392,7 +430,8 @@ void Compiler::LowerOptimizer(const Scope* scope) {
         VLOG(10) << "set max_weight_norm: " << mwn;
         auto adam_mode_ =
             BOOST_GET_CONST(std::string, op_desc->GetAttr("adam_mode"));
-        auto adam_mode = AdamModeFromStr(adam_mode_);
+        auto adam_mode =
+            AdamModeFromStr(adam_mode_, ipu_strategy_->use_no_bias_optimizer);
         auto weight_decay_mode_ =
             BOOST_GET_CONST(std::string, op_desc->GetAttr("weight_decay_mode"));
         auto weight_decay_mode = WeightDecayModeFromStr(weight_decay_mode_);
@@ -405,8 +444,8 @@ void Compiler::LowerOptimizer(const Scope* scope) {
               popart::OptimizerValue(eps, true),
               popart::OptimizerValue(loss_scaling, true),
               popart::OptimizerValue(mwn, true), adam_mode, weight_decay_mode,
-              popart::DataType::UNDEFINED, popart::DataType::FLOAT,
-              popart::DataType::FLOAT);
+              popart::DataType::UNDEFINED, accl1_type, accl2_type,
+              clip_norm_settings);
         };
       } else if (type == "adaptive") {
         auto alpha = BOOST_GET_CONST(float, op_desc->GetAttr("alpha"));
@@ -428,9 +467,8 @@ void Compiler::LowerOptimizer(const Scope* scope) {
               popart::OptimizerValue(momentum, true),
               popart::OptimizerValue(eps, true),
               popart::OptimizerValue(loss_scaling, true), adaptive_mode,
-              weight_decay_mode, popart::DataType::UNDEFINED,
-              popart::DataType::FLOAT, popart::DataType::FLOAT,
-              popart::DataType::FLOAT);
+              weight_decay_mode, popart::DataType::UNDEFINED, accl1_type,
+              accl2_type, accl3_type);
         };
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(

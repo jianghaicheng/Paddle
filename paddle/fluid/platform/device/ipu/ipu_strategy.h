@@ -41,6 +41,11 @@ class IpuStrategy {
   // enable transfer cast Op target from fp32 to fp16 in fp16 mode
   bool transfer_cast_op = true;
 
+  // The mode of Adam/Lamb optimizer
+  // false: The standard Adam/Lamb optimizer
+  // true: The Adam_No_Bias/Lamb_No_Bias optimizer from PopART
+  bool use_no_bias_optimizer = false;
+
   // Number ipus total needed, replica * ipu_per_replica
   int num_ipus = 1;
 
@@ -66,6 +71,18 @@ class IpuStrategy {
 
   // file path for dumping compiled model in onnx format
   std::string onnx_dump_path;
+
+  // Data type to use for tensor that stores first-order momentum optimizer
+  // state. FLOAT or FLOAT16
+  std::string accl1_type = "FLOAT";
+
+  // Data type to use for tensor that stores second-order momentum optimizer
+  // state. FLOAT or FLOAT16
+  std::string accl2_type = "FLOAT";
+
+  // Data type to use for tensor that stores third-order momentum optimizer
+  // state. FLOAT or FLOAT16
+  std::string accl3_type = "FLOAT";
 
   // popart session option
   popart::SessionOptions popart_options;

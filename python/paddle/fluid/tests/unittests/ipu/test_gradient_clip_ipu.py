@@ -67,15 +67,21 @@ class TestBase(IPUOpTest):
                 loss = paddle.mean(conv1)
 
                 weight_decay = self.attrs['weight_decay']
+                # Only support ClipGradByGlobalNorm
+                clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
                 opt = paddle.optimizer.SGD(learning_rate=1e-1,
-                                           weight_decay=weight_decay)
+                                           weight_decay=weight_decay,
+                                           grad_clip=clip)
                 if self.attrs['optimizer'] == 'adam':
                     opt = paddle.optimizer.Adam(
-                        learning_rate=1e-1, weight_decay=weight_decay)
+                        learning_rate=1e-1,
+                        weight_decay=weight_decay,
+                        grad_clip=clip)
                 elif self.attrs['optimizer'] == 'lamb':
-
                     opt = paddle.optimizer.Lamb(
-                        learning_rate=1e-1, lamb_weight_decay=weight_decay)
+                        learning_rate=1e-1,
+                        lamb_weight_decay=weight_decay,
+                        grad_clip=clip)
                 opt.minimize(loss)
 
             if run_ipu:
@@ -84,6 +90,7 @@ class TestBase(IPUOpTest):
                 place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
+            paddle.static.save(main_prog, "clip_norm")
 
             if run_ipu:
                 feed_list = [image.name]
@@ -91,15 +98,6 @@ class TestBase(IPUOpTest):
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=True)
                 ipu_strategy.loss_scaling = self.attrs["loss_scaling"]
-                if "use_no_bias_optimizer" in self.attrs.keys():
-                    ipu_strategy.set_options({
-                        "use_no_bias_optimizer":
-                        self.attrs["use_no_bias_optimizer"]
-                    })
-                if "accl1_type" in self.attrs.keys():
-                    ipu_strategy.set_options({
-                        "accl1_type": self.attrs["accl1_type"]
-                    })
                 program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
                                                                   fetch_list)
@@ -121,27 +119,7 @@ class TestBase(IPUOpTest):
         self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=self.atol))
 
 
-@unittest.skip('do not support L2 regularization')
-class TestSGD(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'sgd',
-            "weight_decay": 0.1,
-            "loss_scaling": 2.0,
-        }
-
-
-@unittest.skip('do not support L2 regularization')
-class TestAdamCase1(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'adam',
-            "weight_decay": 0.1,
-            "loss_scaling": 3.0,
-        }
-
-
-class TestAdamCase2(TestBase):
+class TestAdam(TestBase):
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'adam',
@@ -150,67 +128,12 @@ class TestAdamCase2(TestBase):
         }
 
 
-@unittest.skip('cpu do not support AdamNoBias')
-class TestAdamNoBias(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'adam',
-            "weight_decay": 0.0,
-            "loss_scaling": 4.0,
-            "use_no_bias_optimizer": True,
-        }
-
-
-@unittest.skip('cpu do not support FLOAT16')
-class TestAdamCase3(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'adam',
-            "weight_decay": 0.0,
-            "loss_scaling": 4.0,
-            "accl1_type": "FLOAT16",
-        }
-
-
-@unittest.skip('seems cpu output wrong')
-class TestLambCase1(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'lamb',
-            "weight_decay": 0.0,
-            "loss_scaling": 5.0,
-        }
-
-
-@unittest.skip('seems cpu output wrong')
 class TestLamb(TestBase):
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'lamb',
             "weight_decay": 0.1,
             "loss_scaling": 6.0,
-        }
-
-
-@unittest.skip('cpu do not support LambNoBias')
-class TestLambNoBias(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'lamb',
-            "weight_decay": 0.1,
-            "loss_scaling": 6.0,
-            "use_no_bias_optimizer": True
-        }
-
-
-@unittest.skip('cpu do not support FLOAT16')
-class TestLambCase2(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'lamb',
-            "weight_decay": 0.1,
-            "loss_scaling": 6.0,
-            "accl1_type": "FLOAT16"
         }
 
 

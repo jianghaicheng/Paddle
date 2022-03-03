@@ -25,14 +25,14 @@ std::set<std::string> ignored_ops = {
     "sum",
     "clip",
     "clip_by_norm",
-    "square",
     "reduce_sum",
     "sqrt",
     "elementwise_max",
     "elementwise_div",
     "elementwise_mul",
-    "scale",   // adamax
-    "assign",  // adamw
+    "scale",           // adamax
+    "assign",          // adamw
+    "squared_l2_norm"  // gradient_clip_norm
 };
 
 const bool startswith(const std::string& str, const std::string& pre) {
