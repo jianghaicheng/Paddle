@@ -62,18 +62,17 @@ IpuStrategy::IpuStrategy() {
                  [&]() { return name; })
 
   ADD_BOOL_OPTION(is_training);
-  ADD_BOOL_OPTION(save_init_onnx);
-  ADD_BOOL_OPTION(save_onnx_checkpoint);
   ADD_BOOL_OPTION(need_avg_shard);
   ADD_BOOL_OPTION(enable_fp16);
   ADD_BOOL_OPTION(transfer_cast_op);
   ADD_UINT64_OPTION(num_ipus);
   ADD_UINT64_OPTION(batches_per_step);
   ADD_UINT64_OPTION(micro_batch_size);
-  ADD_UINT64_OPTION(save_per_n_step);
+  ADD_UINT64_OPTION(random_seed);
   ADD_DOUBLE_OPTION(available_memory_proportion);
   ADD_DOUBLE_OPTION(loss_scaling);
   ADD_DOUBLE_OPTION(max_weight_norm);
+  ADD_STRING_OPTION(onnx_dump_path);
 
 #undef ADD_STRING_OPTION
 #undef ADD_DOUBLE_OPTION

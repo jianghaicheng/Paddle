@@ -54,6 +54,9 @@ void IpuBackend::Compile(Graph* graph,
   if (ipu_strategy_->is_training) {
     compiler_->LowerOptimizer(scope_);
   }
+  if (!ipu_strategy_->onnx_dump_path.empty()) {
+    SaveModelProto(ipu_strategy_->onnx_dump_path);
+  }
   executor_->SetCompilerResources(compiler_->GetResources());
   executor_->Prepare(compiler_->GetModelProto());
   is_compiled_ = true;
@@ -68,6 +71,8 @@ void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
   timer_->Pause();
   VLOG(10) << "[IPU Run]: " << timer_->ElapsedMS() << " (ms)";
 }
+
+void IpuBackend::WeightsToHost() { executor_->WeightsToHost(); }
 
 void IpuBackend::Detach() { executor_->Detach(); }
 

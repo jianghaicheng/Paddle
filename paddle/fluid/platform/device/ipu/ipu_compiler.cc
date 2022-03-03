@@ -276,7 +276,7 @@ void Compiler::LowerWeights(const Scope* scope) {
           popart::TensorId result =
               builder_->addInitializedInputTensor(const_data, var_name);
           resources_->tensors.emplace(var_name, result);
-          resources_->weights.push_back(result);
+          resources_->weights.push_back(var_name);
         }
       }
     }

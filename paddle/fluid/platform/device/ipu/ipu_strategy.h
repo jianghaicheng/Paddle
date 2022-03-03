@@ -32,17 +32,14 @@ class IpuStrategy {
   // training flag, true for training
   bool is_training = true;
 
-  // save the onnx model lowered by paddle program description
-  bool save_init_onnx = false;
-
-  // save the trained model
-  bool save_onnx_checkpoint = false;
-
   // average sharding, debugging used
   bool need_avg_shard = false;
 
   // flag for fp16, true for pure fp16
   bool enable_fp16 = false;
+
+  // enable transfer cast Op target from fp32 to fp16 in fp16 mode
+  bool transfer_cast_op = true;
 
   // Number ipus total needed, replica * ipu_per_replica
   int num_ipus = 1;
@@ -53,8 +50,8 @@ class IpuStrategy {
   // micro batch-size
   int micro_batch_size = 1;
 
-  // save paddle model per n steps
-  int save_per_n_step = 1;
+  // random seed
+  std::uint64_t random_seed = std::numeric_limits<std::uint64_t>::max();
 
   // TODO(alleng) remove this param
   // available memory proportion, 0.0f for disable
@@ -67,8 +64,8 @@ class IpuStrategy {
   // defaultMaxWeightNorm for adam optimizer
   float max_weight_norm = 65504.0f;
 
-  // enable transfer cast Op target from fp32 to fp16 in fp16 mode
-  bool transfer_cast_op = true;
+  // file path for dumping compiled model in onnx format
+  std::string onnx_dump_path;
 
   // popart session option
   popart::SessionOptions popart_options;

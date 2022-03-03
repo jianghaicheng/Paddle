@@ -60,6 +60,9 @@ class IpuBackend {
            const std::vector<Tensor *> &outputs,
            const framework::ExecutionContext &ctx);
 
+  // Sync weights from IPU while training
+  void WeightsToHost();
+
   // detach IPU manually
   void Detach();
 

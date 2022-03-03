@@ -64,15 +64,10 @@ void Executor::Prepare(const std::string &proto) {
   WeightsFromPaddle();
   VLOG(10) << "Copy weights from paddle to popart...done";
 
-  VLOG(10) << "Copy weights from host to device...";
-  session_->weightsFromHost();
-  VLOG(10) << "Copy weights from host to device...done";
-
-  if (ipu_strategy_->save_init_onnx) {
-    session_->modelToHost("test_init.onnx");
+  if (ipu_strategy_->random_seed != std::numeric_limits<std::uint64_t>::max()) {
+    VLOG(10) << "Setting random seed to: " << ipu_strategy_->random_seed;
+    session_->setRandomSeed(ipu_strategy_->random_seed);
   }
-  // init run step
-  step_ = 0;
 }
 
 void Executor::Run(const std::vector<const Tensor *> &inputs,
@@ -133,15 +128,13 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   VLOG(10) << "Running...";
   session_->run(stepio);
   VLOG(10) << "Running...done";
+}
 
-  step_++;
-  if (ipu_strategy_->is_training &&
-      step_ % ipu_strategy_->save_per_n_step == 0) {
-    session_->weightsToHost();
+void Executor::WeightsToHost() {
+  if (ipu_strategy_->is_training && session_) {
     WeightsToPaddle();
-    if (ipu_strategy_->save_onnx_checkpoint) {
-      session_->modelToHost("test_last" + std::to_string(step_) + ".onnx");
-    }
+  } else {
+    LOG(WARNING) << "For a non-trainning graph, cannot sync weights from IPU.";
   }
 }
 
@@ -185,28 +178,29 @@ void Executor::SetWeightsIO() {
   auto opt_type = compiler_resources_->optimizer_type;
   VLOG(10) << "SetWeightsIO for " << opt_type;
   auto pre_post_fix = GetOptPrePostfix(opt_type);
-  for (const auto &weight_id : compiler_resources_->weights) {
+  for (const auto &weight_pd : compiler_resources_->weights) {
     for (const auto &pair : pre_post_fix) {
       // pair.first : popart prefix, pair.second : paddle postfix
-      auto popart_var_name = pair.first + weight_id;
-      auto paddle_var_name = weight_id + pair.second;
+      auto weight_pop = compiler_resources_->tensors[weight_pd];
+      auto popart_var = pair.first + weight_pop;
+      auto paddle_var = weight_pd + pair.second;
 
-      if (scope_->FindVar(paddle_var_name) == nullptr) {
+      if (scope_->FindVar(paddle_var) == nullptr) {
+        continue;
+      }
+      if (!session_->hasInfo(popart_var)) {
         continue;
       }
 
-      if (!session_->hasInfo(popart_var_name)) {
-        continue;
-      }
-
-      auto var = scope_->GetVar(paddle_var_name);
+      VLOG(10) << "Connect paddle weight: " << paddle_var
+               << " with popart weight: " << popart_var;
+      auto var = scope_->GetVar(paddle_var);
       auto data_ptr = var->GetMutable<framework::LoDTensor>()->data();
-
-      auto tensor_info = session_->getInfo(popart_var_name);
-      executor_resources_->weights_io.insert(popart_var_name,
+      auto tensor_info = session_->getInfo(popart_var);
+      executor_resources_->weights_io.insert(popart_var,
                                              {data_ptr, tensor_info});
       executor_resources_->weights_and_opt_state.emplace_back(
-          std::make_pair(popart_var_name, paddle_var_name));
+          std::make_pair(popart_var, paddle_var));
     }
   }
 }
@@ -284,6 +278,7 @@ void Executor::ConvertWeights(bool align_to_popart) {
 void Executor::WeightsFromPaddle() {
   ConvertWeights(true);
   session_->writeWeights(executor_resources_->weights_io);
+  session_->weightsFromHost();
 }
 
 // |-----------------------------------------------------|
@@ -297,13 +292,13 @@ void Executor::WeightsFromPaddle() {
 // Paddle -> halfToFloat: cast then save to paddle
 // Popart -> Paddle: copy from paddle to popart
 void Executor::WeightsToPaddle() {
+  session_->weightsToHost();
   session_->readWeights(executor_resources_->weights_io);
   ConvertWeights(false);
 }
 
 void Executor::SaveModelToHost(const std::string &path) {
   if (session_) {
-    session_->weightsToHost();
     WeightsToPaddle();
     session_->modelToHost(path);
   } else {
