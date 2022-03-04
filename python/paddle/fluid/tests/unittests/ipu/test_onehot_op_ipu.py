@@ -100,7 +100,7 @@ class TestBase(IPUOpTest):
         self.check(output_dict)
 
 
-@unittest.skip('')
+@unittest.skip('does not support allow_out_of_range=True')
 class TestCase1(TestBase):
     def set_op_attrs(self):
         self.attrs = {"depth": 4, "allow_out_of_range": True}

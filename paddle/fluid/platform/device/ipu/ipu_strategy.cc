@@ -175,6 +175,7 @@ IpuStrategy::IpuStrategy() {
   ADD_POPART_UINT64_OPTION_ALIAS(merge_var_update_mem_threshold,
                                  mergeVarUpdateMemThreshold);
   ADD_POPART_UINT64_OPTION_ALIAS(loose_threshold_at_peak, looseThresholdAtPeak);
+  ADD_POPART_UINT64_OPTION_ALIAS(replicated_graph_count, replicatedGraphCount);
   ADD_POPART_UINT64_OPTION_ALIAS(accumulation_factor, accumulationFactor);
   ADD_POPART_UINT64_OPTION_ALIAS(swap_limit_scheduler, swapLimitScheduler);
   ADD_POPART_UINT64_OPTION_ALIAS(global_replication_factor,
