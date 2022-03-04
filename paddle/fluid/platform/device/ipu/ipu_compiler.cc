@@ -259,7 +259,8 @@ void Compiler::LowerConstants(const Scope* scope) {
       popart::TensorInfo tensor_info(PdDataType2PopartType(tensor->dtype()),
                                      shape);
       const_data.reset(new popart::ConstVoidData(tensor->data(), tensor_info));
-      popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
+      popart::TensorId result =
+          builder_->aiOnnxOpset11().constant(*const_data);
       SetIpuIndexStage(result, op_desc);
       resources_->tensors.emplace(tensor_name, result);
     }
@@ -389,7 +390,11 @@ void Compiler::LowerOptimizer(const Scope* scope) {
 
       // Get the type of optimizer
       auto type = BOOST_GET_CONST(std::string, op_desc->GetAttr("type"));
-
+      // Set weight decay by tensor names for Lamb
+      auto weight_decay_vars = BOOST_GET_CONST(
+          std::vector<std::string>, op_desc->GetAttr("weight_decay_vars"));
+      auto weight_decay_values = BOOST_GET_CONST(
+          std::vector<float>, op_desc->GetAttr("weight_decay_values"));
       // Get the maximum permissible value for gradient clipping
       std::vector<popart::ClipNormSettings> clip_norm_settings = {};
       if (op_desc->HasAttr("clip_norm")) {
@@ -436,16 +441,39 @@ void Compiler::LowerOptimizer(const Scope* scope) {
             BOOST_GET_CONST(std::string, op_desc->GetAttr("weight_decay_mode"));
         auto weight_decay_mode = WeightDecayModeFromStr(weight_decay_mode_);
         resources_->optimizer_fn = [=](float lr) {
-          return std::make_unique<popart::Adam>(
-              popart::OptimizerValue(lr, false),
-              popart::OptimizerValue(weight_decay, true),
-              popart::OptimizerValue(beta1, true),
-              popart::OptimizerValue(beta2, true),
-              popart::OptimizerValue(eps, true),
-              popart::OptimizerValue(loss_scaling, true),
-              popart::OptimizerValue(mwn, true), adam_mode, weight_decay_mode,
-              popart::DataType::UNDEFINED, accl1_type, accl2_type,
-              clip_norm_settings);
+          if (adam_mode == popart::AdamMode::Lamb ||
+              adam_mode == popart::AdamMode::LambNoBias) {
+            const std::map<std::string, std::pair<float, bool>>
+                optimizer_value = {{"defaultLearningRate", {lr, false}},
+                                   {"defaultBeta1", {beta1, false}},
+                                   {"defaultBeta2", {beta2, false}},
+                                   {"defaultEps", {eps, true}},
+                                   {"lossScaling", {loss_scaling, true}},
+                                   {"defaultMaxWeightNorm", {mwn, true}}};
+            auto optimizer_instance = std::make_unique<popart::Adam>(
+                optimizer_value, adam_mode, weight_decay_mode,
+                popart::DataType::UNDEFINED, accl1_type, accl2_type,
+                clip_norm_settings);
+            for (int i = 0; i < weight_decay_vars.size(); i++) {
+              optimizer_instance->insertSpecific(
+                  weight_decay_vars[i],
+                  {{"weightDecay", {weight_decay_values[i], false}}});
+              VLOG(10) << "Set Tensor " << weight_decay_vars[i]
+                       << " weight decay as " << weight_decay_values[i];
+            }
+            return optimizer_instance;
+          } else {
+            return std::make_unique<popart::Adam>(
+                popart::OptimizerValue(lr, false),
+                popart::OptimizerValue(weight_decay, true),
+                popart::OptimizerValue(beta1, true),
+                popart::OptimizerValue(beta2, true),
+                popart::OptimizerValue(eps, true),
+                popart::OptimizerValue(loss_scaling, true),
+                popart::OptimizerValue(mwn, true), adam_mode, weight_decay_mode,
+                popart::DataType::UNDEFINED, accl1_type, accl2_type,
+                clip_norm_settings);
+          }
         };
       } else if (type == "adaptive") {
         auto alpha = BOOST_GET_CONST(float, op_desc->GetAttr("alpha"));

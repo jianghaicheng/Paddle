@@ -46,6 +46,9 @@ class IpuStrategy {
   // true: The Adam_No_Bias/Lamb_No_Bias optimizer from PopART
   bool use_no_bias_optimizer = false;
 
+  // enable the eval mode in training by switching optimizers.
+  bool enable_eval = false;
+
   // Number ipus total needed, replica * ipu_per_replica
   int num_ipus = 1;
 

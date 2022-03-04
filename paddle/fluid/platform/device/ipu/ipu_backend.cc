@@ -99,10 +99,8 @@ void IpuBackend::SetIpuStrategy(const IpuStrategy& strategy) {
 void IpuBackend::SaveModelProto(const std::string& path) {
   if (ipu_strategy_->is_training && is_compiled_) {
     executor_->SaveModelToHost(path);
-  } else if (is_compiled_) {
-    compiler_->SaveModelProtoNoCheck(path);
   } else {
-    LOG(WARNING) << "Model is empty";
+    compiler_->SaveModelProtoNoCheck(path);
   }
 }
 

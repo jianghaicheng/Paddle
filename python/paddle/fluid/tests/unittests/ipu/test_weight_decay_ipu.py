@@ -23,6 +23,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
+@unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
 class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
@@ -45,12 +46,14 @@ class TestBase(IPUOpTest):
 
     def set_attrs(self):
         self.attrs = {
-            "optimizer": 'sgd',
-            "weight_decay": 0.0,
+            "weight_decay": 4.0,
             "loss_scaling": 1.0,
         }
 
     def _test_optimizer(self, run_ipu=True):
+        def exclude_fn(param):
+            return param.name.endswith('.w_0')
+
         scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -62,26 +65,17 @@ class TestBase(IPUOpTest):
             with paddle.static.program_guard(main_prog, startup_prog):
                 image = paddle.static.data(
                     name='image', shape=[1, 3, 10, 10], dtype='float32')
+                bias = paddle.fluid.layers.create_parameter(
+                    shape=[1, 3, 10, 10], is_bias=True, dtype='float32')
+                add1 = image + bias
                 conv1 = paddle.static.nn.conv2d(
-                    image, num_filters=3, filter_size=3, bias_attr=False)
-                loss = paddle.mean(conv1)
+                    add1, num_filters=3, filter_size=3, bias_attr=False)
 
-                weight_decay = self.attrs['weight_decay']
-                # Only support ClipGradByGlobalNorm
-                clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-                opt = paddle.optimizer.SGD(learning_rate=1e-1,
-                                           weight_decay=weight_decay,
-                                           grad_clip=clip)
-                if self.attrs['optimizer'] == 'adam':
-                    opt = paddle.optimizer.Adam(
-                        learning_rate=1e-1,
-                        weight_decay=weight_decay,
-                        grad_clip=clip)
-                elif self.attrs['optimizer'] == 'lamb':
-                    opt = paddle.optimizer.Lamb(
-                        learning_rate=1e-1,
-                        lamb_weight_decay=weight_decay,
-                        grad_clip=clip)
+                loss = paddle.mean(conv1)
+                opt = paddle.optimizer.Lamb(
+                    learning_rate=1e-1,
+                    lamb_weight_decay=self.attrs['weight_decay'],
+                    exclude_from_weight_decay_fn=exclude_fn)
                 opt.minimize(loss)
 
             if run_ipu:
@@ -90,6 +84,7 @@ class TestBase(IPUOpTest):
                 place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
+            paddle.static.save(main_prog, "weight_decay")
 
             if run_ipu:
                 feed_list = [image.name]
@@ -116,24 +111,6 @@ class TestBase(IPUOpTest):
         cpu_loss = self._test_optimizer(False).flatten()
 
         self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=self.atol))
-
-
-class TestAdam(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'adam',
-            "weight_decay": 0.0,
-            "loss_scaling": 4.0,
-        }
-
-
-class TestLamb(TestBase):
-    def set_attrs(self):
-        self.attrs = {
-            "optimizer": 'lamb',
-            "weight_decay": 0.1,
-            "loss_scaling": 6.0,
-        }
 
 
 if __name__ == "__main__":
