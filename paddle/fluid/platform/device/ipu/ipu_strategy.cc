@@ -83,6 +83,19 @@ IpuStrategy::IpuStrategy() {
 #undef ADD_UINT64_OPTION
 #undef ADD_BOOL_OPTION
 
+
+#define ADD_RUNTIME_BOOL_OPTION(name, aliased_name)                          \
+  RegisterSetter(bool_options, #name,                                        \
+                 [&](bool value) { runtime_options.aliased_name = value; }); \
+  RegisterGetter(options_getter, options_type, #name, "bool", [&]() {        \
+    return std::to_string(runtime_options.aliased_name);                     \
+  })
+
+  ADD_RUNTIME_BOOL_OPTION(runtime_options.enable_eval, enable_eval);
+
+#undef ADD_RUNTIME_BOOL_OPTION
+
+
 #define ADD_POPART_ENUM_OPTION_ALIAS(name, aliased_name, EnumType)        \
   RegisterSetter(uint64_options, #name, [&](std::uint64_t value) {        \
     PADDLE_ENFORCE_LT(                                                    \

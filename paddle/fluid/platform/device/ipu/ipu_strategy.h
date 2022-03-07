@@ -24,6 +24,11 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
+struct RuntimeOptions {
+    // enable the eval mode in training by switching optimizers.
+    bool enable_eval = false;
+};
+
 class IpuStrategy {
  public:
   IpuStrategy();
@@ -45,9 +50,6 @@ class IpuStrategy {
   // false: The standard Adam/Lamb optimizer
   // true: The Adam_No_Bias/Lamb_No_Bias optimizer from PopART
   bool use_no_bias_optimizer = false;
-
-  // enable the eval mode in training by switching optimizers.
-  bool enable_eval = false;
 
   // Number ipus total needed, replica * ipu_per_replica
   int num_ipus = 1;
@@ -86,6 +88,9 @@ class IpuStrategy {
   // Data type to use for tensor that stores third-order momentum optimizer
   // state. FLOAT or FLOAT16
   std::string accl3_type = "FLOAT";
+
+  // Runtime Options
+  RuntimeOptions runtime_options;
 
   // popart session option
   popart::SessionOptions popart_options;

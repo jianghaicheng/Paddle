@@ -115,11 +115,17 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   VLOG(10) << "Prepared inputs/anchors";
 
   if (ipu_strategy_->is_training && compiler_resources_->with_lr_sched) {
-    VLOG(10) << "Update learning_rate";
-    auto new_lr =
-        GetSingleVarFromScope<float>(scope_, compiler_resources_->lr_var);
-    VLOG(10) << "New Lr: " << new_lr;
-    auto *optimizer = compiler_resources_->UpdateOptimizer(new_lr);
+    popart::Optimizer *optimizer;
+    if (ipu_strategy_->runtime_options.enable_eval) {
+      VLOG(10) << "Switch optimizer to eval mode";
+      optimizer = compiler_resources_->eval_optimizer.get();
+    } else {
+      VLOG(10) << "Update learning_rate";
+      auto new_lr =
+          GetSingleVarFromScope<float>(scope_, compiler_resources_->lr_var);
+      VLOG(10) << "New Lr: " << new_lr;
+      optimizer = compiler_resources_->UpdateOptimizer(new_lr);
+    }
     auto *session = dynamic_cast<popart::TrainingSession *>(session_.get());
     session->updateOptimizerFromHost(optimizer);
   }
