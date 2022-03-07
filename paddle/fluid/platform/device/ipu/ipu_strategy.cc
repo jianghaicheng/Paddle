@@ -66,6 +66,7 @@ IpuStrategy::IpuStrategy() {
   ADD_BOOL_OPTION(enable_fp16);
   ADD_BOOL_OPTION(transfer_cast_op);
   ADD_BOOL_OPTION(use_no_bias_optimizer);
+  ADD_BOOL_OPTION(enable_distribution);
   ADD_UINT64_OPTION(num_ipus);
   ADD_UINT64_OPTION(batches_per_step);
   ADD_UINT64_OPTION(micro_batch_size);
@@ -83,7 +84,6 @@ IpuStrategy::IpuStrategy() {
 #undef ADD_UINT64_OPTION
 #undef ADD_BOOL_OPTION
 
-
 #define ADD_RUNTIME_BOOL_OPTION(name, aliased_name)                          \
   RegisterSetter(bool_options, #name,                                        \
                  [&](bool value) { runtime_options.aliased_name = value; }); \
@@ -94,7 +94,6 @@ IpuStrategy::IpuStrategy() {
   ADD_RUNTIME_BOOL_OPTION(runtime_options.enable_eval, enable_eval);
 
 #undef ADD_RUNTIME_BOOL_OPTION
-
 
 #define ADD_POPART_ENUM_OPTION_ALIAS(name, aliased_name, EnumType)        \
   RegisterSetter(uint64_options, #name, [&](std::uint64_t value) {        \

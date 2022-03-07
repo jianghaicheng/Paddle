@@ -20,6 +20,7 @@ limitations under the License. */
 #include <popart/patterns/patterns.hpp>
 #include <popart/session.hpp>
 #include <popart/tensorinfo.hpp>
+#include <popdist/popdist_poplar.hpp>
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"

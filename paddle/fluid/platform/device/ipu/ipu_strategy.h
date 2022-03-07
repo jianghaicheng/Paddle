@@ -25,8 +25,8 @@ namespace platform {
 namespace ipu {
 
 struct RuntimeOptions {
-    // enable the eval mode in training by switching optimizers.
-    bool enable_eval = false;
+  // enable the eval mode in training by switching optimizers.
+  bool enable_eval = false;
 };
 
 class IpuStrategy {
@@ -50,6 +50,9 @@ class IpuStrategy {
   // false: The standard Adam/Lamb optimizer
   // true: The Adam_No_Bias/Lamb_No_Bias optimizer from PopART
   bool use_no_bias_optimizer = false;
+
+  // enable distributed computing for POD128 or POD256
+  bool enable_distribution = false;
 
   // Number ipus total needed, replica * ipu_per_replica
   int num_ipus = 1;

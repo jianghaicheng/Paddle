@@ -152,6 +152,7 @@ void Executor::AcquireDevice() {
   }
 
   bool use_ipu_model = GetBoolEnv("POPLAR_IPUMODEL");
+  bool enable_distribution = ipu_strategy_->enable_distribution;
   if (use_ipu_model) {
     std::map<std::string, std::string> deviceOpts{
         {
@@ -161,6 +162,17 @@ void Executor::AcquireDevice() {
     };
     device_ = popart::DeviceManager::createDeviceManager().createIpuModelDevice(
         deviceOpts);
+  } else if (enable_distribution) {
+    auto ipus_per_replica =
+        ipu_strategy_->num_ipus /
+        ipu_strategy_->popart_options.globalReplicationFactor;
+    auto device_id = popdist_get_device(ipus_per_replica);
+    device_ = popart::DeviceManager::createDeviceManager().acquireDeviceById(
+        device_id);
+    PADDLE_ENFORCE_NOT_NULL(
+        device_, platform::errors::Unavailable(
+                     "Can't attach IPU in distribution, ipu_num = %d.",
+                     RequestIpus(ipu_strategy_->num_ipus)));
   } else {
     device_ =
         popart::DeviceManager::createDeviceManager().acquireAvailableDevice(
