@@ -3901,6 +3901,7 @@ All parameter, weight, gradient are variables in Paddle.
                  platform::ipu::IpuBackend::GetInstance());
            },
            py::return_value_policy::reference)
+      .def("weights_to_host", &platform::ipu::IpuBackend::WeightsToHost)
       .def("detach", &platform::ipu::IpuBackend::Detach)
       .def("reset", &platform::ipu::IpuBackend::Reset)
       .def("set_scope", &platform::ipu::IpuBackend::SetScope)

@@ -50,6 +50,8 @@ struct CompilerResources {
   using OptimizerFn =
       std::function<std::unique_ptr<popart::Optimizer>(float lr)>;
   OptimizerFn optimizer_fn;
+  // The eval mode of optimizer in training
+  std::unique_ptr<popart::Optimizer> eval_optimizer;
 
  public:
   popart::Optimizer *Optimizer() { return optimizer.get(); }

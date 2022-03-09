@@ -62,22 +62,38 @@ IpuStrategy::IpuStrategy() {
                  [&]() { return name; })
 
   ADD_BOOL_OPTION(is_training);
-  ADD_BOOL_OPTION(save_init_onnx);
-  ADD_BOOL_OPTION(save_onnx_checkpoint);
   ADD_BOOL_OPTION(need_avg_shard);
   ADD_BOOL_OPTION(enable_fp16);
+  ADD_BOOL_OPTION(transfer_cast_op);
+  ADD_BOOL_OPTION(use_no_bias_optimizer);
+  ADD_BOOL_OPTION(enable_distribution);
   ADD_UINT64_OPTION(num_ipus);
   ADD_UINT64_OPTION(batches_per_step);
   ADD_UINT64_OPTION(micro_batch_size);
-  ADD_UINT64_OPTION(save_per_n_step);
+  ADD_UINT64_OPTION(random_seed);
   ADD_DOUBLE_OPTION(available_memory_proportion);
   ADD_DOUBLE_OPTION(loss_scaling);
   ADD_DOUBLE_OPTION(max_weight_norm);
+  ADD_STRING_OPTION(accl1_type);
+  ADD_STRING_OPTION(accl2_type);
+  ADD_STRING_OPTION(accl3_type);
+  ADD_STRING_OPTION(onnx_dump_path);
 
 #undef ADD_STRING_OPTION
 #undef ADD_DOUBLE_OPTION
 #undef ADD_UINT64_OPTION
 #undef ADD_BOOL_OPTION
+
+#define ADD_RUNTIME_BOOL_OPTION(name, aliased_name)                          \
+  RegisterSetter(bool_options, #name,                                        \
+                 [&](bool value) { runtime_options.aliased_name = value; }); \
+  RegisterGetter(options_getter, options_type, #name, "bool", [&]() {        \
+    return std::to_string(runtime_options.aliased_name);                     \
+  })
+
+  ADD_RUNTIME_BOOL_OPTION(runtime_options.enable_eval, enable_eval);
+
+#undef ADD_RUNTIME_BOOL_OPTION
 
 #define ADD_POPART_ENUM_OPTION_ALIAS(name, aliased_name, EnumType)        \
   RegisterSetter(uint64_options, #name, [&](std::uint64_t value) {        \
@@ -171,6 +187,7 @@ IpuStrategy::IpuStrategy() {
   ADD_POPART_UINT64_OPTION_ALIAS(merge_var_update_mem_threshold,
                                  mergeVarUpdateMemThreshold);
   ADD_POPART_UINT64_OPTION_ALIAS(loose_threshold_at_peak, looseThresholdAtPeak);
+  ADD_POPART_UINT64_OPTION_ALIAS(replicated_graph_count, replicatedGraphCount);
   ADD_POPART_UINT64_OPTION_ALIAS(accumulation_factor, accumulationFactor);
   ADD_POPART_UINT64_OPTION_ALIAS(swap_limit_scheduler, swapLimitScheduler);
   ADD_POPART_UINT64_OPTION_ALIAS(global_replication_factor,
