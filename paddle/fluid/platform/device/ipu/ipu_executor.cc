@@ -163,9 +163,8 @@ void Executor::AcquireDevice() {
     device_ = popart::DeviceManager::createDeviceManager().createIpuModelDevice(
         deviceOpts);
   } else if (enable_distribution) {
-    auto ipus_per_replica =
-        ipu_strategy_->num_ipus /
-        ipu_strategy_->popart_options.globalReplicationFactor;
+    auto ipus_per_replica = ipu_strategy_->num_ipus /
+                            ipu_strategy_->popart_options.replicatedGraphCount;
     auto device_id = popdist_get_device(ipus_per_replica);
     device_ = popart::DeviceManager::createDeviceManager().acquireDeviceById(
         device_id);

@@ -479,10 +479,28 @@ void IpuStrategy::SetTensorLocation(const std::string& tensor,
   } else if (opt == "use_io_tiles_to_store") {
     settings->location.storageTileSet =
         value > 0 ? popart::TileSet::IO : popart::TileSet::Compute;
+  } else if (opt == "sharding_domain_with_all") {
+    settings->location.shardingDomain =
+        popart::CommGroup(popart::CommGroupType::All, value);
+  } else if (opt == "sharding_domain_with_consecutive") {
+    settings->location.shardingDomain =
+        popart::CommGroup(popart::CommGroupType::Consecutive, value);
+  } else if (opt == "sharding_domain_with_orthogonal") {
+    settings->location.shardingDomain =
+        popart::CommGroup(popart::CommGroupType::Orthogonal, value);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unknown option ' %s' for tensor location: %s", opt, tensor));
   }
+}
+
+void IpuStrategy::SetAccumulateOuterFragmentSettings(
+    const std::uint64_t& schedule, const std::vector<int>& values) {
+  VLOG(10) << "SetAccumulateOuterFragmentSettings schedule:" << schedule;
+  auto schedule_ =
+      static_cast<popart::AccumulateOuterFragmentSchedule>(schedule);
+  popart_options.accumulateOuterFragmentSettings =
+      popart::AccumulateOuterFragmentSettings(schedule_, values);
 }
 
 void IpuStrategy::AddCustomOp(const std::string& paddle_op,

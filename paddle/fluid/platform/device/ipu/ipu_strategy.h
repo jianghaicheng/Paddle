@@ -54,7 +54,7 @@ class IpuStrategy {
   // enable distributed computing for POD128 or POD256
   bool enable_distribution = false;
 
-  // Number ipus total needed, replica * ipu_per_replica
+  // Number ipus total needed, local_replica * ipu_per_replica
   int num_ipus = 1;
 
   // batches per step
@@ -114,6 +114,8 @@ class IpuStrategy {
                               const std::string &value);
   void SetTensorLocation(const std::string &tensor, const std::string &option,
                          std::uint64_t value);
+  void SetAccumulateOuterFragmentSettings(const std::uint64_t &schedule,
+                                          const std::vector<int> &values);
   void AddCustomOp(const std::string &paddle_op, const std::string &popart_op,
                    const std::string &domain, int version);
 

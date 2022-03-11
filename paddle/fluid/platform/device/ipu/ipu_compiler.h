@@ -112,6 +112,7 @@ class Compiler {
   void RegisterOpFunc();
   std::vector<std::string> GetOpInputs(const OpDesc *op);
   const std::vector<std::string> &GetOpOutputs(const OpDesc *op);
+  const std::string GetNameScope(const OpDesc *op);
   popart::DebugContext BuildDebugContext(const OpDesc *op);
 
   void InsertTensors(const std::vector<std::string> &output_names,
@@ -128,6 +129,8 @@ class Compiler {
                               const OpDesc *op_desc);
   void SetSerializeAttributes(const std::string &tensor_id,
                               const OpDesc *op_desc);
+  void PushNameScope(const OpDesc *op);
+  void PopNameScope(const OpDesc *op);
 
  private:
   std::unique_ptr<popart::Builder> builder_;
@@ -139,6 +142,14 @@ class Compiler {
 
   const IpuStrategy *ipu_strategy_ = nullptr;
   std::map<std::string, IpuCustomOpIdentifier> custom_ops_;
+
+  // Used to choose the way to set amp for Ops
+  // If anyone op has the attr sAvailMemAttribute, the
+  // available_memory_proportion from ipu_strategy
+  // will be ignored and the Ops are set by their own sAvailMemAttribute. Else,
+  // all relevant Ops will be set by
+  // the available_memory_proportion from ipu_strategy.
+  bool set_amp_for_all_ = true;
 };
 
 }  // namespace ipu

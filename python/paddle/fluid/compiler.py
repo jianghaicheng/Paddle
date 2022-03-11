@@ -759,6 +759,56 @@ class IpuStrategy(object):
         """
         return self._ipu_strategy.get_option(option)['value']
 
+    def enable_pattern(self, pattern):
+        """
+        Enable PopART pattern to optimize the graph.
+
+        Args:
+            pattern(string): the name of the pattern.
+        
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                # required: ipu
+
+                import paddle
+                import paddle.static as static
+
+                paddle.enable_static()
+
+                ipu_strategy = static.IpuStrategy()
+                ipu_strategy.enable_pattern("ViewSimplifyPattern")
+        """
+        self._ipu_strategy.enable_pattern(pattern)
+
+    def disable_pattern(self, pattern):
+        """
+        Disable PopART pattern.
+
+        Args:
+            pattern(string): the name of the pattern.
+        
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                # required: ipu
+
+                import paddle
+                import paddle.static as static
+
+                paddle.enable_static()
+
+                ipu_strategy = static.IpuStrategy()
+                ipu_strategy.disable_pattern("ViewSimplifyPattern")
+        """
+        self._ipu_strategy.disable_pattern(pattern)
+
     def check(self):
         """
         This function is going to check if the ipu_strategy is valid.
@@ -777,7 +827,7 @@ class IpuStrategy(object):
 
             local_replicas = self.get_option("replicated_graph_count")
             total_replicas = self.get_option("global_replication_factor")
-            total_num_ipus = self.get_option("num_ipus")
+            local_num_ipus = self.get_option("num_ipus")
 
             if required_local_replicas != local_replicas:
                 raise RuntimeError(
@@ -787,11 +837,11 @@ class IpuStrategy(object):
                 raise RuntimeError(
                     "Please set valid global_replication_factor for distribution. Expect %d, but received %d."
                     % (required_total_replicas, total_replicas))
-            if required_ipus_per_replica * total_replicas != total_num_ipus:
+            if required_ipus_per_replica * local_replicas != local_num_ipus:
                 raise RuntimeError(
                     "Please set valid num_ipus for distribution. Expect %d, but received %d."
-                    % (required_ipus_per_replica * total_replicas,
-                       total_num_ipus))
+                    % (required_ipus_per_replica * local_replicas,
+                       local_num_ipus))
 
             if local_replicas != total_replicas:
                 replica_index = int(
