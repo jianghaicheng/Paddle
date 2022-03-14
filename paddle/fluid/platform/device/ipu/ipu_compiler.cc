@@ -141,6 +141,17 @@ void Compiler::Prepare(const Graph* graph) {
   builder_ = popart::Builder::create();
   resources_ = std::make_unique<CompilerResources>();
   graph_helper_ = std::make_unique<GraphHelper>(graph);
+  // Set the flag of set_amp_for_all_
+  for (auto* node : graph_helper_->sorted_ops) {
+    auto* op_desc = node->Op();
+    auto op_type = op_desc->Type();
+    if (op_type == "popart_matmul") {
+      if (op_desc->HasAttr(sAvailMemAttribute)) {
+        set_amp_for_all_ = false;
+        return;
+      }
+    }
+  }
 }
 
 void Compiler::RegisterOpFunc() {
@@ -174,7 +185,9 @@ void Compiler::RegisterOpFunc() {
      auto debug_context = BuildDebugContext(op_desc);         \
      auto aiGraphcoreOpset = builder_->aiGraphcoreOpset1();   \
      auto aiOnnxOpset = builder_->aiOnnxOpset11();            \
+     PushNameScope(op_desc);                                  \
      auto output_ids = OnnxImpl(inputs Args, debug_context);  \
+     PopNameScope(op_desc);                                   \
      SetIpuIndexStage(output_ids, op_desc);                   \
      SetAMPAttributes(output_ids, op_desc);                   \
      SetSerializeAttributes(output_ids, op_desc);             \
@@ -260,7 +273,9 @@ void Compiler::LowerConstants(const Scope* scope) {
       popart::TensorInfo tensor_info(PdDataType2PopartType(tensor->dtype()),
                                      shape);
       const_data.reset(new popart::ConstVoidData(tensor->data(), tensor_info));
+      PushNameScope(op_desc);
       popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
+      PopNameScope(op_desc);
       SetIpuIndexStage(result, op_desc);
       resources_->tensors.emplace(tensor_name, result);
     }
@@ -292,10 +307,15 @@ void Compiler::LowerWeights(const Scope* scope) {
           }
           popart::TensorInfo tensor_info(dtype, shape);
           popart::ConstVoidData const_data{tensor.data(), tensor_info};
-          popart::TensorId result =
-              builder_->addInitializedInputTensor(const_data, var_name);
-          resources_->tensors.emplace(var_name, result);
-          resources_->weights.push_back(var_name);
+          if (!node->outputs.empty()) {
+            auto op_node = node->outputs[0];
+            PushNameScope(op_node->Op());
+            popart::TensorId result =
+                builder_->addInitializedInputTensor(const_data, var_name);
+            PopNameScope(op_node->Op());
+            resources_->tensors.emplace(var_name, result);
+            resources_->weights.push_back(var_name);
+          }
         }
       }
     }
@@ -317,7 +337,9 @@ void Compiler::LowerBody() {
     } else if (op_type == "popart_checkpointoutput") {
       auto inputs = GetOpInputs(op_desc);
       auto outputs = GetOpOutputs(op_desc);
+      PushNameScope(op_desc);
       auto output_ids = builder_->checkpointOutput(inputs);
+      PopNameScope(op_desc);
       SetIpuIndexStage(output_ids, op_desc);
       InsertTensors(outputs, output_ids);
     } else if (op_type == "popart_custom_op") {
@@ -333,9 +355,11 @@ void Compiler::LowerBody() {
           BOOST_GET_CONST(std::string, op_desc->GetAttr("__op_type"));
       VLOG(10) << "Build graph from custom op: " << __op_type;
       auto it = custom_ops_.find(__op_type);
+      PushNameScope(op_desc);
       auto output_ids =
           builder_->customOp(it->second.popart_op, it->second.popart_op.version,
                              inputs, outputs.size(), attributes, debug_context);
+      PopNameScope(op_desc);
       SetIpuIndexStage(output_ids, op_desc);
       InsertTensors(outputs, output_ids);
     } else if (op_type == "popart_printtensor") {
@@ -345,8 +369,10 @@ void Compiler::LowerBody() {
       auto print_gradient =
           BOOST_GET_CONST(int64_t, op_desc->GetAttr("print_gradient"));
       auto title = BOOST_GET_CONST(std::string, op_desc->GetAttr("title"));
+      PushNameScope(op_desc);
       auto output_ids = builder_->aiGraphcoreOpset1().printtensor(
           inputs, print_gradient, debug_context, title);
+      PopNameScope(op_desc);
       SetIpuIndexStage(output_ids, op_desc);
       InsertTensors(outputs, output_ids);
     } else {
@@ -496,7 +522,7 @@ void Compiler::LowerOptimizer(const Scope* scope) {
               popart::DataType::FLOAT, clip_norm_settings);
           for (int i = 0; i < weight_decay_vars.size(); i++) {
             eval_optimizer->insertSpecific(weight_decay_vars[i],
-                                      {{"weightDecay", {0.0, false}}});
+                                           {{"weightDecay", {0.0, false}}});
           }
           resources_->eval_optimizer = std::move(eval_optimizer);
         } else {
@@ -622,9 +648,32 @@ void Compiler::SetAMPAttributes(const std::string& tensor_id,
                                 const OpDesc* op_desc) {
   VLOG(10) << "enter Compiler::SetAMPAttributes";
   if (op_desc->Type() == "popart_matmul") {
-    auto amp = ipu_strategy_->available_memory_proportion;
-    if (amp > 0.0f && amp <= 1.0) {
-      builder_->setAvailableMemoryProportion(tensor_id, amp);
+    if (set_amp_for_all_) {
+      auto amp = ipu_strategy_->available_memory_proportion;
+      if (amp < 0.0f || amp > 1.0) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "AvailableMemoryProportion %f is invalid, which should be set 0 <= "
+            "amp <= 1",
+            amp));
+      }
+      if (amp > 0.0f) {
+        builder_->setAvailableMemoryProportion(tensor_id, amp);
+      }
+    } else {
+      if (op_desc->HasAttr(sAvailMemAttribute)) {
+        auto amp = BOOST_GET_CONST(float, op_desc->GetAttr(sAvailMemAttribute));
+        if (amp < 0.0f || amp > 1.0) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "AvailableMemoryProportion %f is invalid, which should be set 0 "
+              "<= amp <= 1",
+              amp));
+        }
+        if (amp > 0.0f) {
+          builder_->setAvailableMemoryProportion(tensor_id, amp);
+          VLOG(10) << "set available_memory_proportion for tensor: "
+                   << tensor_id << " as " << amp;
+        }
+      }
     }
   }
   VLOG(10) << "leave Compiler::SetAMPAttributes";
@@ -712,6 +761,29 @@ popart::DebugContext Compiler::BuildDebugContext(const OpDesc* op) {
   VLOG(10) << "op_identify_id of op: " << op->Type() << " is "
            << op_identify_id;
   return popart::DebugContext(op_identify_id);
+}
+
+void Compiler::PushNameScope(const OpDesc* op) {
+  auto op_namescope = BOOST_GET_CONST(std::string, op->GetAttr(sOpNamescope));
+  if (op_namescope == "/") {
+    return;
+  }
+  if (!op_namescope.empty()) {
+    op_namescope.pop_back();
+  }
+  if (!op_namescope.empty()) {
+    op_namescope.erase(op_namescope.begin());
+  }
+  VLOG(10) << "name_scope is: " << op_namescope;
+  builder_->pushNameScope(op_namescope);
+}
+
+void Compiler::PopNameScope(const OpDesc* op) {
+  auto op_namescope = BOOST_GET_CONST(std::string, op->GetAttr(sOpNamescope));
+  if (op_namescope == "/") {
+    return;
+  }
+  builder_->popNameScope();
 }
 
 }  // namespace ipu

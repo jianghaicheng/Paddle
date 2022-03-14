@@ -3949,6 +3949,15 @@ All parameter, weight, gradient are variables in Paddle.
                          option_name, option.first.cast<std::string>(),
                          option.second.cast<std::uint64_t>());
                    }
+                 } else if (option_name == "accumulate_outer_fragment") {
+                   for (auto option : element.second.cast<py::dict>()) {
+                     std::vector<int> values;
+                     for (auto value : option.second.cast<py::list>()) {
+                       values.push_back(value.cast<int>());
+                     }
+                     self.SetAccumulateOuterFragmentSettings(
+                         option.first.cast<std::uint64_t>(), values);
+                   }
                  } else if (option_name == "custom_op") {
                    std::string paddle_op;
                    std::string popart_op;

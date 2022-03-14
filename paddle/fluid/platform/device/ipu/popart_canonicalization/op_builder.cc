@@ -125,6 +125,9 @@ Node *CreateBaseOp(Graph *graph, Node *node, const std::string &type,
   if (node->Op()->HasAttr(sAvailMemAttribute)) {
     CopyOpAttr(sAvailMemAttribute, node->Op(), new_node->Op());
   }
+  if (node->Op()->HasAttr(sOpNamescope)) {
+    CopyOpAttr(sOpNamescope, node->Op(), new_node->Op());
+  }
   {
     new_node->Op()->SetAttr(sOpIdentifyIdAttr, CreateOpIdentifyId(node));
     new_node->Op()->Flush();

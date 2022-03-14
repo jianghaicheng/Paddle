@@ -49,7 +49,7 @@ def TestDist():
             exe.run(startup_prog)
 
             ipu_strategy = paddle.static.IpuStrategy()
-            ipu_strategy.set_graph_config(num_ipus=4, is_training=False)
+            ipu_strategy.set_graph_config(num_ipus=2, is_training=False)
             # Enable the distributed computing
             ipu_strategy.set_options({
                 "enable_distribution": True,
