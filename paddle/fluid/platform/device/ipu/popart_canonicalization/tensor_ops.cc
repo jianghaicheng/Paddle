@@ -49,6 +49,9 @@ Node *fill_constant_handler(Graph *graph, Node *node) {
     case framework::proto::VarType::INT64:
       value = std::vector<int64_t>(size, value_);
       break;
+    case framework::proto::VarType::BOOL:
+      value = std::vector<bool>(size, value_);
+      break;
     default:
       PADDLE_THROW(
           platform::errors::Unimplemented("fill_constant dtype: %d", dtype_));
@@ -417,6 +420,45 @@ Node *assign_handler(Graph *graph, Node *node) {
                       {GetOutputVarNode("Out", node)}, {});
 }
 
+Node *assign_value_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto dtype_ = BOOST_GET_CONST(int, op->GetAttr("dtype"));
+  auto dtype = VarType2OnnxDtype(dtype_);
+  auto dims_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("shape"));
+  std::vector<int64_t> dims(dims_.begin(), dims_.end());
+  Attribute values;
+  std::string value_name;
+  switch (dtype_) {
+    case framework::proto::VarType::BOOL: {
+      value_name = "bool_values";
+      auto vec_int = BOOST_GET_CONST(std::vector<int>, op->GetAttr(value_name));
+      std::vector<bool> vec_bool(vec_int.begin(), vec_int.end());
+      values = vec_bool;
+    } break;
+    case framework::proto::VarType::INT32:
+      value_name = "int32_values";
+      values = BOOST_GET_CONST(std::vector<int>, op->GetAttr(value_name));
+      break;
+    case framework::proto::VarType::FP32:
+      value_name = "fp32_values";
+      values = BOOST_GET_CONST(std::vector<float>, op->GetAttr(value_name));
+      break;
+    case framework::proto::VarType::INT64:
+      value_name = "int64_values";
+      values = BOOST_GET_CONST(std::vector<int64_t>, op->GetAttr(value_name));
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported data type(code %d) for AssignValue operator, only "
+          "supports bool, int32, float32 and int64.",
+          dtype));
+  }
+  return CreateConst(graph, node, node->inputs, node->outputs,
+                     AttributeMap{
+                         {"value", values}, {"dims", dims}, {"dtype", dtype},
+                     });
+}
+
 Node *fill_any_like_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto value = BOOST_GET_CONST(float, op->GetAttr("value"));
@@ -545,6 +587,7 @@ REGISTER_HANDLER(shape, shape_handler);
 REGISTER_HANDLER(slice, slice_handler);
 REGISTER_HANDLER(expand, expand_handler);
 REGISTER_HANDLER(assign, assign_handler);
+REGISTER_HANDLER(assign_value, assign_value_handler);
 REGISTER_HANDLER(fill_any_like, fill_any_like_handler);
 REGISTER_HANDLER(lookup_table_v2, lookup_table_v2_handler);
 REGISTER_HANDLER(split, split_handler);
