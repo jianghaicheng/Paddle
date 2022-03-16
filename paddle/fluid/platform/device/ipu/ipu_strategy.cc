@@ -78,6 +78,7 @@ IpuStrategy::IpuStrategy() {
   ADD_STRING_OPTION(accl2_type);
   ADD_STRING_OPTION(accl3_type);
   ADD_STRING_OPTION(onnx_dump_path);
+  ADD_STRING_OPTION(weight_decay_mode);
 
 #undef ADD_STRING_OPTION
 #undef ADD_DOUBLE_OPTION

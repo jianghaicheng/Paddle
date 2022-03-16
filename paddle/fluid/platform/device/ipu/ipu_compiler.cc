@@ -469,8 +469,11 @@ void Compiler::LowerOptimizer(const Scope* scope) {
             BOOST_GET_CONST(std::string, op_desc->GetAttr("adam_mode"));
         auto adam_mode =
             AdamModeFromStr(adam_mode_, ipu_strategy_->use_no_bias_optimizer);
-        auto weight_decay_mode_ =
-            BOOST_GET_CONST(std::string, op_desc->GetAttr("weight_decay_mode"));
+        auto weight_decay_mode_ = ipu_strategy_->weight_decay_mode;
+        if (weight_decay_mode_.empty()) {
+          weight_decay_mode_ = BOOST_GET_CONST(
+              std::string, op_desc->GetAttr("weight_decay_mode"));
+        }
         auto weight_decay_mode = WeightDecayModeFromStr(weight_decay_mode_);
         resources_->optimizer_fn = [=](float lr) {
           if (adam_mode == popart::AdamMode::Lamb ||
@@ -546,8 +549,11 @@ void Compiler::LowerOptimizer(const Scope* scope) {
         auto adaptive_mode_ =
             BOOST_GET_CONST(std::string, op_desc->GetAttr("adaptive_mode"));
         auto adaptive_mode = AdaptiveModeFromStr(adaptive_mode_);
-        auto weight_decay_mode_ =
-            BOOST_GET_CONST(std::string, op_desc->GetAttr("weight_decay_mode"));
+        auto weight_decay_mode_ = ipu_strategy_->weight_decay_mode;
+        if (weight_decay_mode_.empty()) {
+          weight_decay_mode_ = BOOST_GET_CONST(
+              std::string, op_desc->GetAttr("weight_decay_mode"));
+        }
         auto weight_decay_mode = WeightDecayModeFromStr(weight_decay_mode_);
         resources_->optimizer_fn = [=](float lr) {
           return std::make_unique<popart::Adaptive>(

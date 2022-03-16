@@ -92,6 +92,11 @@ class IpuStrategy {
   // state. FLOAT or FLOAT16
   std::string accl3_type = "FLOAT";
 
+  // WeightDecayMode for setting the optimizer
+  // if set, it will override other settings
+  // value must be one of "decay" or "l2_regularization" or not set
+  std::string weight_decay_mode = "";
+
   // Runtime Options
   RuntimeOptions runtime_options;
 
