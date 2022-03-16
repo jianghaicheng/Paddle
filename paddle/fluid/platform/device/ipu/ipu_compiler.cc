@@ -295,6 +295,10 @@ void Compiler::LowerWeights(const Scope* scope) {
           VLOG(10) << "found existed one, skip lowering Weight: " << var_name;
           continue;
         }
+        if (var_name.rfind("learning_rate", 0) == 0) {
+          VLOG(10) << "skip learning_rate_var: " << var_name;
+          continue;
+        }
         VLOG(10) << "lowering weight: " << var_name;
 
         auto var = scope->FindVar(var_name);
