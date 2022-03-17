@@ -30,8 +30,7 @@ cmake \
     -DWITH_PYTHON:STRING=ON \
     -DON_INFER:STRING=ON \
     -DWITH_IPU:STRING=ON \
-    -DPOPLAR_DIR:STRING=/opt/poplar \
-    -DPOPART_DIR:STRING=/opt/popart \
+    -DPOPLAR_SDK_DIR=/sdk/poplar_sdk \
     -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DCMAKE_C_COMPILER:FILEPATH=/usr/bin/gcc \
@@ -48,6 +47,12 @@ ccache -s
 
 # install paddle
 # ls /paddle_build/python/dist/*.whl | xargs pip install
+
+# set popart env
+unset POPLAR_SDK_ENABLED
+for file in $(ls /sdk/poplar_sdk/*/enable.sh) ; do
+    source $file
+done
 
 # run gc-monitor
 gc-monitor

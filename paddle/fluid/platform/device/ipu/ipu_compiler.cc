@@ -514,12 +514,28 @@ void Compiler::LowerOptimizer(const Scope* scope) {
                 clip_norm_settings);
           }
         };
-        if (adam_mode == popart::AdamMode::Lamb ||
-            adam_mode == popart::AdamMode::LambNoBias) {
+        if (adam_mode == popart::AdamMode::Lamb) {
           const std::map<std::string, std::pair<float, bool>> optimizer_value =
               {{"defaultLearningRate", {0.0, false}},
                {"defaultBeta1", {beta1, false}},
                {"defaultBeta2", {beta2, false}},
+               {"defaultEps", {eps, true}},
+               {"lossScaling", {loss_scaling, true}},
+               {"defaultMaxWeightNorm", {mwn, true}}};
+          auto eval_optimizer = std::make_unique<popart::Adam>(
+              optimizer_value, adam_mode, weight_decay_mode,
+              popart::DataType::UNDEFINED, popart::DataType::FLOAT,
+              popart::DataType::FLOAT, clip_norm_settings);
+          for (int i = 0; i < weight_decay_vars.size(); i++) {
+            eval_optimizer->insertSpecific(weight_decay_vars[i],
+                                           {{"weightDecay", {0.0, false}}});
+          }
+          resources_->eval_optimizer = std::move(eval_optimizer);
+        } else if (adam_mode == popart::AdamMode::LambNoBias) {
+          const std::map<std::string, std::pair<float, bool>> optimizer_value =
+              {{"defaultLearningRate", {0.0, false}},
+               {"defaultBeta1", {1.0, false}},
+               {"defaultBeta2", {1.0, false}},
                {"defaultEps", {eps, true}},
                {"lossScaling", {loss_scaling, true}},
                {"defaultMaxWeightNorm", {mwn, true}}};
