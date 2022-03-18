@@ -87,6 +87,7 @@ class Executor {
   const Scope *scope_ = nullptr;
   const IpuStrategy *ipu_strategy_ = nullptr;
   CompilerResources *compiler_resources_ = nullptr;
+  bool compile_only_ = false;
 
   // deviceinfo for popart session
   std::shared_ptr<popart::DeviceInfo> device_;
