@@ -157,7 +157,6 @@ Node *softmax_handler(Graph *graph, Node *node) {
 
 Node *scale_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto scale_ = BOOST_GET_CONST(float, op->GetAttr("scale"));
   auto bias_ = BOOST_GET_CONST(float, op->GetAttr("bias"));
   auto bias_after_scale_ =
       BOOST_GET_CONST(bool, op->GetAttr("bias_after_scale"));
@@ -167,7 +166,7 @@ Node *scale_handler(Graph *graph, Node *node) {
                          static_cast<int>(framework::proto::VarType::FP32));
 
   Node *result = nullptr;
-  if (!op->Input("ScaleTensor").empty()) {
+  if (!op->Inputs().at("ScaleTensor").empty()) {
     auto scale = GetInputVarNode("ScaleTensor", node);
     if (is_float_equal(bias_, 0.0)) {
       result = CreateBaseOp(graph, node, "popart_mul",
@@ -191,6 +190,7 @@ Node *scale_handler(Graph *graph, Node *node) {
       }
     }
   } else {
+    auto scale_ = BOOST_GET_CONST(float, op->GetAttr("scale"));
     if (is_float_equal(bias_, 0.0) && is_float_equal(scale_, 1.0)) {
       return CreateBaseOp(graph, node, "popart_identity",
                           {GetInputVarNode("X", node)}, node->outputs, {});
