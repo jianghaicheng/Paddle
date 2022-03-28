@@ -69,13 +69,3 @@ x = paddle.static.data(
 out = custom_ops.custom_leaky_relu(x, **self.attrs)
 
 ```
-
-在调用 IpuCompiler 编译计算图时, 需要将上面的 custom op 映射表作为参数传入
-
-```python
-
-program = paddle.static.IpuCompiledProgram(
-    main_prog, scope=scope,
-    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
-
-```

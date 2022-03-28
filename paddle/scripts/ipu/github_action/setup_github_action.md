@@ -1,15 +1,11 @@
 # Configure CI for workflow
 
 ```bash
-# setup ENV
-# source POPLAR_SDK/enable.sh
-# source POPART_SDK/enable.sh
-# if no image graphcore/poplar:2.3.0
-# download from https://downloads.graphcore.ai/
 # build docker image
-docker build -t paddle_ipu_ci:2.3.0 -f paddle/scripts/ipu/github_action/Dockerfile.poplar.2.3.0 .
+docker build -t paddlepaddle/paddle:latest-dev-ipu \
+-f tools/dockerfile/Dockerfile.ipu .
 
-docker volume create paddle_ccahe
+docker volume create paddle_ccache
 docker volume create --driver local \
   --opt type=none \
   --opt device={DIR_TO_IPU_OF} \
@@ -25,17 +21,18 @@ docker volume create --driver local \
 # {DIR_TO_PADDLE_WHEELS} is where the python package `paddle_*.whl` saved
 
 # check configure
-gc-docker -- \
--v paddle_ccahe:/paddle_ccahe \
--e CCACHE_DIR=/paddle_ccahe \
--e CCACHE_MAXSIZE=20G \
+docker run --ulimit memlock=-1:-1 --net=host --cap-add=IPC_LOCK \
+--device=/dev/infiniband/ --ipc=host \
+-v paddle_ccache:/paddle_ccache \
+-e CCACHE_DIR=/paddle_ccache \
+-e CCACHE_MAXSIZE=30G \
 -v paddle_ipuof:/ipuof \
 -v paddle_wheels:/paddle_wheels \
 -e IPUOF_CONFIG_PATH=/ipuof/ipu.conf \
 --rm \
-paddle_ipu_ci:2.3.0 \
+paddlepaddle/paddle:latest-dev-ipu \
 bash -c "pwd & gc-monitor && ccache -s"
-# install github action-runner
-# https://github.com/graphcore/Paddle_internal/settings/actions/runners/new
+
+# set up github action-runner
 # run action-runner in tmux session
 ```
