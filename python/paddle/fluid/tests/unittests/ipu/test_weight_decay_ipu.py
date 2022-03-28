@@ -91,7 +91,9 @@ class TestBase(IPUOpTest):
                 fetch_list = [loss.name]
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=True)
-                ipu_strategy.loss_scaling = self.attrs["loss_scaling"]
+                ipu_strategy.set_options({
+                    'loss_scaling': self.attrs["loss_scaling"]
+                })
                 program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
                                                                   fetch_list)

@@ -47,7 +47,6 @@ class TestBase(IPUOpTest):
         self.attrs = {
             "optimizer": 'sgd',
             "weight_decay": 0.0,
-            "loss_scaling": 1.0,
         }
 
     def _test_optimizer(self, run_ipu=True):
@@ -69,10 +68,11 @@ class TestBase(IPUOpTest):
                 weight_decay = self.attrs['weight_decay']
                 # Only support ClipGradByGlobalNorm
                 clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-                opt = paddle.optimizer.SGD(learning_rate=1e-1,
-                                           weight_decay=weight_decay,
-                                           grad_clip=clip)
-                if self.attrs['optimizer'] == 'adam':
+                if self.attrs['optimizer'] == 'sgd':
+                    opt = paddle.optimizer.SGD(learning_rate=1e-1,
+                                               weight_decay=weight_decay,
+                                               grad_clip=clip)
+                elif self.attrs['optimizer'] == 'adam':
                     opt = paddle.optimizer.Adam(
                         learning_rate=1e-1,
                         weight_decay=weight_decay,
@@ -82,6 +82,10 @@ class TestBase(IPUOpTest):
                         learning_rate=1e-1,
                         lamb_weight_decay=weight_decay,
                         grad_clip=clip)
+                else:
+                    raise ValueError(
+                        f"Not supported optimizer {self.attrs['optimizer']} for test"
+                    )
                 opt.minimize(loss)
 
             if run_ipu:
@@ -96,7 +100,6 @@ class TestBase(IPUOpTest):
                 fetch_list = [loss.name]
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=True)
-                ipu_strategy.loss_scaling = self.attrs["loss_scaling"]
                 program = paddle.static.IpuCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(feed_list,
                                                                   fetch_list)
@@ -123,7 +126,6 @@ class TestAdam(TestBase):
         self.attrs = {
             "optimizer": 'adam',
             "weight_decay": 0.0,
-            "loss_scaling": 4.0,
         }
 
 
@@ -132,7 +134,6 @@ class TestLamb(TestBase):
         self.attrs = {
             "optimizer": 'lamb',
             "weight_decay": 0.1,
-            "loss_scaling": 6.0,
         }
 
 
